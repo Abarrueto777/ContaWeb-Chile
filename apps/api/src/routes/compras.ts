@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { validate } from '../middlewares/validate';
 import { createError } from '../middlewares/errorHandler';
 import { facturaRecibidaSchema } from '@contaweb/validations';
+import { asientoCompra } from '../services/asientoAutomatico.service';
 
 const router = Router({ mergeParams: true });
 
@@ -40,6 +41,19 @@ router.post('/', validate(facturaRecibidaSchema), async (req, res, next) => {
     const compra = await prisma.facturaRecibida.create({
       data: { ...req.body, empresaId },
     });
+
+    try {
+      await asientoCompra(prisma, empresaId, {
+        fecha: new Date(req.body.fecha),
+        folio: req.body.folio,
+        neto: Number(req.body.neto),
+        iva: Number(req.body.iva),
+        total: Number(req.body.total),
+        glosa: req.body.glosa ?? null,
+      });
+    } catch {
+      // Si no existe el plan de cuentas no se bloquea
+    }
 
     res.status(201).json({ data: compra, message: 'Factura recibida registrada' });
   } catch (err: unknown) {

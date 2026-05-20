@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { validate } from '../middlewares/validate';
 import { createError } from '../middlewares/errorHandler';
 import { documentoSchema } from '@contaweb/validations';
+import { asientoVenta } from '../services/asientoAutomatico.service';
 
 const IVA_CHILE = 0.19;
 
@@ -25,8 +26,18 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', validate(documentoSchema), async (req, res, next) => {
   try {
-    const { clienteId, tipo, fecha, glosa, lineas } = req.body;
+    const { clienteId: clienteIdInput, clienteRut, clienteNombre, tipo, fecha, glosa, lineas } = req.body;
     const { empresaId } = req.params as { empresaId: string };
+
+    let clienteId = clienteIdInput ?? null;
+    if (!clienteId && clienteRut && clienteNombre) {
+      const cliente = await prisma.cliente.upsert({
+        where: { empresaId_rut: { empresaId, rut: clienteRut } },
+        create: { empresaId, rut: clienteRut, nombre: clienteNombre },
+        update: {},
+      });
+      clienteId = cliente.id;
+    }
 
     const neto = lineas.reduce((sum: number, l: { cantidad: number; precioUnitario: number; descuento: number }) => {
       const subtotal = l.cantidad * l.precioUnitario * (1 - l.descuento / 100);
@@ -66,6 +77,20 @@ router.post('/', validate(documentoSchema), async (req, res, next) => {
       },
       include: { lineas: true, cliente: true },
     });
+
+    try {
+      await asientoVenta(prisma, empresaId, {
+        fecha: new Date(fecha),
+        folio,
+        neto,
+        iva: Number(iva),
+        total: Number(total),
+        tipo,
+        glosa: glosa ?? null,
+      });
+    } catch {
+      // Si no existe el plan de cuentas no se bloquea la creación del documento
+    }
 
     res.status(201).json({ data: documento });
   } catch (err) {

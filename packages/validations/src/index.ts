@@ -68,6 +68,8 @@ export const lineaDocumentoSchema = z.object({
 
 export const documentoSchema = z.object({
   clienteId: z.string().optional(),
+  clienteRut: rutSchema.optional(),
+  clienteNombre: z.string().min(2).optional(),
   tipo: z.enum(['BOLETA_ELECTRONICA', 'FACTURA_ELECTRONICA', 'NOTA_CREDITO', 'NOTA_DEBITO']),
   fecha: z.coerce.date(),
   glosa: z.string().optional(),

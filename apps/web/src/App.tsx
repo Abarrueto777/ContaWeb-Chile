@@ -17,6 +17,8 @@ import RRHH from '@/pages/RRHH';
 import Activos from '@/pages/Activos';
 import PlanCuentas from '@/pages/PlanCuentas';
 import Contabilidad from '@/pages/Contabilidad';
+import LibrosIVA from '@/pages/LibrosIVA';
+import Configuracion from '@/pages/Configuracion';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('auth_token');
@@ -82,6 +84,14 @@ export default function App() {
           <Route
             path="/contabilidad"
             element={<ProtectedRoute><Contabilidad /></ProtectedRoute>}
+          />
+          <Route
+            path="/libros-iva"
+            element={<ProtectedRoute><LibrosIVA /></ProtectedRoute>}
+          />
+          <Route
+            path="/configuracion"
+            element={<ProtectedRoute><Configuracion /></ProtectedRoute>}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

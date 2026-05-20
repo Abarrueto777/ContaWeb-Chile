@@ -37,6 +37,7 @@ function clp(n: string | number) {
 
 export default function Ventas() {
   const [open, setOpen] = useState(false);
+  const [nuevoCliente, setNuevoCliente] = useState(false);
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data, isLoading } = useDocumentos(empresa?.id ?? '');
   const { data: clientesData } = useClientes(empresa?.id ?? '');
@@ -71,7 +72,7 @@ export default function Ventas() {
   }
 
   function handleOpenChange(v: boolean) {
-    if (!v) { reset(); createMutation.reset(); }
+    if (!v) { reset(); createMutation.reset(); setNuevoCliente(false); }
     setOpen(v);
   }
 
@@ -115,14 +116,26 @@ export default function Ventas() {
                   <Label>Fecha *</Label>
                   <Input {...register('fecha')} type="date" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Cliente</Label>
-                  <select {...register('clienteId')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                    <option value="">Sin cliente</option>
-                    {clientes.map((c) => (
-                      <option key={c.id} value={c.id}>{c.nombre} ({c.rut})</option>
-                    ))}
-                  </select>
+                <div className="space-y-1.5 sm:col-span-1">
+                  <div className="flex items-center justify-between">
+                    <Label>Cliente</Label>
+                    <button type="button" onClick={() => setNuevoCliente(!nuevoCliente)} className="text-xs text-primary hover:underline">
+                      {nuevoCliente ? '← Seleccionar existente' : '+ Crear nuevo'}
+                    </button>
+                  </div>
+                  {nuevoCliente ? (
+                    <div className="flex gap-2">
+                      <Input {...register('clienteRut')} placeholder="RUT (ej: 12.345.678-9)" className="w-36" />
+                      <Input {...register('clienteNombre')} placeholder="Nombre o razón social" />
+                    </div>
+                  ) : (
+                    <select {...register('clienteId')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                      <option value="">Sin cliente</option>
+                      {clientes.map((c) => (
+                        <option key={c.id} value={c.id}>{c.nombre} ({c.rut})</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 

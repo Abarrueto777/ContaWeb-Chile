@@ -14,6 +14,8 @@ import {
   UserCog,
   Package,
   List,
+  Settings,
+  BookMarked,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -41,6 +43,8 @@ const navItems: { to: string; label: string; icon: React.ElementType; end?: bool
   { to: '/activos', label: 'Activos Fijos', icon: Package },
   { to: '/plan-cuentas', label: 'Plan Cuentas', icon: List },
   { to: '/contabilidad', label: 'Contabilidad', icon: BookOpen },
+  { to: '/libros-iva', label: 'Libros IVA', icon: BookMarked },
+  { to: '/configuracion', label: 'Configuración', icon: Settings },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

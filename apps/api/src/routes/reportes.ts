@@ -127,4 +127,71 @@ router.get('/resultados', async (req, res) => {
   }
 });
 
+router.get('/balance8', async (req, res) => {
+  try {
+    const { empresaId } = req.params as { empresaId: string };
+    const { anio, mes } = req.query;
+    const hasta = new Date(Number(anio), Number(mes), 1);
+    const inicioAnio = new Date(Number(anio), 0, 1);
+
+    const cuentas = await prisma.cuentaContable.findMany({
+      where: { empresaId, permiteMovimientos: true },
+      include: {
+        lineasAsiento: {
+          where: { asiento: { empresaId, fecha: { lt: hasta } } },
+          include: { asiento: { select: { fecha: true } } },
+        },
+      },
+      orderBy: { codigo: 'asc' },
+    });
+
+    const rows = cuentas.map((c) => {
+      const sumaDebe = c.lineasAsiento.reduce((s, l) => s + Number(l.debe), 0);
+      const sumaHaber = c.lineasAsiento.reduce((s, l) => s + Number(l.haber), 0);
+
+      const saldoDeudor = sumaDebe > sumaHaber ? sumaDebe - sumaHaber : 0;
+      const saldoAcreedor = sumaHaber > sumaDebe ? sumaHaber - sumaDebe : 0;
+
+      const isResultado = c.tipo === 'INGRESO' || c.tipo === 'GASTO';
+      const balanceActivo = !isResultado && saldoDeudor > 0 ? saldoDeudor : 0;
+      const balancePasivo = !isResultado && saldoAcreedor > 0 ? saldoAcreedor : 0;
+
+      const debeResultado = c.tipo === 'GASTO' ? saldoDeudor : 0;
+      const haberResultado = c.tipo === 'INGRESO' ? saldoAcreedor : 0;
+
+      return {
+        codigo: c.codigo,
+        nombre: c.nombre,
+        tipo: c.tipo,
+        nivel: c.nivel,
+        sumaDebe,
+        sumaHaber,
+        saldoDeudor,
+        saldoAcreedor,
+        balanceActivo,
+        balancePasivo,
+        debeResultado,
+        haberResultado,
+      };
+    }).filter((r) => r.sumaDebe !== 0 || r.sumaHaber !== 0);
+
+    const totales = {
+      sumaDebe: rows.reduce((s, r) => s + r.sumaDebe, 0),
+      sumaHaber: rows.reduce((s, r) => s + r.sumaHaber, 0),
+      saldoDeudor: rows.reduce((s, r) => s + r.saldoDeudor, 0),
+      saldoAcreedor: rows.reduce((s, r) => s + r.saldoAcreedor, 0),
+      balanceActivo: rows.reduce((s, r) => s + r.balanceActivo, 0),
+      balancePasivo: rows.reduce((s, r) => s + r.balancePasivo, 0),
+      debeResultado: rows.reduce((s, r) => s + r.debeResultado, 0),
+      haberResultado: rows.reduce((s, r) => s + r.haberResultado, 0),
+    };
+
+    const utilidad = totales.haberResultado - totales.debeResultado;
+
+    res.json({ data: { rows, totales, utilidad } });
+  } catch {
+    res.status(500).json({ error: 'Error al generar balance de 8 columnas' });
+  }
+});
+
 export default router;
