@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolUsuario {
+  ADMIN
+  CONTADOR
+  VISOR
+}
+
+enum TipoDocumento {
+  BOLETA_ELECTRONICA
+  FACTURA_ELECTRONICA
+  NOTA_CREDITO
+  NOTA_DEBITO
+}
+
+enum EstadoDocumento {
+  BORRADOR
+  EMITIDO
+  ACEPTADO_SII
+  RECHAZADO_SII
+  ANULADO
+}
+
+enum TipoCuenta {
+  ACTIVO
+  PASIVO
+  PATRIMONIO
+  INGRESO
+  GASTO
+}
+
+enum NaturalezaCuenta {
+  DEUDORA
+  ACREEDORA
+}
+
+enum EstadoAsiento {
+  BORRADOR
+  CONTABILIZADO
+}
+
+model Usuario {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  nombre    String
+  password  String
+  rol       RolUsuario @default(CONTADOR)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  empresas  Empresa[]
+
+  @@map("usuarios")
+}
+
+model Empresa {
+  id                 String                @id @default(cuid())
+  rut                String                @unique
+  razonSocial        String
+  giro               String
+  actividadEconomica String?
+  direccion          String?
+  telefono           String?
+  email              String?
+  usuarioId          String
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  usuario            Usuario               @relation(fields: [usuarioId], references: [id])
+  clientes           Cliente[]
+  documentos         DocumentoTributario[]
+  cuentas            CuentaContable[]
+  asientos           AsientoContable[]
+
+  @@map("empresas")
+}
+
+model Cliente {
+  id         String                @id @default(cuid())
+  empresaId  String
+  rut        String
+  nombre     String
+  email      String?
+  telefono   String?
+  direccion  String?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+  empresa    Empresa               @relation(fields: [empresaId], references: [id])
+  documentos DocumentoTributario[]
+
+  @@unique([empresaId, rut])
+  @@map("clientes")
+}
+
+model DocumentoTributario {
+  id        String          @id @default(cuid())
+  empresaId String
+  clienteId String?
+  tipo      TipoDocumento
+  folio     Int
+  estado    EstadoDocumento @default(BORRADOR)
+  fecha     DateTime        @default(now())
+  neto      Decimal         @db.Decimal(19, 4)
+  iva       Decimal         @db.Decimal(19, 4)
+  total     Decimal         @db.Decimal(19, 4)
+  glosa     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  empresa   Empresa         @relation(fields: [empresaId], references: [id])
+  cliente   Cliente?        @relation(fields: [clienteId], references: [id])
+  lineas    LineaDocumento[]
+  asientos  AsientoContable[]
+
+  @@unique([empresaId, tipo, folio])
+  @@map("documentos_tributarios")
+}
+
+model LineaDocumento {
+  id             String              @id @default(cuid())
+  documentoId    String
+  descripcion    String
+  cantidad       Decimal             @db.Decimal(19, 4)
+  precioUnitario Decimal             @db.Decimal(19, 4)
+  descuento      Decimal             @default(0) @db.Decimal(19, 4)
+  subtotal       Decimal             @db.Decimal(19, 4)
+  documento      DocumentoTributario @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  @@map("lineas_documento")
+}
+
+model CuentaContable {
+  id                 String           @id @default(cuid())
+  empresaId          String
+  codigo             String
+  nombre             String
+  tipo               TipoCuenta
+  naturaleza         NaturalezaCuenta
+  nivel              Int
+  cuentaPadreId      String?
+  permiteMovimientos Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  empresa            Empresa          @relation(fields: [empresaId], references: [id])
+  cuentaPadre        CuentaContable?  @relation("CuentaHijos", fields: [cuentaPadreId], references: [id])
+  cuentasHijo        CuentaContable[] @relation("CuentaHijos")
+  lineasAsiento      LineaAsiento[]
+
+  @@unique([empresaId, codigo])
+  @@map("cuentas_contables")
+}
+
+model AsientoContable {
+  id          String               @id @default(cuid())
+  empresaId   String
+  documentoId String?
+  numero      Int
+  fecha       DateTime
+  glosa       String
+  estado      EstadoAsiento        @default(BORRADOR)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  empresa     Empresa              @relation(fields: [empresaId], references: [id])
+  documento   DocumentoTributario? @relation(fields: [documentoId], references: [id])
+  lineas      LineaAsiento[]
+
+  @@unique([empresaId, numero])
+  @@map("asientos_contables")
+}
+
+model LineaAsiento {
+  id        String          @id @default(cuid())
+  asientoId String
+  cuentaId  String
+  debe      Decimal         @default(0) @db.Decimal(19, 4)
+  haber     Decimal         @default(0) @db.Decimal(19, 4)
+  glosa     String?
+  asiento   AsientoContable @relation(fields: [asientoId], references: [id], onDelete: Cascade)
+  cuenta    CuentaContable  @relation(fields: [cuentaId], references: [id])
+
+  @@map("lineas_asiento")
+}

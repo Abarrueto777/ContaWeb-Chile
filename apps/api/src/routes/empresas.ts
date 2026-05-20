@@ -1,0 +1,79 @@
+import { Router } from 'express';
+import { prisma } from '../lib/prisma';
+import { requireAuth } from '../middlewares/auth';
+import { validate } from '../middlewares/validate';
+import { createError } from '../middlewares/errorHandler';
+import { empresaSchema } from '@contaweb/validations';
+import { seedPlanDeCuentas } from '../../prisma/seed/index';
+import clientesRouter from './clientes';
+import documentosRouter from './documentos';
+import cuentasRouter from './cuentas';
+import asientosRouter from './asientos';
+
+const router = Router();
+router.use(requireAuth);
+
+router.get('/', async (req, res, next) => {
+  try {
+    const empresas = await prisma.empresa.findMany({
+      where: { usuarioId: req.user!.id },
+      orderBy: { razonSocial: 'asc' },
+    });
+    res.json({ data: empresas });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/', validate(empresaSchema), async (req, res, next) => {
+  try {
+    const empresa = await prisma.empresa.create({
+      data: { ...req.body, usuarioId: req.user!.id },
+    });
+
+    await seedPlanDeCuentas(empresa.id, prisma);
+
+    res.status(201).json({ data: empresa, message: 'Empresa creada con Plan de Cuentas' });
+  } catch (err: unknown) {
+    if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'P2002') {
+      return next(createError('El RUT ya está registrado', 409));
+    }
+    next(err);
+  }
+});
+
+router.get('/:id', async (req, res, next) => {
+  try {
+    const empresa = await prisma.empresa.findFirst({
+      where: { id: req.params['id'], usuarioId: req.user!.id },
+    });
+    if (!empresa) return next(createError('Empresa no encontrada', 404));
+    res.json({ data: empresa });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id', validate(empresaSchema), async (req, res, next) => {
+  try {
+    const existente = await prisma.empresa.findFirst({
+      where: { id: req.params['id'], usuarioId: req.user!.id },
+    });
+    if (!existente) return next(createError('Empresa no encontrada', 404));
+
+    const empresa = await prisma.empresa.update({
+      where: { id: req.params['id'] },
+      data: req.body,
+    });
+    res.json({ data: empresa });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.use('/:empresaId/clientes', clientesRouter);
+router.use('/:empresaId/documentos', documentosRouter);
+router.use('/:empresaId/cuentas', cuentasRouter);
+router.use('/:empresaId/asientos', asientosRouter);
+
+export default router;

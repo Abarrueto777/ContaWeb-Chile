@@ -1,0 +1,20 @@
+{
+  "name": "contaweb-chile",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "db:migrate": "pnpm --filter @contaweb/api db:migrate",
+    "db:seed": "pnpm --filter @contaweb/api db:seed",
+    "db:studio": "pnpm --filter @contaweb/api db:studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.14.4"
+}
