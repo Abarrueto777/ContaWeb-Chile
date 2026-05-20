@@ -46,6 +46,22 @@ enum EstadoAsiento {
   CONTABILIZADO
 }
 
+enum TipoDocCompra {
+  FACTURA
+  NOTA_CREDITO
+  LIQUIDACION_FACTURA
+}
+
+enum TipoImpuesto {
+  NINGUNO
+  BEBIDAS_20
+  BEBIDAS_31
+  LUJO
+  CARNE
+  HARINA
+  DIESEL
+}
+
 model Usuario {
   id        String     @id @default(cuid())
   email     String     @unique
@@ -68,6 +84,7 @@ model Empresa {
   direccion          String?
   telefono           String?
   email              String?
+  ppmRate            Decimal               @default(0.0020) @db.Decimal(6, 4)
   usuarioId          String
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
@@ -76,6 +93,8 @@ model Empresa {
   documentos         DocumentoTributario[]
   cuentas            CuentaContable[]
   asientos           AsientoContable[]
+  facturasRecibidas  FacturaRecibida[]
+  honorarios         Honorario[]
 
   @@map("empresas")
 }
@@ -170,6 +189,47 @@ model AsientoContable {
 
   @@unique([empresaId, numero])
   @@map("asientos_contables")
+}
+
+model FacturaRecibida {
+  id              String        @id @default(cuid())
+  empresaId       String
+  proveedorRut    String
+  proveedorNombre String
+  tipo            TipoDocCompra @default(FACTURA)
+  folio           Int
+  fecha           DateTime
+  neto            Decimal       @db.Decimal(19, 4)
+  iva             Decimal       @db.Decimal(19, 4)
+  impAdicional    Decimal       @default(0) @db.Decimal(19, 4)
+  retencion       Decimal       @default(0) @db.Decimal(19, 4)
+  total           Decimal       @db.Decimal(19, 4)
+  tipoImpuesto    TipoImpuesto  @default(NINGUNO)
+  glosa           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  empresa         Empresa       @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, proveedorRut, tipo, folio])
+  @@map("facturas_recibidas")
+}
+
+model Honorario {
+  id              String   @id @default(cuid())
+  empresaId       String
+  prestadorRut    String
+  prestadorNombre String
+  folio           Int
+  fecha           DateTime
+  monto           Decimal  @db.Decimal(19, 4)
+  retencion       Decimal  @db.Decimal(19, 4)
+  retiene         Boolean  @default(true)
+  glosa           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  empresa         Empresa  @relation(fields: [empresaId], references: [id])
+
+  @@map("honorarios")
 }
 
 model LineaAsiento {

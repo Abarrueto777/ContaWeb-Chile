@@ -96,9 +96,38 @@ export const asientoSchema = z
     { message: 'La suma del Debe debe ser igual a la suma del Haber' }
   );
 
+export const facturaRecibidaSchema = z.object({
+  proveedorRut: rutSchema,
+  proveedorNombre: z.string().min(2, 'Nombre del proveedor requerido'),
+  tipo: z.enum(['FACTURA', 'NOTA_CREDITO', 'LIQUIDACION_FACTURA']).default('FACTURA'),
+  folio: z.number().int().positive('Folio debe ser positivo'),
+  fecha: z.coerce.date(),
+  neto: z.number().min(0, 'Neto no puede ser negativo'),
+  iva: z.number().min(0),
+  impAdicional: z.number().min(0).default(0),
+  retencion: z.number().min(0).default(0),
+  total: z.number().min(0),
+  tipoImpuesto: z
+    .enum(['NINGUNO', 'BEBIDAS_20', 'BEBIDAS_31', 'LUJO', 'CARNE', 'HARINA', 'DIESEL'])
+    .default('NINGUNO'),
+  glosa: z.string().optional(),
+});
+
+export const honorarioSchema = z.object({
+  prestadorRut: rutSchema,
+  prestadorNombre: z.string().min(2, 'Nombre del prestador requerido'),
+  folio: z.number().int().positive('Folio debe ser positivo'),
+  fecha: z.coerce.date(),
+  monto: z.number().positive('Monto debe ser positivo'),
+  retiene: z.boolean().default(true),
+  glosa: z.string().optional(),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegistroInput = z.infer<typeof registroSchema>;
 export type EmpresaInput = z.infer<typeof empresaSchema>;
 export type ClienteInput = z.infer<typeof clienteSchema>;
 export type DocumentoInput = z.infer<typeof documentoSchema>;
 export type AsientoInput = z.infer<typeof asientoSchema>;
+export type FacturaRecibidaInput = z.infer<typeof facturaRecibidaSchema>;
+export type HonorarioInput = z.infer<typeof honorarioSchema>;

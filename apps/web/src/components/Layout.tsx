@@ -8,6 +8,8 @@ import {
   LogOut,
   ChevronDown,
   Calculator,
+  ShoppingCart,
+  Receipt,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -27,6 +29,8 @@ const navItems: { to: string; label: string; icon: React.ElementType; end?: bool
   { to: '/empresas', label: 'Empresas', icon: Building2 },
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/documentos', label: 'Documentos', icon: FileText },
+  { to: '/compras', label: 'Compras', icon: ShoppingCart },
+  { to: '/f29', label: 'F29 IVA', icon: Receipt },
   { to: '/contabilidad', label: 'Contabilidad', icon: BookOpen },
 ];
 

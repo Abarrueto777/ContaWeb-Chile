@@ -7,6 +7,8 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Dashboard from '@/pages/Dashboard';
 import Empresas from '@/pages/Empresas';
+import Compras from '@/pages/Compras';
+import F29 from '@/pages/F29';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('auth_token');
@@ -31,11 +33,15 @@ export default function App() {
           />
           <Route
             path="/empresas"
-            element={
-              <ProtectedRoute>
-                <Empresas />
-              </ProtectedRoute>
-            }
+            element={<ProtectedRoute><Empresas /></ProtectedRoute>}
+          />
+          <Route
+            path="/compras"
+            element={<ProtectedRoute><Compras /></ProtectedRoute>}
+          />
+          <Route
+            path="/f29"
+            element={<ProtectedRoute><F29 /></ProtectedRoute>}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

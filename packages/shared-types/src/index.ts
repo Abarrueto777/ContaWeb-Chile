@@ -121,6 +121,71 @@ export interface PaginatedResponse<T> {
   limit: number;
 }
 
+export type TipoDocCompra = 'FACTURA' | 'NOTA_CREDITO' | 'LIQUIDACION_FACTURA';
+export type TipoImpuesto = 'NINGUNO' | 'BEBIDAS_20' | 'BEBIDAS_31' | 'LUJO' | 'CARNE' | 'HARINA' | 'DIESEL';
+
+export interface FacturaRecibida {
+  id: string;
+  empresaId: string;
+  proveedorRut: string;
+  proveedorNombre: string;
+  tipo: TipoDocCompra;
+  folio: number;
+  fecha: string;
+  neto: string;
+  iva: string;
+  impAdicional: string;
+  retencion: string;
+  total: string;
+  tipoImpuesto: TipoImpuesto;
+  glosa?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Honorario {
+  id: string;
+  empresaId: string;
+  prestadorRut: string;
+  prestadorNombre: string;
+  folio: number;
+  fecha: string;
+  monto: string;
+  retencion: string;
+  retiene: boolean;
+  glosa?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface F29Result {
+  periodo: { anio: number; mes: number };
+  ventas: {
+    neto: number;
+    ivaEmitido: number;
+    ivaNCEmitidas: number;
+    debitoFiscal: number;
+  };
+  compras: {
+    ivaCompras: number;
+    ivaNCRecibidas: number;
+    impAdicional: number;
+    retencionIVA: number;
+    creditoFiscal: number;
+  };
+  honorarios: {
+    cantidad: number;
+    montoTotal: number;
+    retencionHonorarios: number;
+  };
+  ppm: { tasa: number; monto: number };
+  resultado: {
+    ivaNeto: number;
+    remanente: number;
+    totalAPagar: number;
+  };
+}
+
 export interface ApiError {
   error: string;
   details?: Record<string, string[]>;
