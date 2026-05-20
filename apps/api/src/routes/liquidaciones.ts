@@ -30,7 +30,12 @@ router.post('/calcular', async (req, res) => {
     if (!parsed.success) return void res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten().fieldErrors });
     const trabajador = await prisma.trabajador.findFirst({ where: { id: parsed.data.trabajadorId, empresaId } });
     if (!trabajador) return void res.status(404).json({ error: 'Trabajador no encontrado' });
-    const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf: 38000 });
+    const valorUF = await prisma.valorUFUTM.findFirst({
+      where: { anio: parsed.data.anio, mes: parsed.data.mes },
+      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
+    });
+    const uf = Number(valorUF?.uf ?? 38000);
+    const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf });
     res.json({ data: resultado });
   } catch {
     res.status(500).json({ error: 'Error al calcular liquidación' });
@@ -44,7 +49,12 @@ router.post('/', async (req, res) => {
     if (!parsed.success) return void res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten().fieldErrors });
     const trabajador = await prisma.trabajador.findFirst({ where: { id: parsed.data.trabajadorId, empresaId } });
     if (!trabajador) return void res.status(404).json({ error: 'Trabajador no encontrado' });
-    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf: 38000 });
+    const valorUF = await prisma.valorUFUTM.findFirst({
+      where: { anio: parsed.data.anio, mes: parsed.data.mes },
+      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
+    });
+    const uf = Number(valorUF?.uf ?? 38000);
+    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf });
     const liquidacion = await prisma.liquidacion.create({
       data: { empresaId, trabajadorId: parsed.data.trabajadorId, anio: parsed.data.anio, mes: parsed.data.mes, ...calc },
       include: { trabajador: true },

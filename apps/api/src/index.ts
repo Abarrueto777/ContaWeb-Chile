@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { errorHandler } from './middlewares/errorHandler';
 import authRoutes from './routes/auth';
 import empresasRoutes from './routes/empresas';
+import ufRoutes from './routes/uf';
 
 const app = express();
 const PORT = process.env['API_PORT'] ?? 3001;
@@ -15,6 +16,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/empresas', empresasRoutes);
+app.use('/api/uf', ufRoutes);
 
 app.use(errorHandler);
 

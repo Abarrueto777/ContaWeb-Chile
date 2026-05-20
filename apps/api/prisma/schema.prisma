@@ -424,11 +424,13 @@ model ActivoFijo {
 }
 
 model ValorUFUTM {
-  id    String   @id @default(cuid())
-  fecha DateTime @unique
-  uf    Decimal  @db.Decimal(10, 4)
-  utm   Decimal  @db.Decimal(10, 2)
-  imm   Decimal  @db.Decimal(10, 2)
+  id   String  @id @default(cuid())
+  anio Int
+  mes  Int
+  uf   Decimal @db.Decimal(10, 4)
+  utm  Decimal @db.Decimal(10, 2)
+  imm  Decimal @db.Decimal(10, 2)
 
+  @@unique([anio, mes])
   @@map("valores_uf_utm")
 }

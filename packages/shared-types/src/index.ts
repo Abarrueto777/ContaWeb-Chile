@@ -297,7 +297,8 @@ export interface ActivoFijo {
 
 export interface ValorUFUTM {
   id: string;
-  fecha: string;
+  anio: number;
+  mes: number;
   uf: string;
   utm: string;
   imm: string;
