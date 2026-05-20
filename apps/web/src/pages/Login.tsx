@@ -1,69 +1,85 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
-import { useNavigate, Link } from 'react-router-dom';
-import type { AuthResponse } from '@contaweb/shared-types';
+import { Link } from 'react-router-dom';
+import { Calculator, Loader2 } from 'lucide-react';
 import { loginSchema, type LoginInput } from '@contaweb/validations';
-import api from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLogin } from '@/hooks/useAuth';
 
 export default function Login() {
-  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
-  const { mutate, isPending, error } = useMutation<AuthResponse, Error, LoginInput>({
-    mutationFn: (data) => api.post<AuthResponse>('/api/auth/login', data).then((r) => r.data),
-    onSuccess: ({ data }) => {
-      localStorage.setItem('auth_token', data.token);
-      navigate('/');
-    },
-  });
+  const { mutate, isPending, error } = useLogin();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">ContaWeb Chile</h1>
-
-        <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              {...register('email')}
-              type="email"
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="contador@ejemplo.cl"
-            />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm space-y-6">
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md">
+            <Calculator className="h-6 w-6 text-primary-foreground" />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <input
-              {...register('password')}
-              type="password"
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+          <div className="text-center">
+            <h1 className="text-2xl font-bold tracking-tight">ContaWeb Chile</h1>
+            <p className="text-sm text-muted-foreground">Sistema contable para contadores chilenos</p>
           </div>
+        </div>
 
-          {error && <p className="text-red-500 text-sm">{error.message}</p>}
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">Iniciar sesión</CardTitle>
+            <CardDescription>Ingresá tu email y contraseña para continuar</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  {...register('email')}
+                  type="email"
+                  placeholder="contador@ejemplo.cl"
+                  autoComplete="email"
+                />
+                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              </div>
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 rounded-lg transition disabled:opacity-50"
-          >
-            {isPending ? 'Iniciando sesión…' : 'Iniciar sesión'}
-          </button>
-        </form>
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  {...register('password')}
+                  type="password"
+                  autoComplete="current-password"
+                />
+                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              </div>
 
-        <p className="mt-4 text-sm text-center text-gray-500">
+              {error && (
+                <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
+                  {error.message}
+                </p>
+              )}
+
+              <Button type="submit" className="w-full" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isPending ? 'Ingresando…' : 'Ingresar'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-sm text-muted-foreground">
           ¿No tenés cuenta?{' '}
-          <Link to="/registro" className="text-primary-600 hover:underline">
-            Registrate
+          <Link to="/registro" className="text-primary font-medium hover:underline">
+            Registrate aquí
           </Link>
         </p>
       </div>
