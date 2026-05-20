@@ -10,6 +10,10 @@ import {
   Calculator,
   ShoppingCart,
   Receipt,
+  Landmark,
+  UserCog,
+  Package,
+  List,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -28,10 +32,14 @@ const navItems: { to: string; label: string; icon: React.ElementType; end?: bool
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/empresas', label: 'Empresas', icon: Building2 },
   { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/documentos', label: 'Documentos', icon: FileText },
+  { to: '/documentos', label: 'Ventas', icon: FileText },
   { to: '/compras', label: 'Compras', icon: ShoppingCart },
   { to: '/honorarios', label: 'Honorarios', icon: Receipt },
   { to: '/f29', label: 'F29 IVA', icon: Calculator },
+  { to: '/banco', label: 'Banco', icon: Landmark },
+  { to: '/rrhh', label: 'RRHH', icon: UserCog },
+  { to: '/activos', label: 'Activos Fijos', icon: Package },
+  { to: '/plan-cuentas', label: 'Plan Cuentas', icon: List },
   { to: '/contabilidad', label: 'Contabilidad', icon: BookOpen },
 ];
 

@@ -123,6 +123,69 @@ export const honorarioSchema = z.object({
   glosa: z.string().optional(),
 });
 
+export const cuentaBancariaSchema = z.object({
+  banco: z.string().min(2, 'Banco requerido'),
+  tipoCuenta: z.enum(['CORRIENTE', 'VISTA', 'AHORRO']).default('CORRIENTE'),
+  numero: z.string().min(1, 'Número de cuenta requerido'),
+  saldoInicial: z.number().default(0),
+  moneda: z.string().default('CLP'),
+});
+
+export const movimientoBancoSchema = z.object({
+  cuentaId: z.string().min(1),
+  fecha: z.coerce.date(),
+  descripcion: z.string().min(1, 'Descripción requerida'),
+  cargo: z.number().min(0).default(0),
+  abono: z.number().min(0).default(0),
+  tipo: z.enum([
+    'COBRO_CLIENTE', 'PAGO_PROVEEDOR', 'PAGO_IVA', 'PAGO_PPM', 'PAGO_REMUNERACIONES',
+    'PAGO_HONORARIO', 'TRANSFERENCIA', 'COMISION_BANCO', 'INTERES_BANCO', 'INTERES_GANADO',
+    'RETIRO_DUENO', 'APORTE_CAPITAL', 'GASTO_GENERAL', 'OTRO',
+  ]).default('OTRO'),
+  glosa: z.string().optional(),
+});
+
+export const trabajadorSchema = z.object({
+  rut: rutSchema,
+  nombre: z.string().min(2, 'Nombre requerido'),
+  cargo: z.string().optional(),
+  tipo: z.enum(['DEPENDIENTE', 'SUELDO_EMPRESARIAL']).default('DEPENDIENTE'),
+  sueldoBase: z.number().positive('Sueldo base requerido'),
+  afp: z.enum(['CAPITAL', 'CUPRUM', 'HABITAT', 'PLANVITAL', 'PROVIDA', 'MODELO', 'UNO']).default('HABITAT'),
+  salud: z.string().default('FONASA'),
+  pctSalud: z.number().min(0).max(1).default(0.07),
+  tieneCes: z.boolean().default(false),
+  tipoGratificacion: z.enum(['ART_50', 'ART_50_LIBRE', 'ART_47', 'NINGUNA']).default('ART_50'),
+  tieneMovilizacion: z.boolean().default(false),
+  tieneColacion: z.boolean().default(false),
+  montoMovilizacion: z.number().min(0).optional(),
+  montoColacion: z.number().min(0).optional(),
+  jornadaHoras: z.number().int().min(1).max(45).default(42),
+  tipoContrato: z.enum(['INDEFINIDO', 'PLAZO_FIJO', 'OBRA_FAENA']).default('INDEFINIDO'),
+  fechaIngreso: z.coerce.date(),
+});
+
+export const liquidacionInputSchema = z.object({
+  trabajadorId: z.string().min(1),
+  anio: z.number().int().min(2000).max(2100),
+  mes: z.number().int().min(1).max(12),
+  horasExtra: z.number().min(0).default(0),
+  bono: z.number().min(0).default(0),
+  diasTrabajados: z.number().int().min(0).max(31).default(30),
+  anticipo: z.number().min(0).default(0),
+  utm: z.number().positive('UTM del período requerida'),
+  imm: z.number().positive('IMM del período requerida'),
+});
+
+export const activoFijoSchema = z.object({
+  nombre: z.string().min(2, 'Nombre requerido'),
+  categoria: z.enum(['MAQUINARIA', 'VEHICULO', 'MUEBLES', 'EQUIPOS_COMPUTACION', 'CONSTRUCCION', 'TERRENO', 'OTRO']).default('OTRO'),
+  fechaCompra: z.coerce.date(),
+  costoCompra: z.number().positive('Costo requerido'),
+  vidaUtilAnios: z.number().int().min(1, 'Vida útil requerida'),
+  valorResidual: z.number().min(0).default(0),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegistroInput = z.infer<typeof registroSchema>;
 export type EmpresaInput = z.infer<typeof empresaSchema>;
@@ -131,3 +194,8 @@ export type DocumentoInput = z.infer<typeof documentoSchema>;
 export type AsientoInput = z.infer<typeof asientoSchema>;
 export type FacturaRecibidaInput = z.infer<typeof facturaRecibidaSchema>;
 export type HonorarioInput = z.infer<typeof honorarioSchema>;
+export type CuentaBancariaInput = z.infer<typeof cuentaBancariaSchema>;
+export type MovimientoBancoInput = z.infer<typeof movimientoBancoSchema>;
+export type TrabajadorInput = z.infer<typeof trabajadorSchema>;
+export type LiquidacionInput = z.infer<typeof liquidacionInputSchema>;
+export type ActivoFijoInput = z.infer<typeof activoFijoSchema>;

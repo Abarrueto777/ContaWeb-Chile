@@ -12,6 +12,11 @@ import asientosRouter from './asientos';
 import comprasRouter from './compras';
 import honorariosRouter from './honorarios';
 import f29Router from './f29';
+import bancoRouter from './banco';
+import trabajadoresRouter from './trabajadores';
+import liquidacionesRouter from './liquidaciones';
+import activosRouter from './activos';
+import reportesRouter from './reportes';
 
 const router = Router();
 router.use(requireAuth);
@@ -81,5 +86,10 @@ router.use('/:empresaId/asientos', asientosRouter);
 router.use('/:empresaId/compras', comprasRouter);
 router.use('/:empresaId/honorarios', honorariosRouter);
 router.use('/:empresaId/f29', f29Router);
+router.use('/:empresaId/banco', bancoRouter);
+router.use('/:empresaId/trabajadores', trabajadoresRouter);
+router.use('/:empresaId/liquidaciones', liquidacionesRouter);
+router.use('/:empresaId/activos', activosRouter);
+router.use('/:empresaId/reportes', reportesRouter);
 
 export default router;

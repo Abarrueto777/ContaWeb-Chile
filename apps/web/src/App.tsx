@@ -12,6 +12,11 @@ import F29 from '@/pages/F29';
 import Clientes from '@/pages/Clientes';
 import Ventas from '@/pages/Ventas';
 import Honorarios from '@/pages/Honorarios';
+import Banco from '@/pages/Banco';
+import RRHH from '@/pages/RRHH';
+import Activos from '@/pages/Activos';
+import PlanCuentas from '@/pages/PlanCuentas';
+import Contabilidad from '@/pages/Contabilidad';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('auth_token');
@@ -57,6 +62,26 @@ export default function App() {
           <Route
             path="/honorarios"
             element={<ProtectedRoute><Honorarios /></ProtectedRoute>}
+          />
+          <Route
+            path="/banco"
+            element={<ProtectedRoute><Banco /></ProtectedRoute>}
+          />
+          <Route
+            path="/rrhh"
+            element={<ProtectedRoute><RRHH /></ProtectedRoute>}
+          />
+          <Route
+            path="/activos"
+            element={<ProtectedRoute><Activos /></ProtectedRoute>}
+          />
+          <Route
+            path="/plan-cuentas"
+            element={<ProtectedRoute><PlanCuentas /></ProtectedRoute>}
+          />
+          <Route
+            path="/contabilidad"
+            element={<ProtectedRoute><Contabilidad /></ProtectedRoute>}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

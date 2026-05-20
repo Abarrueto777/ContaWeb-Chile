@@ -190,3 +190,153 @@ export interface ApiError {
   error: string;
   details?: Record<string, string[]>;
 }
+
+export type TipoAFP = 'CAPITAL' | 'CUPRUM' | 'HABITAT' | 'PLANVITAL' | 'PROVIDA' | 'MODELO' | 'UNO';
+export type TipoTrabajador = 'DEPENDIENTE' | 'SUELDO_EMPRESARIAL';
+export type TipoGratificacion = 'ART_50' | 'ART_50_LIBRE' | 'ART_47' | 'NINGUNA';
+export type TipoContrato = 'INDEFINIDO' | 'PLAZO_FIJO' | 'OBRA_FAENA';
+export type TipoMovimientoBanco = 'COBRO_CLIENTE' | 'PAGO_PROVEEDOR' | 'PAGO_IVA' | 'PAGO_PPM' | 'PAGO_REMUNERACIONES' | 'PAGO_HONORARIO' | 'TRANSFERENCIA' | 'COMISION_BANCO' | 'INTERES_BANCO' | 'INTERES_GANADO' | 'RETIRO_DUENO' | 'APORTE_CAPITAL' | 'GASTO_GENERAL' | 'OTRO';
+export type CategoriaActivo = 'MAQUINARIA' | 'VEHICULO' | 'MUEBLES' | 'EQUIPOS_COMPUTACION' | 'CONSTRUCCION' | 'TERRENO' | 'OTRO';
+
+export interface CuentaBancaria {
+  id: string;
+  empresaId: string;
+  banco: string;
+  tipoCuenta: string;
+  numero: string;
+  saldoInicial: string;
+  moneda: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MovimientoBanco {
+  id: string;
+  empresaId: string;
+  cuentaId: string;
+  fecha: string;
+  descripcion: string;
+  cargo: string;
+  abono: string;
+  saldo: string;
+  tipo: TipoMovimientoBanco;
+  conciliado: boolean;
+  glosa?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Trabajador {
+  id: string;
+  empresaId: string;
+  rut: string;
+  nombre: string;
+  cargo?: string;
+  tipo: TipoTrabajador;
+  sueldoBase: string;
+  afp: TipoAFP;
+  salud: string;
+  pctSalud: string;
+  tieneCes: boolean;
+  tipoGratificacion: TipoGratificacion;
+  tieneMovilizacion: boolean;
+  tieneColacion: boolean;
+  montoMovilizacion?: string;
+  montoColacion?: string;
+  jornadaHoras: number;
+  tipoContrato: TipoContrato;
+  fechaIngreso: string;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Liquidacion {
+  id: string;
+  empresaId: string;
+  trabajadorId: string;
+  anio: number;
+  mes: number;
+  sueldoBase: string;
+  horasExtra: string;
+  bono: string;
+  diasTrabajados: number;
+  imponible: string;
+  cotizAfp: string;
+  cotizSis: string;
+  cotizSalud: string;
+  cotizCes: string;
+  impuestoUnico: string;
+  gratificacion: string;
+  movilizacion: string;
+  colacion: string;
+  anticipo: string;
+  liquido: string;
+  costoEmpleador: string;
+  pagada: boolean;
+  trabajador?: Trabajador;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActivoFijo {
+  id: string;
+  empresaId: string;
+  nombre: string;
+  categoria: CategoriaActivo;
+  fechaCompra: string;
+  costoCompra: string;
+  vidaUtilAnios: number;
+  valorResidual: string;
+  depreciacionMes: string;
+  acumDepreciacion: string;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ValorUFUTM {
+  id: string;
+  fecha: string;
+  uf: string;
+  utm: string;
+  imm: string;
+}
+
+export interface LibroDiarioEntry {
+  fecha: string;
+  numero: number;
+  glosa: string;
+  cuentaCodigo: string;
+  cuentaNombre: string;
+  debe: number;
+  haber: number;
+}
+
+export interface LibroMayorEntry {
+  cuentaCodigo: string;
+  cuentaNombre: string;
+  movimientos: { fecha: string; glosa: string; debe: number; haber: number; saldo: number }[];
+  totalDebe: number;
+  totalHaber: number;
+  saldoFinal: number;
+}
+
+export interface BalanceEntry {
+  codigo: string;
+  nombre: string;
+  tipo: TipoCuenta;
+  saldo: number;
+  nivel: number;
+}
+
+export interface ResultadosData {
+  ingresos: BalanceEntry[];
+  costos: BalanceEntry[];
+  gastos: BalanceEntry[];
+  totalIngresos: number;
+  totalCostos: number;
+  totalGastos: number;
+  utilidadBruta: number;
+  utilidadNeta: number;
+}

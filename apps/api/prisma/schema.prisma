@@ -62,6 +62,61 @@ enum TipoImpuesto {
   DIESEL
 }
 
+enum TipoAFP {
+  CAPITAL
+  CUPRUM
+  HABITAT
+  PLANVITAL
+  PROVIDA
+  MODELO
+  UNO
+}
+
+enum TipoTrabajador {
+  DEPENDIENTE
+  SUELDO_EMPRESARIAL
+}
+
+enum TipoGratificacion {
+  ART_50
+  ART_50_LIBRE
+  ART_47
+  NINGUNA
+}
+
+enum TipoContrato {
+  INDEFINIDO
+  PLAZO_FIJO
+  OBRA_FAENA
+}
+
+enum TipoMovimientoBanco {
+  COBRO_CLIENTE
+  PAGO_PROVEEDOR
+  PAGO_IVA
+  PAGO_PPM
+  PAGO_REMUNERACIONES
+  PAGO_HONORARIO
+  TRANSFERENCIA
+  COMISION_BANCO
+  INTERES_BANCO
+  INTERES_GANADO
+  RETIRO_DUENO
+  APORTE_CAPITAL
+  GASTO_GENERAL
+  OTRO
+}
+
+enum CategoriaActivo {
+  MAQUINARIA
+  VEHICULO
+  MUEBLES
+  EQUIPOS_COMPUTACION
+  CONSTRUCCION
+  TERRENO
+  OTRO
+}
+
 model Usuario {
   id        String     @id @default(cuid())
   email     String     @unique
@@ -95,6 +150,11 @@ model Empresa {
   asientos           AsientoContable[]
   facturasRecibidas  FacturaRecibida[]
   honorarios         Honorario[]
+  cuentasBancarias   CuentaBancaria[]
+  movimientosBanco   MovimientoBanco[]
+  trabajadores       Trabajador[]
+  liquidaciones      Liquidacion[]
+  activosFijos       ActivoFijo[]
 
   @@map("empresas")
 }
@@ -243,4 +303,132 @@ model LineaAsiento {
   cuenta    CuentaContable  @relation(fields: [cuentaId], references: [id])
 
   @@map("lineas_asiento")
+}
+
+model CuentaBancaria {
+  id           String            @id @default(cuid())
+  empresaId    String
+  banco        String
+  tipoCuenta   String            @default("CORRIENTE")
+  numero       String
+  saldoInicial Decimal           @default(0) @db.Decimal(19, 4)
+  moneda       String            @default("CLP")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  empresa      Empresa           @relation(fields: [empresaId], references: [id])
+  movimientos  MovimientoBanco[]
+
+  @@unique([empresaId, banco, numero])
+  @@map("cuentas_bancarias")
+}
+
+model MovimientoBanco {
+  id          String              @id @default(cuid())
+  empresaId   String
+  cuentaId    String
+  fecha       DateTime
+  descripcion String
+  cargo       Decimal             @default(0) @db.Decimal(19, 4)
+  abono       Decimal             @default(0) @db.Decimal(19, 4)
+  saldo       Decimal             @db.Decimal(19, 4)
+  tipo        TipoMovimientoBanco @default(OTRO)
+  conciliado  Boolean             @default(false)
+  glosa       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  empresa     Empresa             @relation(fields: [empresaId], references: [id])
+  cuenta      CuentaBancaria      @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+
+  @@map("movimientos_banco")
+}
+
+model Trabajador {
+  id                String            @id @default(cuid())
+  empresaId         String
+  rut               String
+  nombre            String
+  cargo             String?
+  tipo              TipoTrabajador    @default(DEPENDIENTE)
+  sueldoBase        Decimal           @db.Decimal(19, 4)
+  afp               TipoAFP           @default(HABITAT)
+  salud             String            @default("FONASA")
+  pctSalud          Decimal           @default(0.07) @db.Decimal(5, 4)
+  tieneCes          Boolean           @default(false)
+  tipoGratificacion TipoGratificacion @default(ART_50)
+  tieneMovilizacion Boolean           @default(false)
+  tieneColacion     Boolean           @default(false)
+  montoMovilizacion Decimal?          @db.Decimal(19, 4)
+  montoColacion     Decimal?          @db.Decimal(19, 4)
+  jornadaHoras      Int               @default(42)
+  tipoContrato      TipoContrato      @default(INDEFINIDO)
+  fechaIngreso      DateTime
+  activo            Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  empresa           Empresa           @relation(fields: [empresaId], references: [id])
+  liquidaciones     Liquidacion[]
+
+  @@unique([empresaId, rut])
+  @@map("trabajadores")
+}
+
+model Liquidacion {
+  id             String     @id @default(cuid())
+  empresaId      String
+  trabajadorId   String
+  anio           Int
+  mes            Int
+  sueldoBase     Decimal    @db.Decimal(19, 4)
+  horasExtra     Decimal    @default(0) @db.Decimal(19, 4)
+  bono           Decimal    @default(0) @db.Decimal(19, 4)
+  diasTrabajados Int        @default(30)
+  imponible      Decimal    @db.Decimal(19, 4)
+  cotizAfp       Decimal    @db.Decimal(19, 4)
+  cotizSis       Decimal    @db.Decimal(19, 4)
+  cotizSalud     Decimal    @db.Decimal(19, 4)
+  cotizCes       Decimal    @default(0) @db.Decimal(19, 4)
+  impuestoUnico  Decimal    @default(0) @db.Decimal(19, 4)
+  gratificacion  Decimal    @default(0) @db.Decimal(19, 4)
+  movilizacion   Decimal    @default(0) @db.Decimal(19, 4)
+  colacion       Decimal    @default(0) @db.Decimal(19, 4)
+  anticipo       Decimal    @default(0) @db.Decimal(19, 4)
+  liquido        Decimal    @db.Decimal(19, 4)
+  costoEmpleador Decimal    @db.Decimal(19, 4)
+  pagada         Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  empresa        Empresa    @relation(fields: [empresaId], references: [id])
+  trabajador     Trabajador @relation(fields: [trabajadorId], references: [id])
+
+  @@unique([empresaId, trabajadorId, anio, mes])
+  @@map("liquidaciones")
+}
+
+model ActivoFijo {
+  id               String          @id @default(cuid())
+  empresaId        String
+  nombre           String
+  categoria        CategoriaActivo @default(OTRO)
+  fechaCompra      DateTime
+  costoCompra      Decimal         @db.Decimal(19, 4)
+  vidaUtilAnios    Int
+  valorResidual    Decimal         @default(0) @db.Decimal(19, 4)
+  depreciacionMes  Decimal         @db.Decimal(19, 4)
+  acumDepreciacion Decimal         @default(0) @db.Decimal(19, 4)
+  activo           Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  empresa          Empresa         @relation(fields: [empresaId], references: [id])
+
+  @@map("activos_fijos")
+}
+
+model ValorUFUTM {
+  id    String   @id @default(cuid())
+  fecha DateTime @unique
+  uf    Decimal  @db.Decimal(10, 4)
+  utm   Decimal  @db.Decimal(10, 2)
+  imm   Decimal  @db.Decimal(10, 2)
+
+  @@map("valores_uf_utm")
 }
