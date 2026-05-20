@@ -158,6 +158,7 @@ model Empresa {
   trabajadores       Trabajador[]
   liquidaciones      Liquidacion[]
   activosFijos       ActivoFijo[]
+  finiquitos         Finiquito[]
 
   @@map("empresas")
 }
@@ -364,6 +365,12 @@ model Trabajador {
   montoColacion     Decimal?          @db.Decimal(19, 4)
   email             String?
   montoIsapre       Decimal?          @db.Decimal(8, 2)
+  domicilio         String?
+  fechaNacimiento   DateTime?
+  estadoCivil       String?
+  nacionalidad      String?           @default("Chilena")
+  region            String?
+  comuna            String?
   jornadaHoras      Int               @default(42)
   tipoContrato      TipoContrato      @default(INDEFINIDO)
   fechaIngreso      DateTime
@@ -372,9 +379,32 @@ model Trabajador {
   updatedAt         DateTime          @updatedAt
   empresa           Empresa           @relation(fields: [empresaId], references: [id])
   liquidaciones     Liquidacion[]
+  finiquitos        Finiquito[]
 
   @@unique([empresaId, rut])
   @@map("trabajadores")
+}
+
+model Finiquito {
+  id              String     @id @default(cuid())
+  empresaId       String
+  trabajadorId    String
+  fechaTermino    DateTime
+  causal          String
+  diasVacaciones  Decimal    @db.Decimal(8, 2)
+  montoVacaciones Decimal    @db.Decimal(19, 4)
+  aniosServicio   Decimal    @db.Decimal(5, 2)
+  indemnizacion   Decimal    @default(0) @db.Decimal(19, 4)
+  avisoPrevio     Decimal    @default(0) @db.Decimal(19, 4)
+  otrosDescuentos Decimal    @default(0) @db.Decimal(19, 4)
+  totalBruto      Decimal    @db.Decimal(19, 4)
+  totalNeto       Decimal    @db.Decimal(19, 4)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  empresa         Empresa    @relation(fields: [empresaId], references: [id])
+  trabajador      Trabajador @relation(fields: [trabajadorId], references: [id])
+
+  @@map("finiquitos")
 }
 
 model Liquidacion {

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { liquidacionInputSchema } from '@contaweb/validations';
 import { calcularLiquidacion } from '../services/liquidacion.service';
 import { createError } from '../middlewares/errorHandler';
+import { generarLiquidacionPdf, type EmpresaDoc, type TrabajadorDoc } from '../services/htmlDocs.service';
 
 const router = Router({ mergeParams: true });
 
@@ -118,6 +119,68 @@ router.post('/', async (req, res) => {
       return void res.status(409).json({ error: 'Ya existe una liquidación para este trabajador en el período' });
     }
     res.status(500).json({ error: 'Error al guardar liquidación' });
+  }
+});
+
+router.get('/:liquidacionId/pdf', async (req, res) => {
+  try {
+    const { empresaId, liquidacionId } = req.params as { empresaId: string; liquidacionId: string };
+    const [liq, empresa] = await Promise.all([
+      prisma.liquidacion.findFirst({ where: { id: liquidacionId, empresaId }, include: { trabajador: true } }),
+      prisma.empresa.findUnique({ where: { id: empresaId } }),
+    ]);
+    if (!liq || !empresa) return void res.status(404).json({ error: 'No encontrado' });
+
+    const t = liq.trabajador;
+    const empresaDoc: EmpresaDoc = {
+      razonSocial: empresa.razonSocial,
+      rut: empresa.rut,
+      giro: empresa.giro,
+      direccion: empresa.direccion,
+      representanteLegal: (empresa as typeof empresa & { representanteLegal?: string | null }).representanteLegal,
+      rutRepresentante: (empresa as typeof empresa & { rutRepresentante?: string | null }).rutRepresentante,
+    };
+    const trabDoc: TrabajadorDoc = {
+      nombre: t.nombre,
+      rut: t.rut,
+      cargo: t.cargo,
+      sueldoBase: Number(t.sueldoBase),
+      fechaIngreso: t.fechaIngreso,
+      jornadaHoras: t.jornadaHoras,
+      tipoContrato: t.tipoContrato,
+      afp: t.afp,
+      salud: t.salud,
+      pctSalud: Number(t.pctSalud),
+      tipoGratificacion: t.tipoGratificacion,
+      tieneCes: t.tieneCes,
+      tieneMovilizacion: t.tieneMovilizacion,
+      tieneColacion: t.tieneColacion,
+    };
+    const liqDoc = {
+      anio: liq.anio,
+      mes: liq.mes,
+      sueldoBase: Number(liq.sueldoBase),
+      horasExtra: Number(liq.horasExtra),
+      bono: Number(liq.bono),
+      gratificacion: Number(liq.gratificacion),
+      imponible: Number(liq.imponible),
+      cotizAfp: Number(liq.cotizAfp),
+      cotizSis: Number(liq.cotizSis),
+      cotizSalud: Number(liq.cotizSalud),
+      cotizCes: Number(liq.cotizCes),
+      impuestoUnico: Number(liq.impuestoUnico),
+      movilizacion: Number(liq.movilizacion),
+      colacion: Number(liq.colacion),
+      anticipo: Number(liq.anticipo),
+      liquido: Number(liq.liquido),
+      costoEmpleador: Number(liq.costoEmpleador),
+    };
+
+    const html = generarLiquidacionPdf(empresaDoc, trabDoc, liqDoc);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch {
+    res.status(500).json({ error: 'Error al generar PDF' });
   }
 });
 

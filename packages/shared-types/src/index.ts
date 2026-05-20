@@ -229,6 +229,11 @@ export interface MovimientoBanco {
   updatedAt: string;
 }
 
+export type CausalFiniquito =
+  | '159_N1' | '159_N2' | '159_N3' | '159_N4'
+  | '160_N1' | '160_N3' | '160_N4' | '160_N7'
+  | '161_NECESIDADES' | '161_DESAHUCIO';
+
 export interface Trabajador {
   id: string;
   empresaId: string;
@@ -236,6 +241,12 @@ export interface Trabajador {
   nombre: string;
   cargo?: string;
   email?: string;
+  domicilio?: string;
+  fechaNacimiento?: string;
+  estadoCivil?: string;
+  nacionalidad?: string;
+  region?: string;
+  comuna?: string;
   tipo: TipoTrabajador;
   sueldoBase: string;
   afp: TipoAFP;
@@ -252,6 +263,25 @@ export interface Trabajador {
   tipoContrato: TipoContrato;
   fechaIngreso: string;
   activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Finiquito {
+  id: string;
+  empresaId: string;
+  trabajadorId: string;
+  fechaTermino: string;
+  causal: CausalFiniquito;
+  diasVacaciones: string;
+  montoVacaciones: string;
+  aniosServicio: string;
+  indemnizacion: string;
+  avisoPrevio: string;
+  otrosDescuentos: string;
+  totalBruto: string;
+  totalNeto: string;
+  trabajador?: Trabajador;
   createdAt: string;
   updatedAt: string;
 }

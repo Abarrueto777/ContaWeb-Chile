@@ -155,6 +155,12 @@ export const trabajadorSchema = z.object({
   nombre: z.string().min(2, 'Nombre requerido'),
   cargo: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
+  domicilio: z.string().optional(),
+  fechaNacimiento: z.coerce.date().optional(),
+  estadoCivil: z.enum(['SOLTERO', 'CASADO', 'DIVORCIADO', 'VIUDO', 'CONVIVIENTE_CIVIL']).optional(),
+  nacionalidad: z.string().optional().default('Chilena'),
+  region: z.string().optional(),
+  comuna: z.string().optional(),
   tipo: z.enum(['DEPENDIENTE', 'SUELDO_EMPRESARIAL']).default('DEPENDIENTE'),
   sueldoBase: z.number().positive('Sueldo base requerido'),
   afp: z.enum(['CAPITAL', 'CUPRUM', 'HABITAT', 'PLANVITAL', 'PROVIDA', 'MODELO', 'UNO']).default('HABITAT'),
@@ -170,6 +176,20 @@ export const trabajadorSchema = z.object({
   jornadaHoras: z.number().int().min(1).max(45).default(42),
   tipoContrato: z.enum(['INDEFINIDO', 'PLAZO_FIJO', 'OBRA_FAENA']).default('INDEFINIDO'),
   fechaIngreso: z.coerce.date(),
+});
+
+export const CAUSALES_FINIQUITO = [
+  '159_N1', '159_N2', '159_N3', '159_N4',
+  '160_N1', '160_N3', '160_N4', '160_N7',
+  '161_NECESIDADES', '161_DESAHUCIO',
+] as const;
+
+export const finiquitoInputSchema = z.object({
+  fechaTermino: z.coerce.date(),
+  causal: z.enum(CAUSALES_FINIQUITO),
+  diasVacaciones: z.number().min(0).default(0),
+  avisoPrevioOtorgado: z.boolean().default(true),
+  otrosDescuentos: z.number().min(0).default(0),
 });
 
 export const liquidacionInputSchema = z.object({
@@ -206,3 +226,4 @@ export type MovimientoBancoInput = z.infer<typeof movimientoBancoSchema>;
 export type TrabajadorInput = z.infer<typeof trabajadorSchema>;
 export type LiquidacionInput = z.infer<typeof liquidacionInputSchema>;
 export type ActivoFijoInput = z.infer<typeof activoFijoSchema>;
+export type FiniquitoInput = z.infer<typeof finiquitoInputSchema>;

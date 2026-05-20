@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase } from 'lucide-react';
 import api from '@/lib/api';
-import { trabajadorSchema, liquidacionInputSchema, type TrabajadorInput, type LiquidacionInput } from '@contaweb/validations';
+import { trabajadorSchema, liquidacionInputSchema, finiquitoInputSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput } from '@contaweb/validations';
 import type { Trabajador, Liquidacion } from '@contaweb/shared-types';
 import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador } from '@/hooks/useTrabajadores';
 import { useLiquidaciones, useCreateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion } from '@/hooks/useLiquidaciones';
@@ -16,6 +16,18 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CAUSAL_LABELS: Record<string, string> = {
+  '159_N1': 'Art. 159 N°1 — Mutuo acuerdo',
+  '159_N2': 'Art. 159 N°2 — Renuncia voluntaria',
+  '159_N3': 'Art. 159 N°3 — Muerte del trabajador',
+  '159_N4': 'Art. 159 N°4 — Vencimiento del plazo',
+  '160_N1': 'Art. 160 N°1 — Falta de probidad',
+  '160_N3': 'Art. 160 N°3 — No concurrencia injustificada',
+  '160_N4': 'Art. 160 N°4 — Abandono de trabajo',
+  '160_N7': 'Art. 160 N°7 — Incumplimiento grave del contrato',
+  '161_NECESIDADES': 'Art. 161 — Necesidades de la empresa (con indemnización)',
+  '161_DESAHUCIO': 'Art. 161 — Desahucio (con indemnización)',
+};
 const AFP_OPTIONS = ['CAPITAL','CUPRUM','HABITAT','PLANVITAL','PROVIDA','MODELO','UNO'];
 const SALUD_OPTIONS = [
   { value: 'FONASA', label: 'FONASA' },
@@ -41,7 +53,9 @@ export default function RRHH() {
   const [mes, setMes] = useState(hoy.getMonth() + 1);
   const [openTrabajador, setOpenTrabajador] = useState(false);
   const [openLiq, setOpenLiq] = useState(false);
+  const [openFiniquito, setOpenFiniquito] = useState(false);
   const [editando, setEditando] = useState<Trabajador | null>(null);
+  const [finiquitandoTrab, setFiniquitandoTrab] = useState<Trabajador | null>(null);
 
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data: trabData, isLoading: loadingTrab } = useTrabajadores(empresa?.id ?? '');
@@ -66,6 +80,11 @@ export default function RRHH() {
     defaultValues: { anio, mes, horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, utm: 68000, imm: 500000 },
   });
 
+  const formFiniquito = useForm<FiniquitoInput>({
+    resolver: zodResolver(finiquitoInputSchema),
+    defaultValues: { causal: '159_N1', diasVacaciones: 0, avisoPrevioOtorgado: true, otrosDescuentos: 0 },
+  });
+
   function onSubmitTrab(d: TrabajadorInput) {
     const mutation = editando ? updateTrab : createTrab;
     mutation.mutate(d, {
@@ -75,6 +94,33 @@ export default function RRHH() {
 
   function onSubmitLiq(d: LiquidacionInput) {
     createLiq.mutate(d, { onSuccess: () => { formLiq.reset(); createLiq.reset(); setOpenLiq(false); } });
+  }
+
+  async function abrirContrato(t: Trabajador) {
+    if (!empresa) return;
+    const res = await api.get(`/api/empresas/${empresa.id}/trabajadores/${t.id}/contrato`, { responseType: 'text' });
+    const blob = new Blob([res.data as string], { type: 'text/html; charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  }
+
+  async function abrirPdfLiquidacion(l: Liquidacion) {
+    if (!empresa) return;
+    const res = await api.get(`/api/empresas/${empresa.id}/liquidaciones/${l.id}/pdf`, { responseType: 'text' });
+    const blob = new Blob([res.data as string], { type: 'text/html; charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  }
+
+  async function onSubmitFiniquito(d: FiniquitoInput) {
+    if (!empresa || !finiquitandoTrab) return;
+    const res = await api.post(`/api/empresas/${empresa.id}/trabajadores/${finiquitandoTrab.id}/finiquito`, d);
+    const finiquitoId = (res.data as { data: { id: string } }).data.id;
+    const htmlRes = await api.get(`/api/empresas/${empresa.id}/trabajadores/${finiquitandoTrab.id}/finiquito/${finiquitoId}`, { responseType: 'text' });
+    const blob = new Blob([htmlRes.data as string], { type: 'text/html; charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
+    desactivar.mutate(finiquitandoTrab.id);
+    formFiniquito.reset();
+    setOpenFiniquito(false);
+    setFiniquitandoTrab(null);
   }
 
   async function descargarLRE() {
@@ -96,6 +142,12 @@ export default function RRHH() {
     formTrab.reset({
       rut: t.rut, nombre: t.nombre, cargo: t.cargo ?? '',
       ...(t.email ? { email: t.email } : {}),
+      ...(t.domicilio ? { domicilio: t.domicilio } : {}),
+      ...(t.fechaNacimiento ? { fechaNacimiento: new Date(t.fechaNacimiento) } : {}),
+      ...(t.estadoCivil ? { estadoCivil: t.estadoCivil as TrabajadorInput['estadoCivil'] } : {}),
+      ...(t.nacionalidad ? { nacionalidad: t.nacionalidad } : {}),
+      ...(t.region ? { region: t.region } : {}),
+      ...(t.comuna ? { comuna: t.comuna } : {}),
       tipo: t.tipo, sueldoBase: Number(t.sueldoBase),
       afp: t.afp, salud: t.salud, pctSalud: Number(t.pctSalud),
       ...(t.montoIsapre ? { montoIsapre: Number(t.montoIsapre) } : {}),
@@ -147,6 +199,26 @@ export default function RRHH() {
                     <div className="space-y-1.5"><Label>RUT *</Label><Input {...formTrab.register('rut')} placeholder="12.345.678-9" />{formTrab.formState.errors.rut && <p className="text-xs text-destructive">{formTrab.formState.errors.rut.message}</p>}</div>
                     <div className="space-y-1.5"><Label>Nombre *</Label><Input {...formTrab.register('nombre')} placeholder="Juan Pérez" /></div>
                     <div className="space-y-1.5 sm:col-span-2"><Label>Correo electrónico</Label><Input {...formTrab.register('email')} type="email" placeholder="juan@empresa.cl" /></div>
+                  </div>
+                  <div className="border-t pt-3 space-y-3">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Datos personales</p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5 sm:col-span-2"><Label>Domicilio</Label><Input {...formTrab.register('domicilio')} placeholder="Av. Ejemplo 123, Santiago" /></div>
+                      <div className="space-y-1.5"><Label>Fecha de nacimiento</Label><Input {...formTrab.register('fechaNacimiento')} type="date" /></div>
+                      <div className="space-y-1.5"><Label>Estado civil</Label>
+                        <select {...formTrab.register('estadoCivil')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                          <option value="">— seleccionar —</option>
+                          <option value="SOLTERO">Soltero/a</option>
+                          <option value="CASADO">Casado/a</option>
+                          <option value="DIVORCIADO">Divorciado/a</option>
+                          <option value="VIUDO">Viudo/a</option>
+                          <option value="CONVIVIENTE_CIVIL">Conviviente civil</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5"><Label>Nacionalidad</Label><Input {...formTrab.register('nacionalidad')} placeholder="Chilena" /></div>
+                      <div className="space-y-1.5"><Label>Región</Label><Input {...formTrab.register('region')} placeholder="Región Metropolitana" /></div>
+                      <div className="space-y-1.5"><Label>Comuna</Label><Input {...formTrab.register('comuna')} placeholder="Santiago" /></div>
+                    </div>
                   </div>
                   <div className="grid sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5"><Label>Cargo</Label><Input {...formTrab.register('cargo')} placeholder="Contador" /></div>
@@ -216,6 +288,37 @@ export default function RRHH() {
             </Dialog>
           </div>
 
+          <Dialog open={openFiniquito} onOpenChange={(v) => { if (!v) { formFiniquito.reset(); setFiniquitandoTrab(null); } setOpenFiniquito(v); }}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Finiquitar — {finiquitandoTrab?.nombre}</DialogTitle>
+                <DialogDescription>Se calculará la liquidación final y se generará el documento.</DialogDescription>
+              </DialogHeader>
+              <form id="form-finiquito" onSubmit={formFiniquito.handleSubmit(onSubmitFiniquito)} className="space-y-4">
+                <div className="space-y-1.5"><Label>Causal de término *</Label>
+                  <select {...formFiniquito.register('causal')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                    {CAUSALES_FINIQUITO.map((c) => <option key={c} value={c}>{CAUSAL_LABELS[c]}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5 col-span-2"><Label>Fecha de término *</Label><Input {...formFiniquito.register('fechaTermino')} type="date" /></div>
+                  <div className="space-y-1.5"><Label>Días vacaciones pendientes</Label><Input {...formFiniquito.register('diasVacaciones', { valueAsNumber: true })} type="number" min="0" step="0.5" /></div>
+                  <div className="space-y-1.5"><Label>Otros descuentos ($)</Label><Input {...formFiniquito.register('otrosDescuentos', { valueAsNumber: true })} type="number" min="0" /></div>
+                </div>
+                {['161_NECESIDADES', '161_DESAHUCIO'].includes(formFiniquito.watch('causal')) && (
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox" {...formFiniquito.register('avisoPrevioOtorgado')} className="h-4 w-4 accent-primary" defaultChecked />
+                    Se otorgaron 30 días de aviso previo (no cobrar sustitución de aviso)
+                  </label>
+                )}
+              </form>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setOpenFiniquito(false); setFiniquitandoTrab(null); }}>Cancelar</Button>
+                <Button type="submit" form="form-finiquito">Generar y abrir finiquito</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {loadingTrab ? (
             <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}</div>
           ) : trabajadores.length === 0 ? (
@@ -243,8 +346,12 @@ export default function RRHH() {
                       <td className="px-5 py-4 text-muted-foreground hidden md:table-cell">{t.afp}</td>
                       <td className="px-5 py-4"><Badge variant={t.activo ? 'default' : 'outline'}>{t.activo ? 'Activo' : 'Inactivo'}</Badge></td>
                       <td className="px-5 py-4 flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => abrirEditar(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        {t.activo && <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => desactivar.mutate(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => abrirEditar(t)} title="Editar"><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => abrirContrato(t)} title="Ver contrato"><Printer className="h-3.5 w-3.5" /></Button>
+                        {t.activo && <>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-amber-600" onClick={() => { setFiniquitandoTrab(t); setOpenFiniquito(true); }} title="Finiquitar"><Briefcase className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => desactivar.mutate(t.id)} title="Desactivar"><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </>}
                       </td>
                     </tr>
                   ))}
@@ -352,6 +459,7 @@ export default function RRHH() {
                         <td className="px-5 py-4"><Badge variant={l.pagada ? 'default' : 'outline'}>{l.pagada ? 'Pagada' : 'Pendiente'}</Badge></td>
                         <td className="px-5 py-4 flex items-center gap-1">
                           {!l.pagada && <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-green-600" onClick={() => pagarLiq.mutate(l.id)} title="Marcar pagada"><CheckCircle className="h-3.5 w-3.5" /></Button>}
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => abrirPdfLiquidacion(l)} title="Ver liquidación PDF"><Printer className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteLiq.mutate(l.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </td>
                       </tr>
