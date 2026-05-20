@@ -30,7 +30,8 @@ const navItems: { to: string; label: string; icon: React.ElementType; end?: bool
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/documentos', label: 'Documentos', icon: FileText },
   { to: '/compras', label: 'Compras', icon: ShoppingCart },
-  { to: '/f29', label: 'F29 IVA', icon: Receipt },
+  { to: '/honorarios', label: 'Honorarios', icon: Receipt },
+  { to: '/f29', label: 'F29 IVA', icon: Calculator },
   { to: '/contabilidad', label: 'Contabilidad', icon: BookOpen },
 ];
 
