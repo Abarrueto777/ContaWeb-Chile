@@ -8,8 +8,9 @@ const router = Router({ mergeParams: true });
 
 router.get('/', async (req, res, next) => {
   try {
+    const { empresaId } = req.params as { empresaId: string };
     const clientes = await prisma.cliente.findMany({
-      where: { empresaId: req.params['empresaId'] },
+      where: { empresaId },
       orderBy: { nombre: 'asc' },
     });
     res.json({ data: clientes });
@@ -20,8 +21,9 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', validate(clienteSchema), async (req, res, next) => {
   try {
+    const { empresaId } = req.params as { empresaId: string };
     const cliente = await prisma.cliente.create({
-      data: { ...req.body, empresaId: req.params['empresaId'] },
+      data: { ...req.body, empresaId },
     });
     res.status(201).json({ data: cliente });
   } catch (err: unknown) {
@@ -34,13 +36,14 @@ router.post('/', validate(clienteSchema), async (req, res, next) => {
 
 router.put('/:clienteId', validate(clienteSchema), async (req, res, next) => {
   try {
+    const { empresaId, clienteId } = req.params as { empresaId: string; clienteId: string };
     const existente = await prisma.cliente.findFirst({
-      where: { id: req.params['clienteId'], empresaId: req.params['empresaId'] },
+      where: { id: clienteId, empresaId },
     });
     if (!existente) return next(createError('Cliente no encontrado', 404));
 
     const cliente = await prisma.cliente.update({
-      where: { id: req.params['clienteId'] },
+      where: { id: clienteId },
       data: req.body,
     });
     res.json({ data: cliente });

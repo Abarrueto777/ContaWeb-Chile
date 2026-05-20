@@ -34,12 +34,15 @@ router.get('/', async (req, res, next) => {
 router.post('/', validate(honorarioSchema), async (req, res, next) => {
   try {
     const { empresaId } = req.params as { empresaId: string };
-    const { monto, retiene, ...rest } = req.body as { monto: number; retiene: boolean; [k: string]: unknown };
+    const { prestadorRut, prestadorNombre, folio, fecha, monto, retiene, glosa } = req.body as {
+      prestadorRut: string; prestadorNombre: string; folio: number; fecha: Date;
+      monto: number; retiene: boolean; glosa?: string;
+    };
 
     const retencion = retiene ? Math.round(monto * TASA_RETENCION) : 0;
 
     const honorario = await prisma.honorario.create({
-      data: { ...rest, empresaId, monto, retencion, retiene },
+      data: { empresaId, prestadorRut, prestadorNombre, folio, fecha, monto, retencion, retiene, glosa: glosa ?? null },
     });
 
     res.status(201).json({ data: honorario, message: 'Honorario registrado' });

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 
 export interface AppError extends Error {
   status?: number;
-  details?: Record<string, string[]>;
+  details?: Record<string, string[]> | undefined;
 }
 
 export function errorHandler(
@@ -21,6 +21,6 @@ export function errorHandler(
 export function createError(message: string, status = 500, details?: Record<string, string[]>): AppError {
   const err: AppError = new Error(message);
   err.status = status;
-  err.details = details;
+  if (details !== undefined) err.details = details;
   return err;
 }

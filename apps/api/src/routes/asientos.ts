@@ -9,8 +9,9 @@ const router = Router({ mergeParams: true });
 
 router.get('/', async (req, res, next) => {
   try {
+    const { empresaId } = req.params as { empresaId: string };
     const asientos = await prisma.asientoContable.findMany({
-      where: { empresaId: req.params['empresaId'] },
+      where: { empresaId },
       include: { lineas: { include: { cuenta: true } } },
       orderBy: { numero: 'desc' },
     });
@@ -23,7 +24,7 @@ router.get('/', async (req, res, next) => {
 router.post('/', validate(asientoSchema), async (req, res, next) => {
   try {
     const { fecha, glosa, lineas } = req.body;
-    const empresaId = req.params['empresaId']!;
+    const { empresaId } = req.params as { empresaId: string };
 
     const ultimoAsiento = await prisma.asientoContable.findFirst({
       where: { empresaId },

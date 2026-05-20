@@ -11,8 +11,9 @@ const router = Router({ mergeParams: true });
 
 router.get('/', async (req, res, next) => {
   try {
+    const { empresaId } = req.params as { empresaId: string };
     const documentos = await prisma.documentoTributario.findMany({
-      where: { empresaId: req.params['empresaId'] },
+      where: { empresaId },
       include: { cliente: true, lineas: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -25,7 +26,7 @@ router.get('/', async (req, res, next) => {
 router.post('/', validate(documentoSchema), async (req, res, next) => {
   try {
     const { clienteId, tipo, fecha, glosa, lineas } = req.body;
-    const empresaId = req.params['empresaId']!;
+    const { empresaId } = req.params as { empresaId: string };
 
     const neto = lineas.reduce((sum: number, l: { cantidad: number; precioUnitario: number; descuento: number }) => {
       const subtotal = l.cantidad * l.precioUnitario * (1 - l.descuento / 100);
@@ -74,8 +75,9 @@ router.post('/', validate(documentoSchema), async (req, res, next) => {
 
 router.get('/:docId', async (req, res, next) => {
   try {
+    const { empresaId, docId } = req.params as { empresaId: string; docId: string };
     const documento = await prisma.documentoTributario.findFirst({
-      where: { id: req.params['docId'], empresaId: req.params['empresaId'] },
+      where: { id: docId, empresaId },
       include: { lineas: true, cliente: true },
     });
     if (!documento) return next(createError('Documento no encontrado', 404));

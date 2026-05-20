@@ -5,8 +5,9 @@ const router = Router({ mergeParams: true });
 
 router.get('/', async (req, res, next) => {
   try {
+    const { empresaId } = req.params as { empresaId: string };
     const cuentas = await prisma.cuentaContable.findMany({
-      where: { empresaId: req.params['empresaId'] },
+      where: { empresaId },
       orderBy: { codigo: 'asc' },
     });
     res.json({ data: cuentas });

@@ -4,7 +4,7 @@ import { requireAuth } from '../middlewares/auth';
 import { validate } from '../middlewares/validate';
 import { createError } from '../middlewares/errorHandler';
 import { empresaSchema } from '@contaweb/validations';
-import { seedPlanDeCuentas } from '../../prisma/seed/index';
+import { seedPlanDeCuentas } from '../services/seedCuentas.service';
 import clientesRouter from './clientes';
 import documentosRouter from './documentos';
 import cuentasRouter from './cuentas';
@@ -52,8 +52,9 @@ router.post('/', validate(empresaSchema), async (req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
+    const { id } = req.params as { id: string };
     const empresa = await prisma.empresa.findFirst({
-      where: { id: req.params['id'], usuarioId: req.user!.id },
+      where: { id, usuarioId: req.user!.id },
     });
     if (!empresa) return next(createError('Empresa no encontrada', 404));
     res.json({ data: empresa });
@@ -64,13 +65,14 @@ router.get('/:id', async (req, res, next) => {
 
 router.put('/:id', validate(empresaSchema), async (req, res, next) => {
   try {
+    const { id } = req.params as { id: string };
     const existente = await prisma.empresa.findFirst({
-      where: { id: req.params['id'], usuarioId: req.user!.id },
+      where: { id, usuarioId: req.user!.id },
     });
     if (!existente) return next(createError('Empresa no encontrada', 404));
 
     const empresa = await prisma.empresa.update({
-      where: { id: req.params['id'] },
+      where: { id },
       data: req.body,
     });
     res.json({ data: empresa });

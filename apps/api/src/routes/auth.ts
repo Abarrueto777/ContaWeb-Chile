@@ -25,7 +25,7 @@ router.post('/registro', validate(registroSchema), async (req, res, next) => {
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, rol: usuario.rol },
       process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
+      { expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as unknown as Exclude<jwt.SignOptions['expiresIn'], undefined> }
     );
 
     res.status(201).json({ data: { token, usuario } });
@@ -47,7 +47,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, rol: usuario.rol },
       process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
+      { expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as unknown as Exclude<jwt.SignOptions['expiresIn'], undefined> }
     );
 
     const { password: _, ...usuarioPublico } = usuario;
