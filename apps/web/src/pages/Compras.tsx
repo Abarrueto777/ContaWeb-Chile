@@ -1,21 +1,24 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, ShoppingCart, Loader2, Trash2 } from 'lucide-react';
+import { Plus, ShoppingCart, Loader2, Trash2, Upload, CheckCircle2 } from 'lucide-react';
 import { facturaRecibidaSchema, type FacturaRecibidaInput } from '@contaweb/validations';
 import { useCompras, useCreateCompra, useDeleteCompra } from '@/hooks/useCompras';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
+import api from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+type SIIResult = { imported: number; skipped: number } | null;
 
 const TIPOS_IMP = [
   { value: 'NINGUNO', label: 'Sin imp. adicional' },
@@ -36,11 +39,15 @@ export default function Compras() {
   const [anio, setAnio] = useState(now.getFullYear());
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [open, setOpen] = useState(false);
+  const [siiResult, setSiiResult] = useState<SIIResult>(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data, isLoading } = useCompras(empresa?.id ?? '', anio, mes);
   const createMutation = useCreateCompra(empresa?.id ?? '');
   const deleteMutation = useDeleteCompra(empresa?.id ?? '');
+  const qc = useQueryClient();
 
   const compras = data?.data ?? [];
 
@@ -102,6 +109,23 @@ export default function Compras() {
   function handleOpenChange(v: boolean) {
     if (!v) { reset(); createMutation.reset(); }
     setOpen(v);
+  }
+
+  async function importarSII() {
+    if (!empresa || !fileRef.current?.files?.[0]) return;
+    setImporting(true);
+    setSiiResult(null);
+    try {
+      const csv = await fileRef.current.files[0].text();
+      const res = await api.post<{ data: SIIResult }>(`/api/empresas/${empresa.id}/sii/import`, { tipo: 'compras', csv });
+      setSiiResult(res.data.data);
+      qc.invalidateQueries({ queryKey: ['compras', empresa.id] });
+      if (fileRef.current) fileRef.current.value = '';
+    } catch {
+      setSiiResult(null);
+    } finally {
+      setImporting(false);
+    }
   }
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
@@ -327,6 +351,28 @@ export default function Compras() {
           </table>
         </div>
       )}
+
+      {/* Importación SII */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Upload className="h-4 w-4" />Importar libro de compras desde SII
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <input ref={fileRef} type="file" accept=".csv,.txt" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm file:border-0 file:bg-transparent file:text-sm file:font-medium cursor-pointer" />
+          {siiResult && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Importados: <strong>{siiResult.imported}</strong> — Omitidos (ya existían): <strong>{siiResult.skipped}</strong>
+            </div>
+          )}
+          <Button onClick={importarSII} disabled={importing} variant="outline" size="sm">
+            {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+            Importar CSV del SII
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

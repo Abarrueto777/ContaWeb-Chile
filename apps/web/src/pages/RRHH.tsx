@@ -17,6 +17,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const AFP_OPTIONS = ['CAPITAL','CUPRUM','HABITAT','PLANVITAL','PROVIDA','MODELO','UNO'];
+const SALUD_OPTIONS = [
+  { value: 'FONASA', label: 'FONASA' },
+  { value: 'BANMEDICA', label: 'Bánmédica (ISAPRE)' },
+  { value: 'COLMENA', label: 'Colmena (ISAPRE)' },
+  { value: 'CRUZ_BLANCA', label: 'Cruz Blanca (ISAPRE)' },
+  { value: 'NUEVA_MASVIDA', label: 'Nueva Masvida (ISAPRE)' },
+  { value: 'VIDA_TRES', label: 'Vida Tres (ISAPRE)' },
+  { value: 'CONSALUD', label: 'Consalud (ISAPRE)' },
+  { value: 'ESENCIAL', label: 'Esencial (ISAPRE)' },
+];
 
 function clp(n: string | number) {
   return Number(n).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
@@ -84,10 +94,14 @@ export default function RRHH() {
   function abrirEditar(t: Trabajador) {
     setEditando(t);
     formTrab.reset({
-      rut: t.rut, nombre: t.nombre, cargo: t.cargo ?? '', tipo: t.tipo, sueldoBase: Number(t.sueldoBase),
-      afp: t.afp, salud: t.salud, pctSalud: Number(t.pctSalud), tieneCes: t.tieneCes,
-      tipoGratificacion: t.tipoGratificacion, tieneMovilizacion: t.tieneMovilizacion,
-      tieneColacion: t.tieneColacion, montoMovilizacion: t.montoMovilizacion ? Number(t.montoMovilizacion) : undefined,
+      rut: t.rut, nombre: t.nombre, cargo: t.cargo ?? '',
+      ...(t.email ? { email: t.email } : {}),
+      tipo: t.tipo, sueldoBase: Number(t.sueldoBase),
+      afp: t.afp, salud: t.salud, pctSalud: Number(t.pctSalud),
+      ...(t.montoIsapre ? { montoIsapre: Number(t.montoIsapre) } : {}),
+      tieneCes: t.tieneCes, tipoGratificacion: t.tipoGratificacion,
+      tieneMovilizacion: t.tieneMovilizacion, tieneColacion: t.tieneColacion,
+      montoMovilizacion: t.montoMovilizacion ? Number(t.montoMovilizacion) : undefined,
       montoColacion: t.montoColacion ? Number(t.montoColacion) : undefined,
       jornadaHoras: t.jornadaHoras, tipoContrato: t.tipoContrato, fechaIngreso: new Date(t.fechaIngreso),
     });
@@ -132,6 +146,7 @@ export default function RRHH() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5"><Label>RUT *</Label><Input {...formTrab.register('rut')} placeholder="12.345.678-9" />{formTrab.formState.errors.rut && <p className="text-xs text-destructive">{formTrab.formState.errors.rut.message}</p>}</div>
                     <div className="space-y-1.5"><Label>Nombre *</Label><Input {...formTrab.register('nombre')} placeholder="Juan Pérez" /></div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label>Correo electrónico</Label><Input {...formTrab.register('email')} type="email" placeholder="juan@empresa.cl" /></div>
                   </div>
                   <div className="grid sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5"><Label>Cargo</Label><Input {...formTrab.register('cargo')} placeholder="Contador" /></div>
@@ -153,14 +168,25 @@ export default function RRHH() {
                     <div className="space-y-1.5"><Label>Sueldo base *</Label><Input {...formTrab.register('sueldoBase', { valueAsNumber: true })} type="number" min="0" />{formTrab.formState.errors.sueldoBase && <p className="text-xs text-destructive">{formTrab.formState.errors.sueldoBase.message}</p>}</div>
                     <div className="space-y-1.5"><Label>Fecha ingreso *</Label><Input {...formTrab.register('fechaIngreso')} type="date" /></div>
                   </div>
-                  <div className="grid sm:grid-cols-3 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5"><Label>AFP</Label>
                       <select {...formTrab.register('afp')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
                         {AFP_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
                       </select>
                     </div>
-                    <div className="space-y-1.5"><Label>Salud</Label><Input {...formTrab.register('salud')} placeholder="FONASA" /></div>
-                    <div className="space-y-1.5"><Label>% Salud</Label><Input {...formTrab.register('pctSalud', { valueAsNumber: true })} type="number" step="0.01" min="0" max="1" /></div>
+                    <div className="space-y-1.5"><Label>Institución de salud</Label>
+                      <select {...formTrab.register('salud')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                        {SALUD_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5"><Label>% Cotización salud</Label><Input {...formTrab.register('pctSalud', { valueAsNumber: true })} type="number" step="0.001" min="0" max="1" placeholder="0.07" /></div>
+                    {formTrab.watch('salud') !== 'FONASA' && (
+                      <div className="space-y-1.5">
+                        <Label>Plan ISAPRE (UF/mes)</Label>
+                        <Input {...formTrab.register('montoIsapre', { valueAsNumber: true })} type="number" step="0.01" min="0" placeholder="3.50" />
+                        <p className="text-xs text-muted-foreground">Si el plan supera el 7% del imponible, se descuenta la diferencia.</p>
+                      </div>
+                    )}
                   </div>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5"><Label>Gratificación</Label>

@@ -362,6 +362,8 @@ model Trabajador {
   tieneColacion     Boolean           @default(false)
   montoMovilizacion Decimal?          @db.Decimal(19, 4)
   montoColacion     Decimal?          @db.Decimal(19, 4)
+  email             String?
+  montoIsapre       Decimal?          @db.Decimal(8, 2)
   jornadaHoras      Int               @default(42)
   tipoContrato      TipoContrato      @default(INDEFINIDO)
   fechaIngreso      DateTime

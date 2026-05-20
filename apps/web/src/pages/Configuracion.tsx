@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Save, Loader2, Building2, Calculator, Zap, UserCheck, Upload, CheckCircle2 } from 'lucide-react';
+import { Save, Loader2, Building2, Calculator, Zap, UserCheck } from 'lucide-react';
 import { empresaSchema, type EmpresaInput } from '@contaweb/validations';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { useUpsertValorUF } from '@/hooks/useUF';
@@ -15,7 +15,6 @@ import { useQueryClient } from '@tanstack/react-query';
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 type UFForm = { uf: number; utm: number; imm: number };
-type SIIResult = { imported: number; skipped: number } | null;
 
 export default function Configuracion() {
   const hoy = new Date();
@@ -24,10 +23,6 @@ export default function Configuracion() {
   const [savedEmpresa, setSavedEmpresa] = useState(false);
   const [savedUF, setSavedUF] = useState(false);
   const [fetchingUF, setFetchingUF] = useState(false);
-  const [siiTipo, setSiiTipo] = useState<'compras' | 'ventas'>('compras');
-  const [siiResult, setSiiResult] = useState<SIIResult>(null);
-  const [importing, setImporting] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const { empresa, isLoading } = useEmpresaActual();
   const qc = useQueryClient();
@@ -83,25 +78,6 @@ export default function Configuracion() {
       // silencioso — el usuario verá los campos sin cambios
     } finally {
       setFetchingUF(false);
-    }
-  }
-
-  async function importarSII() {
-    if (!empresa || !fileRef.current?.files?.[0]) return;
-    setImporting(true);
-    setSiiResult(null);
-    try {
-      const file = fileRef.current.files[0];
-      const csv = await file.text();
-      const res = await api.post<{ data: SIIResult }>(`/api/empresas/${empresa.id}/sii/import`, { tipo: siiTipo, csv });
-      setSiiResult(res.data.data);
-      qc.invalidateQueries({ queryKey: ['compras'] });
-      qc.invalidateQueries({ queryKey: ['documentos'] });
-      if (fileRef.current) fileRef.current.value = '';
-    } catch {
-      setSiiResult(null);
-    } finally {
-      setImporting(false);
     }
   }
 
@@ -240,41 +216,6 @@ export default function Configuracion() {
         </CardContent>
       </Card>
 
-      {/* Importación SII */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Upload className="h-4 w-4" />Importar libro SII (CSV)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" name="siiTipo" value="compras" checked={siiTipo === 'compras'} onChange={() => setSiiTipo('compras')} className="accent-primary" />
-              Libro de Compras
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" name="siiTipo" value="ventas" checked={siiTipo === 'ventas'} onChange={() => setSiiTipo('ventas')} className="accent-primary" />
-              Libro de Ventas
-            </label>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Archivo CSV exportado desde mipyme.sii.cl</Label>
-            <input ref={fileRef} type="file" accept=".csv,.txt" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm file:border-0 file:bg-transparent file:text-sm file:font-medium cursor-pointer" />
-          </div>
-          {siiResult && (
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              Importados: <strong>{siiResult.imported}</strong> — Omitidos: <strong>{siiResult.skipped}</strong>
-            </div>
-          )}
-          <Button onClick={importarSII} disabled={importing} variant="outline">
-            {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-            Importar
-          </Button>
-          <p className="text-xs text-muted-foreground">Los registros ya existentes (mismo proveedor y folio) se omiten sin error.</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

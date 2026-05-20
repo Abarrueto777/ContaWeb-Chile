@@ -1,0 +1,2 @@
+ALTER TABLE "trabajadores" ADD COLUMN IF NOT EXISTS "email" TEXT;
+ALTER TABLE "trabajadores" ADD COLUMN IF NOT EXISTS "montoIsapre" DECIMAL(8,2);

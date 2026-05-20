@@ -235,11 +235,13 @@ export interface Trabajador {
   rut: string;
   nombre: string;
   cargo?: string;
+  email?: string;
   tipo: TipoTrabajador;
   sueldoBase: string;
   afp: TipoAFP;
   salud: string;
   pctSalud: string;
+  montoIsapre?: string;
   tieneCes: boolean;
   tipoGratificacion: TipoGratificacion;
   tieneMovilizacion: boolean;

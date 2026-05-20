@@ -116,7 +116,10 @@ export function calcularLiquidacion(
   const tasaAfp = AFP_TASAS[trabajador.afp] ?? 0.1127;
   const cotizAfp = Math.round(imponible * tasaAfp);
   const cotizSis = 0; // SIS lo paga el empleador
-  const cotizSalud = Math.round(imponible * Number(trabajador.pctSalud));
+  const cotizSaludMandatoria = Math.round(imponible * Number(trabajador.pctSalud));
+  const montoIsapre = (trabajador as unknown as { montoIsapre?: string | null }).montoIsapre;
+  const planIsapre = montoIsapre ? Math.round(Number(montoIsapre) * uf) : 0;
+  const cotizSalud = planIsapre > cotizSaludMandatoria ? planIsapre : cotizSaludMandatoria;
   const cotizCes = trabajador.tieneCes ? Math.round(imponible * TASA_CES_TRABAJADOR) : 0;
 
   // Impuesto único

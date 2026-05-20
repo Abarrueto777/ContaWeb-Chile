@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, FileText, Trash2, Loader2, PlusCircle } from 'lucide-react';
+import { Plus, FileText, Trash2, Loader2, PlusCircle, Upload, CheckCircle2 } from 'lucide-react';
 import { documentoSchema, type DocumentoInput } from '@contaweb/validations';
 import { useDocumentos, useCreateDocumento } from '@/hooks/useDocumentos';
 import { useClientes } from '@/hooks/useClientes';
@@ -9,12 +9,16 @@ import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
+import api from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
+
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 const TIPO_LABELS: Record<string, string> = {
   FACTURA_ELECTRONICA: 'Factura',
@@ -35,16 +39,35 @@ function clp(n: string | number) {
   return Number(n).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
 
+type SIIResult = { imported: number; skipped: number } | null;
+
 export default function Ventas() {
+  const hoy = new Date();
+  const [anio, setAnio] = useState(hoy.getFullYear());
+  const [mes, setMes] = useState(hoy.getMonth() + 1);
   const [open, setOpen] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState(false);
+  const [siiResult, setSiiResult] = useState<SIIResult>(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data, isLoading } = useDocumentos(empresa?.id ?? '');
   const { data: clientesData } = useClientes(empresa?.id ?? '');
   const createMutation = useCreateDocumento(empresa?.id ?? '');
+  const qc = useQueryClient();
 
-  const documentos = data?.data ?? [];
+  const todosLosDocs = data?.data ?? [];
   const clientes = clientesData?.data ?? [];
+
+  const documentos = todosLosDocs.filter((d) => {
+    const fecha = new Date(d.fecha);
+    return fecha.getFullYear() === anio && fecha.getMonth() + 1 === mes;
+  });
+
+  const totalNeto = documentos.reduce((s, d) => s + Number(d.neto), 0);
+  const totalIVA = documentos.reduce((s, d) => s + Number(d.iva), 0);
+  const totalTotal = documentos.reduce((s, d) => s + Number(d.total), 0);
 
   const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<DocumentoInput>({
     resolver: zodResolver(documentoSchema),
@@ -74,6 +97,23 @@ export default function Ventas() {
   function handleOpenChange(v: boolean) {
     if (!v) { reset(); createMutation.reset(); setNuevoCliente(false); }
     setOpen(v);
+  }
+
+  async function importarSII() {
+    if (!empresa || !fileRef.current?.files?.[0]) return;
+    setImporting(true);
+    setSiiResult(null);
+    try {
+      const csv = await fileRef.current.files[0].text();
+      const res = await api.post<{ data: SIIResult }>(`/api/empresas/${empresa.id}/sii/import`, { tipo: 'ventas', csv });
+      setSiiResult(res.data.data);
+      qc.invalidateQueries({ queryKey: ['documentos', empresa.id] });
+      if (fileRef.current) fileRef.current.value = '';
+    } catch {
+      setSiiResult(null);
+    } finally {
+      setImporting(false);
+    }
   }
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
@@ -116,7 +156,7 @@ export default function Ventas() {
                   <Label>Fecha *</Label>
                   <Input {...register('fecha')} type="date" />
                 </div>
-                <div className="space-y-1.5 sm:col-span-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label>Cliente</Label>
                     <button type="button" onClick={() => setNuevoCliente(!nuevoCliente)} className="text-xs text-primary hover:underline">
@@ -125,8 +165,8 @@ export default function Ventas() {
                   </div>
                   {nuevoCliente ? (
                     <div className="flex gap-2">
-                      <Input {...register('clienteRut')} placeholder="RUT (ej: 12.345.678-9)" className="w-36" />
-                      <Input {...register('clienteNombre')} placeholder="Nombre o razón social" />
+                      <Input {...register('clienteRut')} placeholder="12.345.678-9" className="w-36" />
+                      <Input {...register('clienteNombre')} placeholder="Razón social" />
                     </div>
                   ) : (
                     <select {...register('clienteId')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
@@ -144,19 +184,13 @@ export default function Ventas() {
                 <Input {...register('glosa')} placeholder="Descripción del documento (opcional)" />
               </div>
 
-              {/* Líneas */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Líneas de detalle *</Label>
-                  <Button
-                    type="button" variant="ghost" size="sm"
-                    onClick={() => append({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0 })}
-                  >
-                    <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
-                    Agregar línea
+                  <Button type="button" variant="ghost" size="sm" onClick={() => append({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0 })}>
+                    <PlusCircle className="mr-1.5 h-3.5 w-3.5" />Agregar línea
                   </Button>
                 </div>
-
                 <div className="rounded-lg border overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
@@ -175,18 +209,10 @@ export default function Ventas() {
                         const sub = (l?.cantidad ?? 0) * (l?.precioUnitario ?? 0) * (1 - (l?.descuento ?? 0) / 100);
                         return (
                           <tr key={field.id} className="border-b last:border-0">
-                            <td className="px-2 py-2">
-                              <Input {...register(`lineas.${i}.descripcion`)} placeholder="Servicio o producto" className="h-8 text-sm" />
-                            </td>
-                            <td className="px-2 py-2">
-                              <Input {...register(`lineas.${i}.cantidad`, { valueAsNumber: true })} type="number" min="0" step="any" className="h-8 text-sm w-20" />
-                            </td>
-                            <td className="px-2 py-2">
-                              <Input {...register(`lineas.${i}.precioUnitario`, { valueAsNumber: true })} type="number" min="0" className="h-8 text-sm w-28" />
-                            </td>
-                            <td className="px-2 py-2">
-                              <Input {...register(`lineas.${i}.descuento`, { valueAsNumber: true })} type="number" min="0" max="100" className="h-8 text-sm w-20" />
-                            </td>
+                            <td className="px-2 py-2"><Input {...register(`lineas.${i}.descripcion`)} placeholder="Servicio o producto" className="h-8 text-sm" /></td>
+                            <td className="px-2 py-2"><Input {...register(`lineas.${i}.cantidad`, { valueAsNumber: true })} type="number" min="0" step="any" className="h-8 text-sm w-20" /></td>
+                            <td className="px-2 py-2"><Input {...register(`lineas.${i}.precioUnitario`, { valueAsNumber: true })} type="number" min="0" className="h-8 text-sm w-28" /></td>
+                            <td className="px-2 py-2"><Input {...register(`lineas.${i}.descuento`, { valueAsNumber: true })} type="number" min="0" max="100" className="h-8 text-sm w-20" /></td>
                             <td className="px-2 py-2 text-right font-mono text-sm">{clp(sub)}</td>
                             <td className="px-2 py-2">
                               {fields.length > 1 && (
@@ -201,27 +227,17 @@ export default function Ventas() {
                     </tbody>
                   </table>
                 </div>
-
                 {errors.lineas && <p className="text-xs text-destructive">{errors.lineas.message ?? errors.lineas.root?.message}</p>}
               </div>
 
-              {/* Totales preview */}
               <div className="rounded-lg bg-muted/50 px-4 py-3 space-y-1.5 text-sm">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Neto</span><span className="font-mono">{clp(neto)}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>IVA 19%</span><span className="font-mono">{clp(iva)}</span>
-                </div>
-                <div className="flex justify-between font-semibold border-t pt-1.5">
-                  <span>Total</span><span className="font-mono">{clp(total)}</span>
-                </div>
+                <div className="flex justify-between text-muted-foreground"><span>Neto</span><span className="font-mono">{clp(neto)}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>IVA 19%</span><span className="font-mono">{clp(iva)}</span></div>
+                <div className="flex justify-between font-semibold border-t pt-1.5"><span>Total</span><span className="font-mono">{clp(total)}</span></div>
               </div>
 
               {createMutation.error && (
-                <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
-                  {createMutation.error.message}
-                </p>
+                <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createMutation.error.message}</p>
               )}
             </form>
 
@@ -236,17 +252,42 @@ export default function Ventas() {
         </Dialog>
       </div>
 
+      {/* Filtro período */}
+      <div className="flex items-center gap-3">
+        <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+          {MESES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+        </select>
+        <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-24" min="2000" max="2100" />
+        <span className="text-sm text-muted-foreground">{documentos.length} documentos</span>
+      </div>
+
+      {/* Totales */}
+      {documentos.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: 'Neto ventas', value: totalNeto },
+            { label: 'IVA Débito Fiscal', value: totalIVA },
+            { label: 'Total ventas', value: totalTotal },
+          ].map((t) => (
+            <Card key={t.label}>
+              <CardContent className="pt-4 pb-4">
+                <p className="text-xs text-muted-foreground">{t.label}</p>
+                <p className="text-lg font-bold mt-1 font-mono">{clp(t.value)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Lista */}
       {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
-        </div>
+        <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : documentos.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-14 text-center">
             <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
-            <p className="font-medium text-sm">Sin documentos emitidos</p>
-            <p className="text-xs text-muted-foreground mt-1">Emitís tu primera factura o boleta con el botón de arriba</p>
+            <p className="font-medium text-sm">Sin documentos en {MESES[mes - 1]} {anio}</p>
+            <p className="text-xs text-muted-foreground mt-1">Emitís un nuevo documento o importás desde el SII</p>
           </CardContent>
         </Card>
       ) : (
@@ -258,7 +299,8 @@ export default function Ventas() {
                 <th className="text-left px-5 py-3 font-medium text-muted-foreground hidden sm:table-cell">Cliente</th>
                 <th className="text-left px-5 py-3 font-medium text-muted-foreground hidden md:table-cell">Fecha</th>
                 <th className="text-right px-5 py-3 font-medium text-muted-foreground">Neto</th>
-                <th className="text-right px-5 py-3 font-medium text-muted-foreground hidden sm:table-cell">Total</th>
+                <th className="text-right px-5 py-3 font-medium text-muted-foreground hidden sm:table-cell">IVA</th>
+                <th className="text-right px-5 py-3 font-medium text-muted-foreground">Total</th>
                 <th className="text-left px-5 py-3 font-medium text-muted-foreground">Estado</th>
               </tr>
             </thead>
@@ -276,18 +318,48 @@ export default function Ventas() {
                     {new Date(d.fecha).toLocaleDateString('es-CL')}
                   </td>
                   <td className="px-5 py-4 text-right font-mono">{clp(d.neto)}</td>
-                  <td className="px-5 py-4 text-right font-mono font-medium hidden sm:table-cell">{clp(d.total)}</td>
+                  <td className="px-5 py-4 text-right font-mono text-muted-foreground hidden sm:table-cell">{clp(d.iva)}</td>
+                  <td className="px-5 py-4 text-right font-mono font-medium">{clp(d.total)}</td>
                   <td className="px-5 py-4">
-                    <Badge variant={ESTADO_VARIANT[d.estado] ?? 'outline'} className="text-xs">
-                      {d.estado}
-                    </Badge>
+                    <Badge variant={ESTADO_VARIANT[d.estado] ?? 'outline'} className="text-xs">{d.estado}</Badge>
                   </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 bg-muted/50 font-semibold">
+                <td colSpan={3} className="px-5 py-3">Totales — {documentos.length} documentos</td>
+                <td className="px-5 py-3 text-right font-mono">{clp(totalNeto)}</td>
+                <td className="px-5 py-3 text-right font-mono hidden sm:table-cell">{clp(totalIVA)}</td>
+                <td className="px-5 py-3 text-right font-mono">{clp(totalTotal)}</td>
+                <td />
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
+
+      {/* Importación SII */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Upload className="h-4 w-4" />Importar libro de ventas desde SII
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <input ref={fileRef} type="file" accept=".csv,.txt" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm file:border-0 file:bg-transparent file:text-sm file:font-medium cursor-pointer" />
+          {siiResult && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Importados: <strong>{siiResult.imported}</strong> — Omitidos (ya existían): <strong>{siiResult.skipped}</strong>
+            </div>
+          )}
+          <Button onClick={importarSII} disabled={importing} variant="outline" size="sm">
+            {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+            Importar CSV del SII
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
