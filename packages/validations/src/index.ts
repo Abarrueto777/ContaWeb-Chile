@@ -49,6 +49,9 @@ export const empresaSchema = z.object({
   direccion: z.string().optional(),
   telefono: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
+  representanteLegal: z.string().optional(),
+  rutRepresentante: rutSchema.optional().or(z.literal('')),
+  tasaRetencionHon: z.number().min(0).max(100).optional(),
 });
 
 export const clienteSchema = z.object({

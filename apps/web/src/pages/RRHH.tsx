@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download } from 'lucide-react';
+import api from '@/lib/api';
 import { trabajadorSchema, liquidacionInputSchema, type TrabajadorInput, type LiquidacionInput } from '@contaweb/validations';
 import type { Trabajador, Liquidacion } from '@contaweb/shared-types';
 import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador } from '@/hooks/useTrabajadores';
@@ -64,6 +65,20 @@ export default function RRHH() {
 
   function onSubmitLiq(d: LiquidacionInput) {
     createLiq.mutate(d, { onSuccess: () => { formLiq.reset(); createLiq.reset(); setOpenLiq(false); } });
+  }
+
+  async function descargarLRE() {
+    if (!empresa) return;
+    const res = await api.get(`/api/empresas/${empresa.id}/liquidaciones/lre`, {
+      params: { anio, mes },
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `LRE_${empresa.rut}_${anio}_${String(mes).padStart(2, '0')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function abrirEditar(t: Trabajador) {
@@ -224,6 +239,10 @@ export default function RRHH() {
               </select>
               <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-24" min="2000" max="2100" />
             </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={descargarLRE} disabled={liquidaciones.length === 0}>
+                <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
+              </Button>
             <Dialog open={openLiq} onOpenChange={(v) => { if (!v) { formLiq.reset(); createLiq.reset(); } setOpenLiq(v); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nueva liquidación</Button></DialogTrigger>
               <DialogContent className="sm:max-w-lg">
@@ -267,6 +286,7 @@ export default function RRHH() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </div>
           </div>
 
           {!loadingLiq && liquidaciones.length > 0 && (

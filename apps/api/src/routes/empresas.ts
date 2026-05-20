@@ -17,6 +17,7 @@ import trabajadoresRouter from './trabajadores';
 import liquidacionesRouter from './liquidaciones';
 import activosRouter from './activos';
 import reportesRouter from './reportes';
+import siiRouter from './sii';
 
 const router = Router();
 router.use(requireAuth);
@@ -93,5 +94,6 @@ router.use('/:empresaId/trabajadores', trabajadoresRouter);
 router.use('/:empresaId/liquidaciones', liquidacionesRouter);
 router.use('/:empresaId/activos', activosRouter);
 router.use('/:empresaId/reportes', reportesRouter);
+router.use('/:empresaId/sii', siiRouter);
 
 export default router;

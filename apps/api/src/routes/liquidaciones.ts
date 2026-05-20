@@ -2,8 +2,61 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { liquidacionInputSchema } from '@contaweb/validations';
 import { calcularLiquidacion } from '../services/liquidacion.service';
+import { createError } from '../middlewares/errorHandler';
 
 const router = Router({ mergeParams: true });
+
+router.get('/lre', async (req, res, next) => {
+  try {
+    const { empresaId } = req.params as { empresaId: string };
+    const { anio, mes } = req.query;
+    if (!anio || !mes) return next(createError('Parámetros anio y mes requeridos', 400));
+
+    const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
+    if (!empresa) return next(createError('Empresa no encontrada', 404));
+
+    const liquidaciones = await prisma.liquidacion.findMany({
+      where: { empresaId, anio: Number(anio), mes: Number(mes) },
+      include: { trabajador: true },
+      orderBy: { trabajador: { nombre: 'asc' } },
+    });
+
+    const headers = [
+      'RUN_EMPLEADOR', 'RUN_TRABAJADOR', 'NOMBRE', 'TIPO_TRABAJADOR', 'TIPO_CONTRATO',
+      'JORNADA_HRS', 'DIAS_TRABAJADOS', 'SUELDO_BASE', 'HORAS_EXTRA_MONTO', 'BONO',
+      'GRATIFICACION', 'MOVILIZACION', 'COLACION', 'TOTAL_HABERES_IMPONIBLES',
+      'TOTAL_HABERES_NO_IMPONIBLES', 'AFP', 'COTIZ_AFP', 'COTIZ_SIS', 'SALUD',
+      'COTIZ_SALUD', 'COTIZ_CESANTIA', 'IMPUESTO_UNICO', 'TOTAL_DESCUENTOS',
+      'ANTICIPO', 'LIQUIDO', 'COSTO_EMPLEADOR',
+    ];
+
+    const rows = liquidaciones.map((liq) => {
+      const t = liq.trabajador;
+      const noImponible = Number(liq.movilizacion) + Number(liq.colacion);
+      const totalDescuentos = Number(liq.cotizAfp) + Number(liq.cotizSis) + Number(liq.cotizSalud) + Number(liq.cotizCes) + Number(liq.impuestoUnico);
+      return [
+        empresa.rut, t.rut, t.nombre, t.tipo, t.tipoContrato,
+        t.jornadaHoras, liq.diasTrabajados, Math.round(Number(liq.sueldoBase)),
+        Math.round(Number(liq.horasExtra)), Math.round(Number(liq.bono)),
+        Math.round(Number(liq.gratificacion)), Math.round(Number(liq.movilizacion)),
+        Math.round(Number(liq.colacion)), Math.round(Number(liq.imponible)),
+        Math.round(noImponible), t.afp, Math.round(Number(liq.cotizAfp)),
+        Math.round(Number(liq.cotizSis)), t.salud, Math.round(Number(liq.cotizSalud)),
+        Math.round(Number(liq.cotizCes)), Math.round(Number(liq.impuestoUnico)),
+        Math.round(totalDescuentos), Math.round(Number(liq.anticipo)),
+        Math.round(Number(liq.liquido)), Math.round(Number(liq.costoEmpleador)),
+      ].join(';');
+    });
+
+    const mesPad = String(mes).padStart(2, '0');
+    const csv = [headers.join(';'), ...rows].join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="LRE_${empresa.rut}_${anio}_${mesPad}.csv"`);
+    res.send('﻿' + csv);
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get('/', async (req, res) => {
   try {

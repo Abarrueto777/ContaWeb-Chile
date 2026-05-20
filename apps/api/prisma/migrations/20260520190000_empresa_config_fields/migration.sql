@@ -1,0 +1,3 @@
+ALTER TABLE "empresas" ADD COLUMN IF NOT EXISTS "representanteLegal" TEXT;
+ALTER TABLE "empresas" ADD COLUMN IF NOT EXISTS "rutRepresentante" TEXT;
+ALTER TABLE "empresas" ADD COLUMN IF NOT EXISTS "tasaRetencionHon" DECIMAL(5,2) NOT NULL DEFAULT 10.75;

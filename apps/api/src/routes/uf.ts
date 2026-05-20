@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import https from 'https';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middlewares/auth';
 
@@ -42,6 +43,29 @@ router.post('/', async (req, res, next) => {
       update: { uf, utm, imm },
     });
     res.status(201).json({ data: valor });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/fetch-actual', async (_req, res, next) => {
+  try {
+    const data = await new Promise<Record<string, unknown>>((resolve, reject) => {
+      https.get('https://mindicador.cl/api', (resp) => {
+        let body = '';
+        resp.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+        resp.on('end', () => {
+          try { resolve(JSON.parse(body) as Record<string, unknown>); }
+          catch { reject(new Error('Respuesta inválida de mindicador.cl')); }
+        });
+      }).on('error', reject);
+    });
+
+    const uf = (data['uf'] as { valor?: number } | undefined)?.valor ?? 0;
+    const utm = (data['utm'] as { valor?: number } | undefined)?.valor ?? 0;
+    const imm = (data['ingreso_minimo_mensual'] as { valor?: number } | undefined)?.valor ?? 0;
+
+    res.json({ data: { uf, utm, imm } });
   } catch (err) {
     next(err);
   }

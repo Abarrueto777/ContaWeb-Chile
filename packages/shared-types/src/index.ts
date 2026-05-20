@@ -23,6 +23,9 @@ export interface Empresa {
   direccion?: string;
   telefono?: string;
   email?: string;
+  representanteLegal?: string;
+  rutRepresentante?: string;
+  tasaRetencionHon?: number;
   usuarioId: string;
   createdAt: string;
   updatedAt: string;

@@ -139,7 +139,10 @@ model Empresa {
   direccion          String?
   telefono           String?
   email              String?
-  ppmRate            Decimal               @default(0.0020) @db.Decimal(6, 4)
+  ppmRate               Decimal               @default(0.0020) @db.Decimal(6, 4)
+  representanteLegal    String?
+  rutRepresentante      String?
+  tasaRetencionHon      Decimal               @default(10.75) @db.Decimal(5, 2)
   usuarioId          String
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
