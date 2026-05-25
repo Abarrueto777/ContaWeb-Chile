@@ -128,6 +128,82 @@ export default function RRHH() {
     setFiniquitandoTrab(null);
   }
 
+  function abrirLibroRemuneraciones() {
+    const mesLabel = MESES[mes - 1];
+    const clpF = (n: number) => Number(n).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+    type LiqExt = typeof liquidaciones[0] & { sueldoBase?: number; horasExtra?: number; bono?: number; gratificacion?: number; movilizacion?: number; colacion?: number; anticipo?: number; cotizSis?: number };
+    const filas = (liquidaciones as LiqExt[]).map((l, i) => `
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:6px 8px;text-align:center;font-size:9pt;">${i + 1}</td>
+        <td style="padding:6px 8px;font-size:9pt;">${l.trabajador?.nombre ?? '—'}</td>
+        <td style="padding:6px 8px;font-size:9pt;">${l.trabajador?.rut ?? '—'}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.sueldoBase ?? 0))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.horasExtra ?? 0))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.bono ?? 0))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.gratificacion ?? 0))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.movilizacion ?? 0) + Number(l.colacion ?? 0))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;font-weight:600;">${clpF(Number(l.imponible))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.cotizAfp))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.cotizSalud))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.cotizCes ?? 0))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.impuestoUnico ?? 0))}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;font-weight:700;color:#166534;">${clpF(Number(l.liquido))}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:8pt;color:#6b7280;">____________</td>
+      </tr>`).join('');
+
+    const totales = (liquidaciones as LiqExt[]).reduce((acc, l) => ({
+      imponible: acc.imponible + Number(l.imponible),
+      cotizAfp: acc.cotizAfp + Number(l.cotizAfp),
+      cotizSalud: acc.cotizSalud + Number(l.cotizSalud),
+      cotizCes: acc.cotizCes + Number(l.cotizCes ?? 0),
+      impuesto: acc.impuesto + Number(l.impuestoUnico ?? 0),
+      liquido: acc.liquido + Number(l.liquido),
+    }), { imponible: 0, cotizAfp: 0, cotizSalud: 0, cotizCes: 0, impuesto: 0, liquido: 0 });
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Libro de Remuneraciones — ${mesLabel} ${anio}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10pt;padding:16px 20px}
+    h1{font-size:13pt;text-align:center;text-transform:uppercase;margin-bottom:4px}
+    .sub{text-align:center;font-size:9.5pt;color:#555;margin-bottom:14px}
+    table{width:100%;border-collapse:collapse}
+    thead tr{background:#f3f4f6}
+    th{padding:6px 8px;font-size:8.5pt;font-weight:600;text-align:right;border:1px solid #d1d5db}
+    th:first-child,th:nth-child(2),th:nth-child(3){text-align:left}
+    td{border:1px solid #e5e7eb}
+    .total-row td{background:#f9fafb;font-weight:700;font-size:9pt}
+    @media print{body{padding:8mm 12mm}}</style></head>
+    <body>
+    <h1>${empresa?.razonSocial ?? ''} — Libro de Remuneraciones</h1>
+    <p class="sub">Período: ${mesLabel} ${anio} &nbsp;·&nbsp; RUT: ${empresa?.rut ?? ''} &nbsp;·&nbsp; ${liquidaciones.length} trabajador(es)</p>
+    <table>
+      <thead><tr>
+        <th style="text-align:center">N°</th>
+        <th>Trabajador</th><th>RUT</th>
+        <th>Sueldo Base</th><th>H. Extra</th><th>Bono</th><th>Gratificación</th><th>Mov+Col</th>
+        <th>Imponible</th><th>AFP</th><th>Salud</th><th>CES</th><th>Imp. Único</th>
+        <th>Líquido</th><th style="text-align:center">Firma</th>
+      </tr></thead>
+      <tbody>${filas}</tbody>
+      <tfoot><tr class="total-row">
+        <td colspan="8" style="padding:6px 8px;text-align:right;border:1px solid #d1d5db;">TOTALES</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.imponible)}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.cotizAfp)}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.cotizSalud)}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.cotizCes)}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.impuesto)}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;color:#166534;border:1px solid #d1d5db;">${clpF(totales.liquido)}</td>
+        <td style="border:1px solid #d1d5db;"></td>
+      </tr></tfoot>
+    </table>
+    <div style="margin-top:30px;display:flex;justify-content:space-around;">
+      <div style="text-align:center"><div style="border-top:1px solid #333;width:200px;padding-top:4px;font-size:9pt;">Empleador / Representante Legal</div></div>
+      <div style="text-align:center"><div style="border-top:1px solid #333;width:200px;padding-top:4px;font-size:9pt;">Contador / Responsable</div></div>
+    </div>
+    </body></html>`;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  }
+
   async function descargarLRE() {
     if (!empresa) return;
     const res = await api.get(`/api/empresas/${empresa.id}/liquidaciones/lre`, {
@@ -399,6 +475,9 @@ export default function RRHH() {
               <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-24" min="2000" max="2100" />
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={abrirLibroRemuneraciones} disabled={liquidaciones.length === 0}>
+                <Printer className="mr-1.5 h-3.5 w-3.5" />Libro de Rem.
+              </Button>
               <Button variant="outline" size="sm" onClick={descargarLRE} disabled={liquidaciones.length === 0}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
               </Button>

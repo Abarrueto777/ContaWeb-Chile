@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, ShoppingCart, Loader2, Trash2, Upload, CheckCircle2 } from 'lucide-react';
+import { Plus, ShoppingCart, Loader2, Trash2, Upload, CheckCircle2, Download } from 'lucide-react';
 import { facturaRecibidaSchema, type FacturaRecibidaInput } from '@contaweb/validations';
 import { useCompras, useCreateCompra, useDeleteCompra } from '@/hooks/useCompras';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
@@ -111,6 +111,33 @@ export default function Compras() {
     setOpen(v);
   }
 
+  function descargarLibro() {
+    const rows = [
+      ['N°', 'Tipo', 'RUT Proveedor', 'Razón Social', 'Folio', 'Fecha', 'Neto', 'IVA', 'Imp. Adicional', 'Retención', 'Total'],
+      ...compras.map((c, i) => [
+        i + 1,
+        c.tipo,
+        c.proveedorRut,
+        c.proveedorNombre,
+        c.folio,
+        new Date(c.fecha).toLocaleDateString('es-CL'),
+        c.neto,
+        c.iva,
+        c.impAdicional ?? 0,
+        c.retencion ?? 0,
+        c.total,
+      ]),
+    ];
+    const csv = rows.map((r) => r.join(';')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `LibroCompras_${MESES[mes - 1]}_${anio}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function importarSII() {
     if (!empresa || !fileRef.current?.files?.[0]) return;
     setImporting(true);
@@ -144,10 +171,40 @@ export default function Compras() {
           <p className="text-sm text-muted-foreground mt-1">{empresa.razonSocial}</p>
         </div>
 
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />Nueva factura</Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={descargarLibro} disabled={compras.length === 0}>
+            <Download className="mr-1.5 h-3.5 w-3.5" />Descargar CSV
+          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm"><Upload className="mr-1.5 h-3.5 w-3.5" />Importar SII</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Importar desde SII</DialogTitle>
+                <DialogDescription>Seleccioná el CSV del libro de compras descargado desde el portal del SII.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <input ref={fileRef} type="file" accept=".csv,.txt" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm file:border-0 file:bg-transparent file:text-sm file:font-medium cursor-pointer" />
+                {siiResult && (
+                  <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    Importados: <strong>{siiResult.imported}</strong> — Omitidos: <strong>{siiResult.skipped}</strong>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button onClick={importarSII} disabled={importing}>
+                  {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                  Importar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>
+              <Button><Plus className="mr-2 h-4 w-4" />Nueva factura</Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Registrar factura recibida</DialogTitle>
@@ -249,7 +306,8 @@ export default function Compras() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filtro período */}
@@ -352,27 +410,6 @@ export default function Compras() {
         </div>
       )}
 
-      {/* Importación SII */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Upload className="h-4 w-4" />Importar libro de compras desde SII
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <input ref={fileRef} type="file" accept=".csv,.txt" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm file:border-0 file:bg-transparent file:text-sm file:font-medium cursor-pointer" />
-          {siiResult && (
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              Importados: <strong>{siiResult.imported}</strong> — Omitidos (ya existían): <strong>{siiResult.skipped}</strong>
-            </div>
-          )}
-          <Button onClick={importarSII} disabled={importing} variant="outline" size="sm">
-            {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-            Importar CSV del SII
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }
