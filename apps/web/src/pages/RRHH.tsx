@@ -203,9 +203,9 @@ export default function RRHH() {
                   <div className="border-t pt-3 space-y-3">
                     <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Datos personales</p>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5 sm:col-span-2"><Label>Domicilio</Label><Input {...formTrab.register('domicilio')} placeholder="Av. Ejemplo 123, Santiago" /></div>
-                      <div className="space-y-1.5"><Label>Fecha de nacimiento</Label><Input {...formTrab.register('fechaNacimiento')} type="date" /></div>
-                      <div className="space-y-1.5"><Label>Estado civil</Label>
+                      <div className="space-y-1.5 sm:col-span-2"><Label>Domicilio *</Label><Input {...formTrab.register('domicilio')} placeholder="Av. Ejemplo 123, Santiago" />{formTrab.formState.errors.domicilio && <p className="text-xs text-destructive">{formTrab.formState.errors.domicilio.message}</p>}</div>
+                      <div className="space-y-1.5"><Label>Fecha de nacimiento *</Label><Input {...formTrab.register('fechaNacimiento')} type="date" />{formTrab.formState.errors.fechaNacimiento && <p className="text-xs text-destructive">{formTrab.formState.errors.fechaNacimiento.message}</p>}</div>
+                      <div className="space-y-1.5"><Label>Estado civil *</Label>
                         <select {...formTrab.register('estadoCivil')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
                           <option value="">— seleccionar —</option>
                           <option value="SOLTERO">Soltero/a</option>
@@ -214,14 +214,15 @@ export default function RRHH() {
                           <option value="VIUDO">Viudo/a</option>
                           <option value="CONVIVIENTE_CIVIL">Conviviente civil</option>
                         </select>
+                        {formTrab.formState.errors.estadoCivil && <p className="text-xs text-destructive">{formTrab.formState.errors.estadoCivil.message}</p>}
                       </div>
-                      <div className="space-y-1.5"><Label>Nacionalidad</Label><Input {...formTrab.register('nacionalidad')} placeholder="Chilena" /></div>
+                      <div className="space-y-1.5"><Label>Nacionalidad *</Label><Input {...formTrab.register('nacionalidad')} placeholder="Chilena" />{formTrab.formState.errors.nacionalidad && <p className="text-xs text-destructive">{formTrab.formState.errors.nacionalidad.message}</p>}</div>
                       <div className="space-y-1.5"><Label>Región</Label><Input {...formTrab.register('region')} placeholder="Región Metropolitana" /></div>
                       <div className="space-y-1.5"><Label>Comuna</Label><Input {...formTrab.register('comuna')} placeholder="Santiago" /></div>
                     </div>
                   </div>
                   <div className="grid sm:grid-cols-3 gap-4">
-                    <div className="space-y-1.5"><Label>Cargo</Label><Input {...formTrab.register('cargo')} placeholder="Contador" /></div>
+                    <div className="space-y-1.5"><Label>Cargo *</Label><Input {...formTrab.register('cargo')} placeholder="Contador" />{formTrab.formState.errors.cargo && <p className="text-xs text-destructive">{formTrab.formState.errors.cargo.message}</p>}</div>
                     <div className="space-y-1.5"><Label>Tipo</Label>
                       <select {...formTrab.register('tipo')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
                         <option value="DEPENDIENTE">Dependiente</option>

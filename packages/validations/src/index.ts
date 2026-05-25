@@ -153,18 +153,20 @@ export const movimientoBancoSchema = z.object({
 export const trabajadorSchema = z.object({
   rut: rutSchema,
   nombre: z.string().min(2, 'Nombre requerido'),
-  cargo: z.string().optional(),
+  cargo: z.string().min(2, 'Cargo requerido (Art. 10 CT)'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
-  domicilio: z.string().optional(),
+  domicilio: z.string().min(5, 'Domicilio requerido (Art. 10 CT)'),
   fechaNacimiento: z.preprocess(
     (v) => (v === '' || v == null ? undefined : v),
-    z.coerce.date().optional(),
+    z.coerce.date({ required_error: 'Fecha de nacimiento requerida (Art. 10 CT)' }),
   ),
   estadoCivil: z.preprocess(
     (v) => (v === '' || v == null ? undefined : v),
-    z.enum(['SOLTERO', 'CASADO', 'DIVORCIADO', 'VIUDO', 'CONVIVIENTE_CIVIL']).optional(),
+    z.enum(['SOLTERO', 'CASADO', 'DIVORCIADO', 'VIUDO', 'CONVIVIENTE_CIVIL'], {
+      required_error: 'Estado civil requerido (Art. 10 CT)',
+    }),
   ),
-  nacionalidad: z.string().optional(),
+  nacionalidad: z.string().min(2, 'Nacionalidad requerida (Art. 10 CT)'),
   region: z.string().optional(),
   comuna: z.string().optional(),
   tipo: z.enum(['DEPENDIENTE', 'SUELDO_EMPRESARIAL']).default('DEPENDIENTE'),
