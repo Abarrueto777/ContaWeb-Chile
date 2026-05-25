@@ -20,6 +20,14 @@ export function useCreateLiquidacion(empresaId: string) {
   });
 }
 
+export function useUpdateLiquidacion(empresaId: string) {
+  const qc = useQueryClient();
+  return useMutation<ApiResponse<Liquidacion>, Error, { id: string; data: LiquidacionInput }>({
+    mutationFn: ({ id, data }) => api.put<ApiResponse<Liquidacion>>(`/api/empresas/${empresaId}/liquidaciones/${id}`, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['liquidaciones', empresaId] }),
+  });
+}
+
 export function useDeleteLiquidacion(empresaId: string) {
   const qc = useQueryClient();
   return useMutation<{ message: string }, Error, string>({

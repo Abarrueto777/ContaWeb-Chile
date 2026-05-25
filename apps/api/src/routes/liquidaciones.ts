@@ -184,6 +184,32 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
   }
 });
 
+router.put('/:liquidacionId', async (req, res, next) => {
+  try {
+    const { empresaId, liquidacionId } = req.params as { empresaId: string; liquidacionId: string };
+    const parsed = liquidacionInputSchema.safeParse(req.body);
+    if (!parsed.success) return next(createError('Datos inválidos', 400));
+    const liq = await prisma.liquidacion.findFirst({ where: { id: liquidacionId, empresaId } });
+    if (!liq) return next(createError('Liquidación no encontrada', 404));
+    const trabajador = await prisma.trabajador.findFirst({ where: { id: liq.trabajadorId, empresaId } });
+    if (!trabajador) return next(createError('Trabajador no encontrado', 404));
+    const valorUF = await prisma.valorUFUTM.findFirst({
+      where: { anio: parsed.data.anio, mes: parsed.data.mes },
+      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
+    });
+    const uf = Number(valorUF?.uf ?? 38000);
+    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf });
+    const updated = await prisma.liquidacion.update({
+      where: { id: liquidacionId },
+      data: { ...calc },
+      include: { trabajador: true },
+    });
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.patch('/:liquidacionId/pagar', async (req, res) => {
   try {
     const liq = await prisma.liquidacion.update({ where: { id: req.params['liquidacionId'] }, data: { pagada: true } });

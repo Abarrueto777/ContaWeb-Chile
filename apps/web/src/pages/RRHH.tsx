@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap } from 'lucide-react';
 import api from '@/lib/api';
-import { trabajadorSchema, liquidacionInputSchema, finiquitoInputSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput } from '@contaweb/validations';
+import { trabajadorSchema, finiquitoInputSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput } from '@contaweb/validations';
 import type { Trabajador, Liquidacion } from '@contaweb/shared-types';
 import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador, useReactivarTrabajador } from '@/hooks/useTrabajadores';
-import { useLiquidaciones, useCreateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion } from '@/hooks/useLiquidaciones';
+import { useLiquidaciones, useCreateLiquidacion, useUpdateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion } from '@/hooks/useLiquidaciones';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,12 +52,15 @@ export default function RRHH() {
   const [anio, setAnio] = useState(hoy.getFullYear());
   const [mes, setMes] = useState(hoy.getMonth() + 1);
   const [openTrabajador, setOpenTrabajador] = useState(false);
-  const [openLiq, setOpenLiq] = useState(false);
   const [openFiniquito, setOpenFiniquito] = useState(false);
   const [editando, setEditando] = useState<Trabajador | null>(null);
   const [finiquitandoTrab, setFiniquitandoTrab] = useState<Trabajador | null>(null);
   const [filtroActivo, setFiltroActivo] = useState<'todos' | 'activos' | 'inactivos'>('activos');
-  const [mostrarLibro, setMostrarLibro] = useState(false);
+  const [utm, setUtm] = useState(68400);
+  const [imm, setImm] = useState(539000);
+  const [movs, setMovs] = useState<Record<string, { horasExtra: number; bono: number; diasTrabajados: number; anticipo: number }>>({});
+  const [dirty, setDirty] = useState<Set<string>>(new Set());
+  const [procesando, setProcesando] = useState<Set<string>>(new Set());
 
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data: trabData, isLoading: loadingTrab } = useTrabajadores(empresa?.id ?? '');
@@ -67,6 +70,7 @@ export default function RRHH() {
   const desactivar = useDesactivarTrabajador(empresa?.id ?? '');
   const reactivar = useReactivarTrabajador(empresa?.id ?? '');
   const createLiq = useCreateLiquidacion(empresa?.id ?? '');
+  const updateLiq = useUpdateLiquidacion(empresa?.id ?? '');
   const deleteLiq = useDeleteLiquidacion(empresa?.id ?? '');
   const pagarLiq = usePagarLiquidacion(empresa?.id ?? '');
 
@@ -81,13 +85,6 @@ export default function RRHH() {
     defaultValues: { tipo: 'DEPENDIENTE', afp: 'HABITAT', salud: 'FONASA', pctSalud: 0.07, tieneCes: false, tipoGratificacion: 'ART_50', tieneMovilizacion: false, tieneColacion: false, jornadaHoras: 42, tipoContrato: 'INDEFINIDO' },
   });
 
-  const formLiq = useForm<LiquidacionInput>({
-    resolver: zodResolver(liquidacionInputSchema),
-    defaultValues: { anio, mes, horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, utm: 68400, imm: 539000 },
-  });
-  const trabIdSeleccionado = formLiq.watch('trabajadorId');
-  const trabSeleccionado = todosLosTrabajadores.find((t) => t.id === trabIdSeleccionado) ?? null;
-
   const formFiniquito = useForm<FiniquitoInput>({
     resolver: zodResolver(finiquitoInputSchema),
     defaultValues: { causal: '159_N1', diasVacaciones: 0, avisoPrevioOtorgado: true, otrosDescuentos: 0 },
@@ -98,10 +95,6 @@ export default function RRHH() {
     mutation.mutate(d, {
       onSuccess: () => { formTrab.reset(); mutation.reset(); setOpenTrabajador(false); setEditando(null); },
     });
-  }
-
-  function onSubmitLiq(d: LiquidacionInput) {
-    createLiq.mutate(d, { onSuccess: () => { formLiq.reset(); createLiq.reset(); setOpenLiq(false); } });
   }
 
   async function abrirContrato(t: Trabajador) {
@@ -242,6 +235,66 @@ export default function RRHH() {
       jornadaHoras: t.jornadaHoras, tipoContrato: t.tipoContrato, fechaIngreso: new Date(t.fechaIngreso),
     });
     setOpenTrabajador(true);
+  }
+
+  // reset movimientos cuando cambia el período
+  useEffect(() => { setMovs({}); setDirty(new Set()); }, [anio, mes]);
+
+  // inicializar desde liquidaciones existentes (solo filas no-dirty)
+  useEffect(() => {
+    if (loadingLiq) return;
+    setMovs((prev) => {
+      const next: typeof prev = { ...prev };
+      for (const l of liquidaciones) {
+        const tid = l.trabajador?.id ?? '';
+        if (!tid || tid in prev) continue;
+        next[tid] = {
+          horasExtra: Number(l.horasExtra ?? 0),
+          bono: Number(l.bono ?? 0),
+          diasTrabajados: Number(l.diasTrabajados ?? 30),
+          anticipo: Number(l.anticipo ?? 0),
+        };
+      }
+      return next;
+    });
+  }, [liquidaciones, loadingLiq]);
+
+  const liqPorTrab = new Map(liquidaciones.map(l => [l.trabajador?.id ?? '', l]));
+
+  function updateMov(trabId: string, field: string, val: number) {
+    setMovs(prev => ({
+      ...prev,
+      [trabId]: { ...(prev[trabId] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0 }), [field]: val },
+    }));
+    setDirty(prev => { const s = new Set(prev); s.add(trabId); return s; });
+  }
+
+  async function calcularUno(trabId: string, liqExistente: typeof liquidaciones[0] | undefined) {
+    const mov = movs[trabId] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0 };
+    const input: LiquidacionInput = { trabajadorId: trabId, anio, mes, ...mov, utm, imm };
+    setProcesando(s => { const n = new Set(s); n.add(trabId); return n; });
+    try {
+      if (liqExistente) {
+        await updateLiq.mutateAsync({ id: liqExistente.id, data: input });
+      } else {
+        await createLiq.mutateAsync(input);
+      }
+      setDirty(s => { const n = new Set(s); n.delete(trabId); return n; });
+    } catch { /* mutation error surfaced via hook */ } finally {
+      setProcesando(s => { const n = new Set(s); n.delete(trabId); return n; });
+    }
+  }
+
+  async function calcularConCambios() {
+    for (const t of todosLosTrabajadores.filter(t => t.activo && dirty.has(t.id))) {
+      await calcularUno(t.id, liqPorTrab.get(t.id));
+    }
+  }
+
+  async function calcularTodos() {
+    for (const t of todosLosTrabajadores.filter(t => t.activo)) {
+      await calcularUno(t.id, liqPorTrab.get(t.id));
+    }
   }
 
   const totalLiquido = liquidaciones.reduce((s, l) => s + Number(l.liquido), 0);
@@ -480,146 +533,168 @@ export default function RRHH() {
       {/* VISTA LIQUIDACIONES */}
       {vista === 'liquidaciones' && (
         <>
-          <div className="flex flex-wrap items-center gap-3 justify-between">
-            <div className="flex items-center gap-3">
+          {/* Encabezado: período + parámetros + acciones */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex items-center gap-2">
               <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
                 {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
               </select>
               <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-24" min="2000" max="2100" />
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setMostrarLibro((v) => !v)} disabled={liquidaciones.length === 0}>
-                <Printer className="mr-1.5 h-3.5 w-3.5" />{mostrarLibro ? 'Ocultar libro' : 'Libro de Rem.'}
-              </Button>
+            <div className="h-8 border-l hidden sm:block" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">UTM $</span>
+              <Input type="number" value={utm} onChange={(e) => setUtm(Number(e.target.value))} className="w-28 h-8 text-sm" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">S. Mínimo $</span>
+              <Input type="number" value={imm} onChange={(e) => setImm(Number(e.target.value))} className="w-32 h-8 text-sm" />
+            </div>
+            <div className="ml-auto flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={descargarLRE} disabled={liquidaciones.length === 0}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
               </Button>
-            <Dialog open={openLiq} onOpenChange={(v) => {
-              if (!v) { formLiq.reset({ anio, mes, horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, utm: 68400, imm: 539000 }); createLiq.reset(); }
-              else { formLiq.setValue('anio', anio); formLiq.setValue('mes', mes); }
-              setOpenLiq(v);
-            }}>
-              <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nueva liquidación</Button></DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Nueva liquidación</DialogTitle>
-                  <DialogDescription>Período: <strong>{MESES[mes - 1]} {anio}</strong> — seleccioná el trabajador y completá los haberes variables.</DialogDescription>
-                </DialogHeader>
-                <form id="form-liq" onSubmit={formLiq.handleSubmit(onSubmitLiq)} className="space-y-4">
-                  {/* Selector trabajador */}
-                  <div className="space-y-1.5">
-                    <Label>Trabajador *</Label>
-                    <select {...formLiq.register('trabajadorId')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                      <option value="">— Seleccionar trabajador —</option>
-                      {todosLosTrabajadores.filter((t) => t.activo).map((t) => (
-                        <option key={t.id} value={t.id}>{t.nombre}</option>
-                      ))}
-                    </select>
-                    {formLiq.formState.errors.trabajadorId && <p className="text-xs text-destructive">{formLiq.formState.errors.trabajadorId.message}</p>}
-                  </div>
-
-                  {/* Tarjeta del trabajador seleccionado */}
-                  {trabSeleccionado && (
-                    <div className="rounded-lg border bg-muted/40 p-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sueldo base</p><p className="font-mono font-semibold">{clp(trabSeleccionado.sueldoBase)}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Cargo</p><p className="truncate">{trabSeleccionado.cargo ?? '—'}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">AFP</p><p>{trabSeleccionado.afp}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Salud</p><p>{trabSeleccionado.salud}</p></div>
-                    </div>
-                  )}
-
-                  {/* Haberes variables */}
-                  <div className="border-t pt-3 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Haberes variables</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5"><Label>Horas extra</Label><Input {...formLiq.register('horasExtra', { valueAsNumber: true })} type="number" min="0" step="0.5" placeholder="0" /></div>
-                      <div className="space-y-1.5"><Label>Bono ($)</Label><Input {...formLiq.register('bono', { valueAsNumber: true })} type="number" min="0" placeholder="0" /></div>
-                      <div className="space-y-1.5"><Label>Días trabajados</Label><Input {...formLiq.register('diasTrabajados', { valueAsNumber: true })} type="number" min="0" max="31" /></div>
-                      <div className="space-y-1.5"><Label>Anticipo ($)</Label><Input {...formLiq.register('anticipo', { valueAsNumber: true })} type="number" min="0" placeholder="0" /></div>
-                    </div>
-                  </div>
-
-                  {/* Parámetros del período */}
-                  <div className="border-t pt-3 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parámetros del período</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5"><Label>UTM ($)</Label><Input {...formLiq.register('utm', { valueAsNumber: true })} type="number" min="0" /></div>
-                      <div className="space-y-1.5"><Label>Sueldo mínimo ($)</Label><Input {...formLiq.register('imm', { valueAsNumber: true })} type="number" min="0" /></div>
-                    </div>
-                  </div>
-
-                  {createLiq.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createLiq.error.message}</p>}
-                </form>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setOpenLiq(false)}>Cancelar</Button>
-                  <Button type="submit" form="form-liq" disabled={createLiq.isPending || !trabIdSeleccionado}>
-                    {createLiq.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Calcular y guardar
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+              {dirty.size > 0 && (
+                <Button size="sm" variant="outline" onClick={calcularConCambios}>
+                  <Zap className="mr-1.5 h-3.5 w-3.5" />Calcular cambios ({dirty.size})
+                </Button>
+              )}
+              <Button size="sm" onClick={calcularTodos} disabled={todosLosTrabajadores.filter(t => t.activo).length === 0}>
+                <Zap className="mr-1.5 h-3.5 w-3.5" />Calcular todos
+              </Button>
+            </div>
           </div>
 
-          {!loadingLiq && liquidaciones.length > 0 && (
+          {/* Tarjetas resumen */}
+          {liquidaciones.length > 0 && (
             <div className="grid grid-cols-2 gap-4">
               <Card><CardContent className="pt-5"><p className="text-xs text-muted-foreground">Total líquido a pagar</p><p className="text-xl font-bold font-mono mt-1">{clp(totalLiquido)}</p></CardContent></Card>
               <Card><CardContent className="pt-5"><p className="text-xs text-muted-foreground">Costo total empleador</p><p className="text-xl font-bold font-mono mt-1 text-destructive">{clp(totalCosto)}</p></CardContent></Card>
             </div>
           )}
 
-          {loadingLiq ? (
+          {/* Grilla de movimientos */}
+          {(loadingLiq || loadingTrab) ? (
             <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}</div>
-          ) : liquidaciones.length === 0 ? (
+          ) : todosLosTrabajadores.filter(t => t.activo).length === 0 ? (
             <Card><CardContent className="flex flex-col items-center justify-center py-14 text-center">
-              <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
-              <p className="font-medium text-sm">Sin liquidaciones en este período</p>
+              <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
+              <p className="font-medium text-sm">No hay trabajadores activos</p>
             </CardContent></Card>
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Trabajador</th>
-                  <th className="text-right px-5 py-3 font-medium text-muted-foreground hidden sm:table-cell">Imponible</th>
-                  <th className="text-right px-5 py-3 font-medium text-muted-foreground hidden md:table-cell">Descuentos</th>
-                  <th className="text-right px-5 py-3 font-medium text-muted-foreground">Líquido</th>
-                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Estado</th>
-                  <th className="w-20" />
-                </tr></thead>
-                <tbody>
-                  {liquidaciones.map((l) => {
-                    const descuentos = Number(l.cotizAfp) + Number(l.cotizSalud) + Number(l.cotizCes) + Number(l.impuestoUnico);
-                    return (
-                      <tr key={l.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="px-5 py-4"><p className="font-medium">{l.trabajador?.nombre ?? '—'}</p><p className="text-xs text-muted-foreground">{l.trabajador?.rut}</p></td>
-                        <td className="px-5 py-4 text-right font-mono hidden sm:table-cell">{clp(l.imponible)}</td>
-                        <td className="px-5 py-4 text-right font-mono text-destructive hidden md:table-cell">{clp(descuentos)}</td>
-                        <td className="px-5 py-4 text-right font-mono font-semibold">{clp(l.liquido)}</td>
-                        <td className="px-5 py-4"><Badge variant={l.pagada ? 'default' : 'outline'}>{l.pagada ? 'Pagada' : 'Pendiente'}</Badge></td>
-                        <td className="px-5 py-4 flex items-center gap-1">
-                          {!l.pagada && <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-green-600" onClick={() => pagarLiq.mutate(l.id)} title="Marcar pagada"><CheckCircle className="h-3.5 w-3.5" /></Button>}
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => abrirPdfLiquidacion(l)} title="Ver liquidación PDF"><Printer className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteLiq.mutate(l.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b bg-muted/50">
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Trabajador</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground hidden md:table-cell whitespace-nowrap">Sueldo base</th>
+                    <th className="px-2 py-3 font-medium text-muted-foreground text-center whitespace-nowrap">H. Extra</th>
+                    <th className="px-2 py-3 font-medium text-muted-foreground text-center whitespace-nowrap">Bono $</th>
+                    <th className="px-2 py-3 font-medium text-muted-foreground text-center whitespace-nowrap">Días</th>
+                    <th className="px-2 py-3 font-medium text-muted-foreground text-center whitespace-nowrap">Anticipo $</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground hidden lg:table-cell whitespace-nowrap">Imponible</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">Líquido</th>
+                    <th className="px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">Estado</th>
+                    <th className="w-32 px-2 py-3" />
+                  </tr></thead>
+                  <tbody>
+                    {todosLosTrabajadores.filter(t => t.activo).map(t => {
+                      const liq = liqPorTrab.get(t.id);
+                      const mov = movs[t.id] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0 };
+                      const isDirty = dirty.has(t.id);
+                      const isProc = procesando.has(t.id);
+                      return (
+                        <tr key={t.id} className={`border-b last:border-0 transition-colors ${isDirty ? 'bg-amber-50 dark:bg-amber-950/20' : 'hover:bg-muted/20'}`}>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              {isDirty && <span className="flex-shrink-0 h-2 w-2 rounded-full bg-amber-500" title="Cambios sin calcular" />}
+                              <div>
+                                <p className="font-medium leading-tight">{t.nombre}</p>
+                                <p className="text-xs text-muted-foreground">{t.cargo ?? t.rut}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono text-muted-foreground hidden md:table-cell">{clp(t.sueldoBase)}</td>
+                          <td className="px-2 py-2">
+                            <Input type="number" min="0" step="0.5" value={mov.horasExtra}
+                              onChange={e => updateMov(t.id, 'horasExtra', Number(e.target.value))}
+                              className="w-20 h-7 text-xs text-center px-1" />
+                          </td>
+                          <td className="px-2 py-2">
+                            <Input type="number" min="0" value={mov.bono}
+                              onChange={e => updateMov(t.id, 'bono', Number(e.target.value))}
+                              className="w-28 h-7 text-xs text-right px-1" />
+                          </td>
+                          <td className="px-2 py-2">
+                            <Input type="number" min="0" max="31" value={mov.diasTrabajados}
+                              onChange={e => updateMov(t.id, 'diasTrabajados', Number(e.target.value))}
+                              className="w-16 h-7 text-xs text-center px-1" />
+                          </td>
+                          <td className="px-2 py-2">
+                            <Input type="number" min="0" value={mov.anticipo}
+                              onChange={e => updateMov(t.id, 'anticipo', Number(e.target.value))}
+                              className="w-28 h-7 text-xs text-right px-1" />
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono hidden lg:table-cell">
+                            {liq ? clp(liq.imponible) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono font-semibold">
+                            {liq ? clp(liq.liquido) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            {liq
+                              ? <Badge variant={liq.pagada ? 'default' : 'secondary'}>{liq.pagada ? 'Pagada' : 'Calculada'}</Badge>
+                              : <span className="text-xs text-muted-foreground">Sin liquidar</span>}
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex items-center gap-0.5">
+                              <Button size="sm" variant={isDirty ? 'default' : 'outline'} className="h-7 px-2"
+                                onClick={() => calcularUno(t.id, liq)} disabled={isProc} title="Calcular">
+                                {isProc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                              </Button>
+                              {liq && <>
+                                {!liq.pagada && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-green-600"
+                                    onClick={() => pagarLiq.mutate(liq.id)} title="Marcar pagada">
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                  onClick={() => abrirPdfLiquidacion(liq)} title="Ver liquidación">
+                                  <Printer className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  onClick={() => deleteLiq.mutate(liq.id)} title="Eliminar">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
-          {/* LIBRO DE REMUNERACIONES INLINE */}
-          {mostrarLibro && liquidaciones.length > 0 && (
+          {/* Libro de Remuneraciones */}
+          {liquidaciones.length > 0 && (
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/50">
                 <div>
-                  <p className="font-semibold text-sm">Libro de Remuneraciones</p>
-                  <p className="text-xs text-muted-foreground">{empresa.razonSocial} · RUT: {empresa.rut} · {MESES[mes - 1]} {anio} · {liquidaciones.length} trabajador(es)</p>
+                  <p className="font-semibold text-sm">Libro de Remuneraciones — {MESES[mes - 1]} {anio}</p>
+                  <p className="text-xs text-muted-foreground">{empresa.razonSocial} · RUT: {empresa.rut} · {liquidaciones.length} trabajador(es)</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => abrirLibroRemuneraciones()}>
-                  <Printer className="mr-1.5 h-3.5 w-3.5" />Imprimir
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={descargarLRE}>
+                    <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => abrirLibroRemuneraciones()}>
+                    <Printer className="mr-1.5 h-3.5 w-3.5" />Imprimir
+                  </Button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs border-collapse">
