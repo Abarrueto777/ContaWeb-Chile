@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap } from 'lucide-react';
 import api from '@/lib/api';
+import { REGIONES_DT, COMUNAS_DT } from '@/lib/dt-geo';
 import { trabajadorSchema, finiquitoInputSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput } from '@contaweb/validations';
 import type { Trabajador, Liquidacion } from '@contaweb/shared-types';
 import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador, useReactivarTrabajador } from '@/hooks/useTrabajadores';
@@ -84,6 +85,11 @@ export default function RRHH() {
     resolver: zodResolver(trabajadorSchema),
     defaultValues: { tipo: 'DEPENDIENTE', afp: 'HABITAT', salud: 'FONASA', pctSalud: 0.07, tieneCes: false, tipoGratificacion: 'ART_50', tieneMovilizacion: false, tieneColacion: false, jornadaHoras: 42, tipoContrato: 'INDEFINIDO' },
   });
+
+  const regionSeleccionada = formTrab.watch('region');
+  const comunasFiltradas = regionSeleccionada
+    ? COMUNAS_DT.filter(c => c.region === regionSeleccionada)
+    : COMUNAS_DT;
 
   const formFiniquito = useForm<FiniquitoInput>({
     resolver: zodResolver(finiquitoInputSchema),
@@ -329,8 +335,20 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
     URL.revokeObjectURL(url);
   }
 
+  function normalizarCodigoDT<T extends { codigo: string; nombre: string }>(
+    valor: string | undefined | null,
+    lista: T[]
+  ): string {
+    if (!valor) return '';
+    const esCodigoValido = lista.some(item => item.codigo === valor);
+    if (esCodigoValido) return valor;
+    return '';
+  }
+
   function abrirEditar(t: Trabajador) {
     setEditando(t);
+    const regionNorm = normalizarCodigoDT(t.region, REGIONES_DT as unknown as { codigo: string; nombre: string }[]);
+    const comunaNorm = normalizarCodigoDT(t.comuna, COMUNAS_DT);
     formTrab.reset({
       rut: t.rut, nombre: t.nombre, cargo: t.cargo ?? '',
       ...(t.email ? { email: t.email } : {}),
@@ -338,8 +356,8 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
       ...(t.fechaNacimiento ? { fechaNacimiento: new Date(t.fechaNacimiento) } : {}),
       ...(t.estadoCivil ? { estadoCivil: t.estadoCivil as TrabajadorInput['estadoCivil'] } : {}),
       ...(t.nacionalidad ? { nacionalidad: t.nacionalidad } : {}),
-      ...(t.region ? { region: t.region } : {}),
-      ...(t.comuna ? { comuna: t.comuna } : {}),
+      ...(regionNorm ? { region: regionNorm } : {}),
+      ...(comunaNorm ? { comuna: comunaNorm } : {}),
       tipo: t.tipo, sueldoBase: Number(t.sueldoBase),
       afp: t.afp, salud: t.salud, pctSalud: Number(t.pctSalud),
       ...(t.montoIsapre ? { montoIsapre: Number(t.montoIsapre) } : {}),
@@ -513,8 +531,24 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                         {formTrab.formState.errors.estadoCivil && <p className="text-xs text-destructive">{formTrab.formState.errors.estadoCivil.message}</p>}
                       </div>
                       <div className="space-y-1.5"><Label>Nacionalidad *</Label><Input {...formTrab.register('nacionalidad')} placeholder="Chilena" />{formTrab.formState.errors.nacionalidad && <p className="text-xs text-destructive">{formTrab.formState.errors.nacionalidad.message}</p>}</div>
-                      <div className="space-y-1.5"><Label>Región</Label><Input {...formTrab.register('region')} placeholder="Región Metropolitana" /></div>
-                      <div className="space-y-1.5"><Label>Comuna</Label><Input {...formTrab.register('comuna')} placeholder="Santiago" /></div>
+                      <div className="space-y-1.5">
+                        <Label>Región *</Label>
+                        <select {...formTrab.register('region')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                          <option value="">— seleccionar —</option>
+                          {REGIONES_DT.map(r => (
+                            <option key={r.codigo} value={r.codigo}>{r.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Comuna *</Label>
+                        <select {...formTrab.register('comuna')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                          <option value="">— seleccionar —</option>
+                          {comunasFiltradas.map(c => (
+                            <option key={c.codigo} value={c.codigo}>{c.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                   <div className="grid sm:grid-cols-3 gap-4">
