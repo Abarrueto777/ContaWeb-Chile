@@ -1,9 +1,30 @@
 import { Router } from 'express';
+import iconv from 'iconv-lite';
 import { prisma } from '../lib/prisma';
 import { liquidacionInputSchema } from '@contaweb/validations';
 import { calcularLiquidacion } from '../services/liquidacion.service';
 import { createError } from '../middlewares/errorHandler';
 import { generarLiquidacionPdf, type EmpresaDoc, type TrabajadorDoc } from '../services/htmlDocs.service';
+
+// Códigos de Región DT — Tabla N°2 Manual LRE
+const REGION_COD: Record<string, string> = {
+  'tarapaca': '1', 'tarapacá': '1',
+  'antofagasta': '2',
+  'atacama': '3',
+  'coquimbo': '4',
+  'valparaiso': '5', 'valparaíso': '5',
+  'ohiggins': '6', "o'higgins": '6', 'libertador': '6',
+  'maule': '7',
+  'biobio': '8', 'bío-bío': '8', 'biobío': '8', 'bio bio': '8',
+  'araucania': '9', 'araucanía': '9',
+  'lagos': '10', 'los lagos': '10',
+  'aysen': '11', 'aysén': '11',
+  'magallanes': '12',
+  'metropolitana': '13', 'rm': '13', 'region metropolitana': '13', 'región metropolitana': '13',
+  'los rios': '14', 'los ríos': '14',
+  'arica': '15', 'arica y parinacota': '15',
+  'nuble': '16', 'ñuble': '16',
+};
 
 const router = Router({ mergeParams: true });
 
@@ -61,16 +82,27 @@ router.get('/lre', async (req, res, next) => {
       const totalAportesEmp = cesEmpleador + cotizSis + seguroAccidentes;
       const totalHaberes = imponible + noImponible;
 
+      // RUT sin puntos — requerido por DT (ej. "12345678-9")
+      const rutTrab = t.rut.replace(/\./g, '');
+
+      // Región: código numérico — Tabla N°2 Manual LRE
+      const regionRaw = ((t as typeof t & { region?: string | null }).region ?? '').trim().toLowerCase();
+      const regionCod = /^\d+$/.test(regionRaw) ? regionRaw : (REGION_COD[regionRaw] ?? '13');
+
+      // Comuna: código numérico — Tabla N°3 (500+ códigos); se acepta número directo
+      const comunaRaw = ((t as typeof t & { comuna?: string | null }).comuna ?? '').trim();
+      const comunaCod = /^\d+$/.test(comunaRaw) ? comunaRaw : '13101'; // fallback Santiago
+
       const fi = new Date(t.fechaIngreso);
       const fechaIngreso = `${String(fi.getDate()).padStart(2,'0')}/${String(fi.getMonth()+1).padStart(2,'0')}/${fi.getFullYear()}`;
 
       return [
-        /* 1101 */ t.rut,
+        /* 1101 */ rutTrab,
         /* 1102 */ fechaIngreso,
         /* 1103 */ '',
         /* 1104 */ '',
-        /* 1105 */ (t as typeof t & { region?: string | null }).region ?? '',
-        /* 1106 */ (t as typeof t & { comuna?: string | null }).comuna ?? '',
+        /* 1105 */ regionCod,
+        /* 1106 */ comunaCod,
         /* 1170 */ '2',
         /* 1146 */ '',
         /* 1107 */ Number(t.jornadaHoras) >= 30 ? '101' : '201',
@@ -198,10 +230,15 @@ router.get('/lre', async (req, res, next) => {
     });
 
     const mesPad = String(mes).padStart(2, '0');
+    // Nombre de archivo según DT: rutempleador_aaaamm.csv (RUT sin puntos)
+    const rutEmpSinPuntos = empresa.rut.replace(/\./g, '');
+    const nombreArchivo = `${rutEmpSinPuntos}_${anio}${mesPad}.csv`;
     const csv = [HEADER, ...rows].join('\r\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="LRE_${empresa.rut}_${anio}_${mesPad}.csv"`);
-    res.send('﻿' + csv);
+    // Codificación ANSI (Windows-1252) requerida por la DT
+    const csvAnsi = iconv.encode(csv, 'win1252');
+    res.setHeader('Content-Type', 'text/csv; charset=windows-1252');
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
+    res.send(csvAnsi);
   } catch (err) {
     next(err);
   }
