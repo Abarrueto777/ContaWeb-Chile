@@ -7,6 +7,7 @@ export function useEmpresas() {
   return useQuery<ApiResponse<Empresa[]>>({
     queryKey: ['empresas'],
     queryFn: () => api.get<ApiResponse<Empresa[]>>('/api/empresas').then((r) => r.data),
+    enabled: !!localStorage.getItem('auth_token'),
   });
 }
 

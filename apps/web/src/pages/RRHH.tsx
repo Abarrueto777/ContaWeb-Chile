@@ -56,6 +56,7 @@ export default function RRHH() {
   const [openFiniquito, setOpenFiniquito] = useState(false);
   const [editando, setEditando] = useState<Trabajador | null>(null);
   const [finiquitandoTrab, setFiniquitandoTrab] = useState<Trabajador | null>(null);
+  const [filtroActivo, setFiltroActivo] = useState<'todos' | 'activos' | 'inactivos'>('activos');
 
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data: trabData, isLoading: loadingTrab } = useTrabajadores(empresa?.id ?? '');
@@ -68,7 +69,10 @@ export default function RRHH() {
   const deleteLiq = useDeleteLiquidacion(empresa?.id ?? '');
   const pagarLiq = usePagarLiquidacion(empresa?.id ?? '');
 
-  const trabajadores = trabData?.data ?? [];
+  const todosLosTrabajadores = trabData?.data ?? [];
+  const trabajadores = todosLosTrabajadores.filter((t) =>
+    filtroActivo === 'todos' ? true : filtroActivo === 'activos' ? t.activo : !t.activo
+  );
   const liquidaciones = liqData?.data ?? [];
 
   const formTrab = useForm<TrabajadorInput>({
@@ -187,7 +191,23 @@ export default function RRHH() {
       {/* VISTA TRABAJADORES */}
       {vista === 'trabajadores' && (
         <>
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
+              {(['activos', 'inactivos', 'todos'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFiltroActivo(f)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${filtroActivo === f ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  {f === 'activos' ? 'Activos' : f === 'inactivos' ? 'Inactivos' : 'Todos'}
+                  <span className="ml-1.5 text-[10px] opacity-60">
+                    {f === 'activos' ? todosLosTrabajadores.filter(t => t.activo).length
+                      : f === 'inactivos' ? todosLosTrabajadores.filter(t => !t.activo).length
+                      : todosLosTrabajadores.length}
+                  </span>
+                </button>
+              ))}
+            </div>
             <Dialog open={openTrabajador} onOpenChange={(v) => { if (!v) { formTrab.reset(); createTrab.reset(); setEditando(null); } setOpenTrabajador(v); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nuevo trabajador</Button></DialogTrigger>
               <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">

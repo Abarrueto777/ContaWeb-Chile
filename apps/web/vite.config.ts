@@ -17,5 +17,8 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    watch: {
+      ignored: ['**/packages/*/dist/**', '**/node_modules/**'],
+    },
   },
 });
