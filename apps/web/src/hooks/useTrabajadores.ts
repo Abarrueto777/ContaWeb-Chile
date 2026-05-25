@@ -34,3 +34,11 @@ export function useDesactivarTrabajador(empresaId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['trabajadores', empresaId] }),
   });
 }
+
+export function useReactivarTrabajador(empresaId: string) {
+  const qc = useQueryClient();
+  return useMutation<ApiResponse<Trabajador>, Error, string>({
+    mutationFn: (id) => api.patch<ApiResponse<Trabajador>>(`/api/empresas/${empresaId}/trabajadores/${id}/reactivar`, {}).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['trabajadores', empresaId] }),
+  });
+}

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw } from 'lucide-react';
 import api from '@/lib/api';
 import { trabajadorSchema, liquidacionInputSchema, finiquitoInputSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput } from '@contaweb/validations';
 import type { Trabajador, Liquidacion } from '@contaweb/shared-types';
-import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador } from '@/hooks/useTrabajadores';
+import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador, useReactivarTrabajador } from '@/hooks/useTrabajadores';
 import { useLiquidaciones, useCreateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion } from '@/hooks/useLiquidaciones';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,7 @@ export default function RRHH() {
   const createTrab = useCreateTrabajador(empresa?.id ?? '');
   const updateTrab = useUpdateTrabajador(empresa?.id ?? '', editando?.id ?? '');
   const desactivar = useDesactivarTrabajador(empresa?.id ?? '');
+  const reactivar = useReactivarTrabajador(empresa?.id ?? '');
   const createLiq = useCreateLiquidacion(empresa?.id ?? '');
   const deleteLiq = useDeleteLiquidacion(empresa?.id ?? '');
   const pagarLiq = usePagarLiquidacion(empresa?.id ?? '');
@@ -350,10 +351,12 @@ export default function RRHH() {
                         <div className="flex items-center gap-0.5">
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => abrirEditar(t)} title="Editar"><Pencil className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => abrirContrato(t)} title="Ver contrato"><Printer className="h-3.5 w-3.5" /></Button>
-                          {t.activo && <>
+                          {t.activo ? <>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-amber-600" onClick={() => { setFiniquitandoTrab(t); setOpenFiniquito(true); }} title="Finiquitar"><Briefcase className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => desactivar.mutate(t.id)} title="Desactivar"><Trash2 className="h-3.5 w-3.5" /></Button>
-                          </>}
+                          </> : (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-green-600" onClick={() => reactivar.mutate(t.id)} title="Reactivar trabajador"><RotateCcw className="h-3.5 w-3.5" /></Button>
+                          )}
                         </div>
                       </td>
                     </tr>

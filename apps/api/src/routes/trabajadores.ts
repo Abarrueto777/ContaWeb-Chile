@@ -88,6 +88,18 @@ router.patch('/:trabajadorId/desactivar', async (req, res) => {
   }
 });
 
+router.patch('/:trabajadorId/reactivar', async (req, res) => {
+  try {
+    const trabajador = await prisma.trabajador.update({
+      where: { id: req.params['trabajadorId'] },
+      data: { activo: true },
+    });
+    res.json({ data: trabajador });
+  } catch {
+    res.status(500).json({ error: 'Error al reactivar trabajador' });
+  }
+});
+
 // ── Contrato Individual de Trabajo ───────────────────────────────────────────
 
 router.get('/:trabajadorId/contrato', async (req, res) => {
