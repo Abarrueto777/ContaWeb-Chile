@@ -156,9 +156,15 @@ export const trabajadorSchema = z.object({
   cargo: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   domicilio: z.string().optional(),
-  fechaNacimiento: z.coerce.date().optional(),
-  estadoCivil: z.enum(['SOLTERO', 'CASADO', 'DIVORCIADO', 'VIUDO', 'CONVIVIENTE_CIVIL']).optional(),
-  nacionalidad: z.string().optional().default('Chilena'),
+  fechaNacimiento: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : v),
+    z.coerce.date().optional(),
+  ),
+  estadoCivil: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : v),
+    z.enum(['SOLTERO', 'CASADO', 'DIVORCIADO', 'VIUDO', 'CONVIVIENTE_CIVIL']).optional(),
+  ),
+  nacionalidad: z.string().optional(),
   region: z.string().optional(),
   comuna: z.string().optional(),
   tipo: z.enum(['DEPENDIENTE', 'SUELDO_EMPRESARIAL']).default('DEPENDIENTE'),
