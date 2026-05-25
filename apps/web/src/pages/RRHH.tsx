@@ -44,7 +44,7 @@ function clp(n: string | number) {
   return Number(n).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
 
-type Vista = 'trabajadores' | 'liquidaciones';
+type Vista = 'trabajadores' | 'liquidaciones' | 'libro';
 
 export default function RRHH() {
   const hoy = new Date();
@@ -314,18 +314,21 @@ export default function RRHH() {
   if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tenés empresas registradas</p></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 w-full">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">RRHH — Remuneraciones</h1>
           <p className="text-sm text-muted-foreground mt-1">{empresa.razonSocial}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant={vista === 'trabajadores' ? 'default' : 'outline'} size="sm" onClick={() => setVista('trabajadores')}>
             <Users className="mr-1.5 h-3.5 w-3.5" />Trabajadores
           </Button>
           <Button variant={vista === 'liquidaciones' ? 'default' : 'outline'} size="sm" onClick={() => setVista('liquidaciones')}>
             <FileText className="mr-1.5 h-3.5 w-3.5" />Liquidaciones
+          </Button>
+          <Button variant={vista === 'libro' ? 'default' : 'outline'} size="sm" onClick={() => setVista('libro')}>
+            <Printer className="mr-1.5 h-3.5 w-3.5" />Libro Rem.
           </Button>
         </div>
       </div>
@@ -534,23 +537,23 @@ export default function RRHH() {
       {vista === 'liquidaciones' && (
         <>
           {/* Encabezado: período + parámetros + acciones */}
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex items-center gap-2">
-              <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="flex h-8 rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm">
                 {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
               </select>
-              <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-24" min="2000" max="2100" />
+              <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-20 h-8 text-sm" min="2000" max="2100" />
+              <div className="h-6 border-l hidden sm:block" />
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">UTM</span>
+                <Input type="number" value={utm} onChange={(e) => setUtm(Number(e.target.value))} className="w-24 h-8 text-sm" />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">S.Mín.</span>
+                <Input type="number" value={imm} onChange={(e) => setImm(Number(e.target.value))} className="w-28 h-8 text-sm" />
+              </div>
             </div>
-            <div className="h-8 border-l hidden sm:block" />
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">UTM $</span>
-              <Input type="number" value={utm} onChange={(e) => setUtm(Number(e.target.value))} className="w-28 h-8 text-sm" />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">S. Mínimo $</span>
-              <Input type="number" value={imm} onChange={(e) => setImm(Number(e.target.value))} className="w-32 h-8 text-sm" />
-            </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={descargarLRE} disabled={liquidaciones.length === 0}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
               </Button>
@@ -584,18 +587,17 @@ export default function RRHH() {
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b bg-muted/50">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Trabajador</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground hidden md:table-cell whitespace-nowrap">Sueldo base</th>
-                    <th className="px-2 py-3 font-medium text-muted-foreground text-center whitespace-nowrap">H. Extra</th>
-                    <th className="px-2 py-3 font-medium text-muted-foreground text-center whitespace-nowrap">Bono $</th>
-                    <th className="px-2 py-3 font-medium text-muted-foreground text-center whitespace-nowrap">Días</th>
-                    <th className="px-2 py-3 font-medium text-muted-foreground text-center whitespace-nowrap">Anticipo $</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground hidden lg:table-cell whitespace-nowrap">Imponible</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">Líquido</th>
-                    <th className="px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">Estado</th>
-                    <th className="w-32 px-2 py-3" />
+                <table className="w-full text-sm min-w-[640px]">
+                  <thead><tr className="border-b bg-muted/50 text-xs">
+                    <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Trabajador</th>
+                    <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">H.Extra</th>
+                    <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Bono $</th>
+                    <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Días</th>
+                    <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Anticipo $</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell whitespace-nowrap">Imponible</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Líquido</th>
+                    <th className="px-2 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden sm:table-cell">Estado</th>
+                    <th className="w-28 px-1.5 py-2.5" />
                   </tr></thead>
                   <tbody>
                     {todosLosTrabajadores.filter(t => t.activo).map(t => {
@@ -605,52 +607,51 @@ export default function RRHH() {
                       const isProc = procesando.has(t.id);
                       return (
                         <tr key={t.id} className={`border-b last:border-0 transition-colors ${isDirty ? 'bg-amber-50 dark:bg-amber-950/20' : 'hover:bg-muted/20'}`}>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center gap-2">
-                              {isDirty && <span className="flex-shrink-0 h-2 w-2 rounded-full bg-amber-500" title="Cambios sin calcular" />}
-                              <div>
-                                <p className="font-medium leading-tight">{t.nombre}</p>
-                                <p className="text-xs text-muted-foreground">{t.cargo ?? t.rut}</p>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1.5">
+                              {isDirty && <span className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-amber-500" title="Cambios sin calcular" />}
+                              <div className="min-w-0">
+                                <p className="font-medium leading-tight truncate">{t.nombre}</p>
+                                <p className="text-xs text-muted-foreground truncate">{t.cargo ?? t.rut}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-3 py-2.5 text-right font-mono text-muted-foreground hidden md:table-cell">{clp(t.sueldoBase)}</td>
-                          <td className="px-2 py-2">
+                          <td className="px-1 py-1.5">
                             <Input type="number" min="0" step="0.5" value={mov.horasExtra}
                               onChange={e => updateMov(t.id, 'horasExtra', Number(e.target.value))}
-                              className="w-20 h-7 text-xs text-center px-1" />
+                              className="w-14 h-7 text-xs text-center px-1" />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-1 py-1.5">
                             <Input type="number" min="0" value={mov.bono}
                               onChange={e => updateMov(t.id, 'bono', Number(e.target.value))}
-                              className="w-28 h-7 text-xs text-right px-1" />
+                              className="w-20 h-7 text-xs text-right px-1" />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-1 py-1.5">
                             <Input type="number" min="0" max="31" value={mov.diasTrabajados}
                               onChange={e => updateMov(t.id, 'diasTrabajados', Number(e.target.value))}
-                              className="w-16 h-7 text-xs text-center px-1" />
+                              className="w-12 h-7 text-xs text-center px-1" />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-1 py-1.5">
                             <Input type="number" min="0" value={mov.anticipo}
                               onChange={e => updateMov(t.id, 'anticipo', Number(e.target.value))}
-                              className="w-28 h-7 text-xs text-right px-1" />
+                              className="w-20 h-7 text-xs text-right px-1" />
                           </td>
-                          <td className="px-3 py-2.5 text-right font-mono hidden lg:table-cell">
+                          <td className="px-3 py-2 text-right font-mono text-sm hidden lg:table-cell">
                             {liq ? clp(liq.imponible) : <span className="text-muted-foreground">—</span>}
                           </td>
-                          <td className="px-3 py-2.5 text-right font-mono font-semibold">
+                          <td className="px-3 py-2 text-right font-mono text-sm font-semibold">
                             {liq ? clp(liq.liquido) : <span className="text-muted-foreground">—</span>}
                           </td>
-                          <td className="px-3 py-2.5">
+                          <td className="px-2 py-2 hidden sm:table-cell">
                             {liq
-                              ? <Badge variant={liq.pagada ? 'default' : 'secondary'}>{liq.pagada ? 'Pagada' : 'Calculada'}</Badge>
-                              : <span className="text-xs text-muted-foreground">Sin liquidar</span>}
+                              ? <Badge variant={liq.pagada ? 'default' : 'secondary'} className="text-xs">{liq.pagada ? 'Pagada' : 'Calculada'}</Badge>
+                              : <span className="text-xs text-muted-foreground">—</span>}
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-1.5 py-1.5">
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant={isDirty ? 'default' : 'outline'} className="h-7 px-2"
                                 onClick={() => calcularUno(t.id, liq)} disabled={isProc} title="Calcular">
-                                {isProc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                                {isProc ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                               </Button>
                               {liq && <>
                                 {!liq.pagada && (
@@ -679,21 +680,41 @@ export default function RRHH() {
             </div>
           )}
 
-          {/* Libro de Remuneraciones */}
-          {liquidaciones.length > 0 && (
+        </>
+      )}
+
+      {/* VISTA LIBRO DE REMUNERACIONES */}
+      {vista === 'libro' && (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="flex h-8 rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm">
+              {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+            </select>
+            <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-20 h-8 text-sm" min="2000" max="2100" />
+            <div className="ml-auto flex gap-2">
+              <Button variant="outline" size="sm" onClick={descargarLRE} disabled={liquidaciones.length === 0}>
+                <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => abrirLibroRemuneraciones()} disabled={liquidaciones.length === 0}>
+                <Printer className="mr-1.5 h-3.5 w-3.5" />Imprimir
+              </Button>
+            </div>
+          </div>
+
+          {loadingLiq ? (
+            <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}</div>
+          ) : liquidaciones.length === 0 ? (
+            <Card><CardContent className="flex flex-col items-center justify-center py-14 text-center">
+              <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
+              <p className="font-medium text-sm">Sin liquidaciones en {MESES[mes - 1]} {anio}</p>
+              <p className="text-xs text-muted-foreground mt-1">Calculá las liquidaciones del período en la pestaña Liquidaciones.</p>
+            </CardContent></Card>
+          ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/50">
                 <div>
                   <p className="font-semibold text-sm">Libro de Remuneraciones — {MESES[mes - 1]} {anio}</p>
                   <p className="text-xs text-muted-foreground">{empresa.razonSocial} · RUT: {empresa.rut} · {liquidaciones.length} trabajador(es)</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={descargarLRE}>
-                    <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => abrirLibroRemuneraciones()}>
-                    <Printer className="mr-1.5 h-3.5 w-3.5" />Imprimir
-                  </Button>
                 </div>
               </div>
               <div className="overflow-x-auto">
