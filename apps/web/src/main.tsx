@@ -6,8 +6,12 @@ import App from './App';
 const root = document.getElementById('root');
 if (!root) throw new Error('No se encontró el elemento #root');
 
+import { ThemeProvider } from './components/ThemeProvider';
+
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </StrictMode>
 );

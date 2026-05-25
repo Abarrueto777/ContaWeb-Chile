@@ -77,7 +77,7 @@ export default function RRHH() {
 
   const formLiq = useForm<LiquidacionInput>({
     resolver: zodResolver(liquidacionInputSchema),
-    defaultValues: { anio, mes, horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, utm: 68000, imm: 500000 },
+    defaultValues: { anio, mes, horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, utm: 68400, imm: 539000 },
   });
 
   const formFiniquito = useForm<FiniquitoInput>({
@@ -335,7 +335,7 @@ export default function RRHH() {
                   <th className="text-right px-5 py-3 font-medium text-muted-foreground">Sueldo base</th>
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground hidden md:table-cell">AFP</th>
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Estado</th>
-                  <th className="w-20" />
+                  <th className="w-40" />
                 </tr></thead>
                 <tbody>
                   {trabajadores.map((t) => (
@@ -345,13 +345,15 @@ export default function RRHH() {
                       <td className="px-5 py-4 text-right font-mono">{clp(t.sueldoBase)}</td>
                       <td className="px-5 py-4 text-muted-foreground hidden md:table-cell">{t.afp}</td>
                       <td className="px-5 py-4"><Badge variant={t.activo ? 'default' : 'outline'}>{t.activo ? 'Activo' : 'Inactivo'}</Badge></td>
-                      <td className="px-5 py-4 flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => abrirEditar(t)} title="Editar"><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => abrirContrato(t)} title="Ver contrato"><Printer className="h-3.5 w-3.5" /></Button>
-                        {t.activo && <>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-amber-600" onClick={() => { setFiniquitandoTrab(t); setOpenFiniquito(true); }} title="Finiquitar"><Briefcase className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => desactivar.mutate(t.id)} title="Desactivar"><Trash2 className="h-3.5 w-3.5" /></Button>
-                        </>}
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => abrirEditar(t)} title="Editar"><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => abrirContrato(t)} title="Ver contrato"><Printer className="h-3.5 w-3.5" /></Button>
+                          {t.activo && <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-amber-600" onClick={() => { setFiniquitandoTrab(t); setOpenFiniquito(true); }} title="Finiquitar"><Briefcase className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => desactivar.mutate(t.id)} title="Desactivar"><Trash2 className="h-3.5 w-3.5" /></Button>
+                          </>}
+                        </div>
                       </td>
                     </tr>
                   ))}

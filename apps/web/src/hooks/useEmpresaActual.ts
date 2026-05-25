@@ -1,8 +1,5 @@
-import { useEmpresas } from './useEmpresas';
+import { useEmpresaContext, type EmpresaContextValue } from '@/components/EmpresaProvider';
 
-export function useEmpresaActual() {
-  const { data, isLoading } = useEmpresas();
-  const empresas = data?.data ?? [];
-  const primera = empresas[0] ?? null;
-  return { empresa: primera, empresas, isLoading };
+export function useEmpresaActual(): EmpresaContextValue {
+  return useEmpresaContext();
 }
