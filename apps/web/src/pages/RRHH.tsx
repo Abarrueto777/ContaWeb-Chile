@@ -57,6 +57,7 @@ export default function RRHH() {
   const [editando, setEditando] = useState<Trabajador | null>(null);
   const [finiquitandoTrab, setFiniquitandoTrab] = useState<Trabajador | null>(null);
   const [filtroActivo, setFiltroActivo] = useState<'todos' | 'activos' | 'inactivos'>('activos');
+  const [mostrarLibro, setMostrarLibro] = useState(false);
 
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data: trabData, isLoading: loadingTrab } = useTrabajadores(empresa?.id ?? '');
@@ -84,6 +85,8 @@ export default function RRHH() {
     resolver: zodResolver(liquidacionInputSchema),
     defaultValues: { anio, mes, horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, utm: 68400, imm: 539000 },
   });
+  const trabIdSeleccionado = formLiq.watch('trabajadorId');
+  const trabSeleccionado = todosLosTrabajadores.find((t) => t.id === trabIdSeleccionado) ?? null;
 
   const formFiniquito = useForm<FiniquitoInput>({
     resolver: zodResolver(finiquitoInputSchema),
@@ -243,6 +246,16 @@ export default function RRHH() {
 
   const totalLiquido = liquidaciones.reduce((s, l) => s + Number(l.liquido), 0);
   const totalCosto = liquidaciones.reduce((s, l) => s + Number(l.costoEmpleador), 0);
+  type LiqExt = typeof liquidaciones[0] & { sueldoBase?: number; horasExtra?: number; bono?: number; gratificacion?: number; movilizacion?: number; colacion?: number };
+  const liqs = liquidaciones as LiqExt[];
+  const libroTots = liqs.reduce((acc, l) => ({
+    imponible: acc.imponible + Number(l.imponible),
+    cotizAfp: acc.cotizAfp + Number(l.cotizAfp),
+    cotizSalud: acc.cotizSalud + Number(l.cotizSalud),
+    cotizCes: acc.cotizCes + Number(l.cotizCes ?? 0),
+    impuesto: acc.impuesto + Number(l.impuestoUnico ?? 0),
+    liquido: acc.liquido + Number(l.liquido),
+  }), { imponible: 0, cotizAfp: 0, cotizSalud: 0, cotizCes: 0, impuesto: 0, liquido: 0 });
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
   if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tenés empresas registradas</p></div>;
@@ -475,52 +488,73 @@ export default function RRHH() {
               <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-24" min="2000" max="2100" />
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={abrirLibroRemuneraciones} disabled={liquidaciones.length === 0}>
-                <Printer className="mr-1.5 h-3.5 w-3.5" />Libro de Rem.
+              <Button variant="outline" size="sm" onClick={() => setMostrarLibro((v) => !v)} disabled={liquidaciones.length === 0}>
+                <Printer className="mr-1.5 h-3.5 w-3.5" />{mostrarLibro ? 'Ocultar libro' : 'Libro de Rem.'}
               </Button>
               <Button variant="outline" size="sm" onClick={descargarLRE} disabled={liquidaciones.length === 0}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
               </Button>
-            <Dialog open={openLiq} onOpenChange={(v) => { if (!v) { formLiq.reset(); createLiq.reset(); } setOpenLiq(v); }}>
+            <Dialog open={openLiq} onOpenChange={(v) => {
+              if (!v) { formLiq.reset({ anio, mes, horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, utm: 68400, imm: 539000 }); createLiq.reset(); }
+              else { formLiq.setValue('anio', anio); formLiq.setValue('mes', mes); }
+              setOpenLiq(v);
+            }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nueva liquidación</Button></DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader><DialogTitle>Nueva liquidación</DialogTitle><DialogDescription>La retención se calcula automáticamente según AFP, salud e impuesto único.</DialogDescription></DialogHeader>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Nueva liquidación</DialogTitle>
+                  <DialogDescription>Período: <strong>{MESES[mes - 1]} {anio}</strong> — seleccioná el trabajador y completá los haberes variables.</DialogDescription>
+                </DialogHeader>
                 <form id="form-liq" onSubmit={formLiq.handleSubmit(onSubmitLiq)} className="space-y-4">
+                  {/* Selector trabajador */}
                   <div className="space-y-1.5">
                     <Label>Trabajador *</Label>
                     <select {...formLiq.register('trabajadorId')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                      <option value="">Seleccionar…</option>
-                      {trabajadores.filter((t) => t.activo).map((t) => (
-                        <option key={t.id} value={t.id}>{t.nombre} — {clp(t.sueldoBase)}</option>
+                      <option value="">— Seleccionar trabajador —</option>
+                      {todosLosTrabajadores.filter((t) => t.activo).map((t) => (
+                        <option key={t.id} value={t.id}>{t.nombre}</option>
                       ))}
                     </select>
                     {formLiq.formState.errors.trabajadorId && <p className="text-xs text-destructive">{formLiq.formState.errors.trabajadorId.message}</p>}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label>Año</Label><Input {...formLiq.register('anio', { valueAsNumber: true })} type="number" /></div>
-                    <div className="space-y-1.5"><Label>Mes</Label>
-                      <select {...formLiq.register('mes', { valueAsNumber: true })} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                        {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-                      </select>
+
+                  {/* Tarjeta del trabajador seleccionado */}
+                  {trabSeleccionado && (
+                    <div className="rounded-lg border bg-muted/40 p-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sueldo base</p><p className="font-mono font-semibold">{clp(trabSeleccionado.sueldoBase)}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Cargo</p><p className="truncate">{trabSeleccionado.cargo ?? '—'}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">AFP</p><p>{trabSeleccionado.afp}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Salud</p><p>{trabSeleccionado.salud}</p></div>
+                    </div>
+                  )}
+
+                  {/* Haberes variables */}
+                  <div className="border-t pt-3 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Haberes variables</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5"><Label>Horas extra</Label><Input {...formLiq.register('horasExtra', { valueAsNumber: true })} type="number" min="0" step="0.5" placeholder="0" /></div>
+                      <div className="space-y-1.5"><Label>Bono ($)</Label><Input {...formLiq.register('bono', { valueAsNumber: true })} type="number" min="0" placeholder="0" /></div>
+                      <div className="space-y-1.5"><Label>Días trabajados</Label><Input {...formLiq.register('diasTrabajados', { valueAsNumber: true })} type="number" min="0" max="31" /></div>
+                      <div className="space-y-1.5"><Label>Anticipo ($)</Label><Input {...formLiq.register('anticipo', { valueAsNumber: true })} type="number" min="0" placeholder="0" /></div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label>Horas extra</Label><Input {...formLiq.register('horasExtra', { valueAsNumber: true })} type="number" min="0" step="0.5" /></div>
-                    <div className="space-y-1.5"><Label>Bono ($)</Label><Input {...formLiq.register('bono', { valueAsNumber: true })} type="number" min="0" /></div>
+
+                  {/* Parámetros del período */}
+                  <div className="border-t pt-3 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parámetros del período</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5"><Label>UTM ($)</Label><Input {...formLiq.register('utm', { valueAsNumber: true })} type="number" min="0" /></div>
+                      <div className="space-y-1.5"><Label>Sueldo mínimo ($)</Label><Input {...formLiq.register('imm', { valueAsNumber: true })} type="number" min="0" /></div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label>Días trabajados</Label><Input {...formLiq.register('diasTrabajados', { valueAsNumber: true })} type="number" min="0" max="31" /></div>
-                    <div className="space-y-1.5"><Label>Anticipo ($)</Label><Input {...formLiq.register('anticipo', { valueAsNumber: true })} type="number" min="0" /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label>UTM del período</Label><Input {...formLiq.register('utm', { valueAsNumber: true })} type="number" min="0" /></div>
-                    <div className="space-y-1.5"><Label>IMM del período</Label><Input {...formLiq.register('imm', { valueAsNumber: true })} type="number" min="0" /></div>
-                  </div>
+
                   {createLiq.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createLiq.error.message}</p>}
                 </form>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setOpenLiq(false)}>Cancelar</Button>
-                  <Button type="submit" form="form-liq" disabled={createLiq.isPending}>{createLiq.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Calcular y guardar</Button>
+                  <Button type="submit" form="form-liq" disabled={createLiq.isPending || !trabIdSeleccionado}>
+                    {createLiq.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Calcular y guardar
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -572,6 +606,74 @@ export default function RRHH() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* LIBRO DE REMUNERACIONES INLINE */}
+          {mostrarLibro && liquidaciones.length > 0 && (
+            <div className="rounded-xl border bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/50">
+                <div>
+                  <p className="font-semibold text-sm">Libro de Remuneraciones</p>
+                  <p className="text-xs text-muted-foreground">{empresa.razonSocial} · RUT: {empresa.rut} · {MESES[mes - 1]} {anio} · {liquidaciones.length} trabajador(es)</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => abrirLibroRemuneraciones()}>
+                  <Printer className="mr-1.5 h-3.5 w-3.5" />Imprimir
+                </Button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-muted/40 border-b">
+                      <th className="px-3 py-2.5 text-center font-medium text-muted-foreground whitespace-nowrap">N°</th>
+                      <th className="px-3 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">Trabajador</th>
+                      <th className="px-3 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">RUT</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Sueldo base</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">H. Extra</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Bono</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Gratif.</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Mov+Col</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Imponible</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">AFP</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Salud</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">CES</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Imp. Único</th>
+                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Líquido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liqs.map((l, i) => (
+                      <tr key={l.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                        <td className="px-3 py-2 text-center text-muted-foreground">{i + 1}</td>
+                        <td className="px-3 py-2 font-medium whitespace-nowrap">{l.trabajador?.nombre ?? '—'}</td>
+                        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{l.trabajador?.rut ?? '—'}</td>
+                        <td className="px-3 py-2 text-right font-mono">{clp(l.sueldoBase ?? 0)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{clp(l.horasExtra ?? 0)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{clp(l.bono ?? 0)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{clp(l.gratificacion ?? 0)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{clp(Number(l.movilizacion ?? 0) + Number(l.colacion ?? 0))}</td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold">{clp(l.imponible)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-destructive">{clp(l.cotizAfp)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-destructive">{clp(l.cotizSalud)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-destructive">{clp(l.cotizCes ?? 0)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-destructive">{clp(l.impuestoUnico ?? 0)}</td>
+                        <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{clp(l.liquido)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/40 border-t-2 font-semibold">
+                      <td colSpan={8} className="px-3 py-2.5 text-right text-muted-foreground text-xs uppercase tracking-wide">Totales</td>
+                      <td className="px-3 py-2.5 text-right font-mono">{clp(libroTots.imponible)}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-destructive">{clp(libroTots.cotizAfp)}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-destructive">{clp(libroTots.cotizSalud)}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-destructive">{clp(libroTots.cotizCes)}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-destructive">{clp(libroTots.impuesto)}</td>
+                      <td className="px-3 py-2.5 text-right font-mono font-bold text-green-700">{clp(libroTots.liquido)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           )}
         </>
