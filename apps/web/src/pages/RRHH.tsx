@@ -126,76 +126,191 @@ export default function RRHH() {
 
   function abrirLibroRemuneraciones() {
     const mesLabel = MESES[mes - 1];
-    const clpF = (n: number) => Number(n).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-    type LiqExt = typeof liquidaciones[0] & { sueldoBase?: number; horasExtra?: number; bono?: number; gratificacion?: number; movilizacion?: number; colacion?: number; anticipo?: number; cotizSis?: number };
-    const filas = (liquidaciones as LiqExt[]).map((l, i) => `
-      <tr style="border-bottom:1px solid #e5e7eb;">
-        <td style="padding:6px 8px;text-align:center;font-size:9pt;">${i + 1}</td>
-        <td style="padding:6px 8px;font-size:9pt;">${l.trabajador?.nombre ?? '—'}</td>
-        <td style="padding:6px 8px;font-size:9pt;">${l.trabajador?.rut ?? '—'}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.sueldoBase ?? 0))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.horasExtra ?? 0))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.bono ?? 0))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.gratificacion ?? 0))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.movilizacion ?? 0) + Number(l.colacion ?? 0))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;font-weight:600;">${clpF(Number(l.imponible))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.cotizAfp))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.cotizSalud))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.cotizCes ?? 0))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;">${clpF(Number(l.impuestoUnico ?? 0))}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:9pt;font-weight:700;color:#166534;">${clpF(Number(l.liquido))}</td>
-        <td style="padding:6px 8px;text-align:center;font-size:8pt;color:#6b7280;">____________</td>
-      </tr>`).join('');
+    const f = (n: number | string | undefined | null) =>
+      Number(n ?? 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+    type LiqExt = typeof liquidaciones[0] & {
+      sueldoBase?: number; horasExtra?: number; bono?: number; gratificacion?: number;
+      movilizacion?: number; colacion?: number; anticipo?: number; cotizSis?: number; diasTrabajados?: number;
+    };
+    const liqs = liquidaciones as LiqExt[];
 
-    const totales = (liquidaciones as LiqExt[]).reduce((acc, l) => ({
-      imponible: acc.imponible + Number(l.imponible),
-      cotizAfp: acc.cotizAfp + Number(l.cotizAfp),
-      cotizSalud: acc.cotizSalud + Number(l.cotizSalud),
-      cotizCes: acc.cotizCes + Number(l.cotizCes ?? 0),
-      impuesto: acc.impuesto + Number(l.impuestoUnico ?? 0),
-      liquido: acc.liquido + Number(l.liquido),
-    }), { imponible: 0, cotizAfp: 0, cotizSalud: 0, cotizCes: 0, impuesto: 0, liquido: 0 });
+    const th = (txt: string, align = 'right', width = '') =>
+      `<th style="padding:4px 5px;font-size:7pt;font-weight:700;text-align:${align};border:1px solid #9ca3af;background:#e5e7eb;white-space:nowrap;${width ? `width:${width};` : ''}">${txt}</th>`;
+    const td = (txt: string, align = 'right', bold = false, color = '') =>
+      `<td style="padding:4px 5px;font-size:7pt;text-align:${align};border:1px solid #d1d5db;font-family:${align === 'right' ? 'monospace' : 'Arial'};${bold ? 'font-weight:700;' : ''}${color ? `color:${color};` : ''}">${txt}</td>`;
+    const tdC = (n: number | string | undefined | null, bold = false, color = '') =>
+      td(f(n), 'right', bold, color);
 
+    const filas = liqs.map((l, i) => {
+      const noImponible = Number(l.movilizacion ?? 0) + Number(l.colacion ?? 0);
+      const totalDesc = Number(l.cotizAfp) + Number(l.cotizSis ?? 0) + Number(l.cotizSalud) +
+        Number(l.cotizCes ?? 0) + Number(l.impuestoUnico ?? 0);
+      const totalBruto = Number(l.imponible) + noImponible;
+      return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+        ${td(String(i + 1), 'center')}
+        ${td(l.trabajador?.rut ?? '—', 'left')}
+        ${td(l.trabajador?.nombre ?? '—', 'left')}
+        ${td(l.trabajador?.cargo ?? '—', 'left')}
+        ${td(l.trabajador?.afp ?? '—', 'left')}
+        ${td(l.trabajador?.salud ?? '—', 'left')}
+        ${td(String(l.diasTrabajados ?? 30), 'center')}
+        ${tdC(l.sueldoBase)}
+        ${tdC(l.horasExtra)}
+        ${tdC(l.bono)}
+        ${tdC(l.gratificacion)}
+        ${tdC(l.movilizacion)}
+        ${tdC(l.colacion)}
+        ${tdC(noImponible)}
+        ${tdC(l.imponible, true)}
+        ${tdC(totalBruto, true)}
+        ${tdC(l.cotizAfp)}
+        ${tdC(l.cotizSis)}
+        ${tdC(l.cotizSalud)}
+        ${tdC(l.cotizCes)}
+        ${tdC(l.impuestoUnico)}
+        ${tdC(totalDesc, true)}
+        ${tdC(l.anticipo)}
+        ${tdC(l.liquido, true, '#166534')}
+        ${td('_________________', 'center')}
+      </tr>`;
+    }).join('');
+
+    const tots = liqs.reduce((a, l) => {
+      const noImp = Number(l.movilizacion ?? 0) + Number(l.colacion ?? 0);
+      const desc = Number(l.cotizAfp) + Number(l.cotizSis ?? 0) + Number(l.cotizSalud) + Number(l.cotizCes ?? 0) + Number(l.impuestoUnico ?? 0);
+      return {
+        sueldo: a.sueldo + Number(l.sueldoBase ?? 0),
+        horasExtra: a.horasExtra + Number(l.horasExtra ?? 0),
+        bono: a.bono + Number(l.bono ?? 0),
+        gratif: a.gratif + Number(l.gratificacion ?? 0),
+        mov: a.mov + Number(l.movilizacion ?? 0),
+        col: a.col + Number(l.colacion ?? 0),
+        noImponible: a.noImponible + noImp,
+        imponible: a.imponible + Number(l.imponible),
+        bruto: a.bruto + Number(l.imponible) + noImp,
+        cotizAfp: a.cotizAfp + Number(l.cotizAfp),
+        cotizSis: a.cotizSis + Number(l.cotizSis ?? 0),
+        cotizSalud: a.cotizSalud + Number(l.cotizSalud),
+        cotizCes: a.cotizCes + Number(l.cotizCes ?? 0),
+        impuesto: a.impuesto + Number(l.impuestoUnico ?? 0),
+        descuentos: a.descuentos + desc,
+        anticipo: a.anticipo + Number(l.anticipo ?? 0),
+        liquido: a.liquido + Number(l.liquido),
+      };
+    }, { sueldo:0, horasExtra:0, bono:0, gratif:0, mov:0, col:0, noImponible:0, imponible:0, bruto:0, cotizAfp:0, cotizSis:0, cotizSalud:0, cotizCes:0, impuesto:0, descuentos:0, anticipo:0, liquido:0 });
+
+    const hoy = new Date().toLocaleDateString('es-CL');
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-    <title>Libro de Remuneraciones — ${mesLabel} ${anio}</title>
-    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10pt;padding:16px 20px}
-    h1{font-size:13pt;text-align:center;text-transform:uppercase;margin-bottom:4px}
-    .sub{text-align:center;font-size:9.5pt;color:#555;margin-bottom:14px}
-    table{width:100%;border-collapse:collapse}
-    thead tr{background:#f3f4f6}
-    th{padding:6px 8px;font-size:8.5pt;font-weight:600;text-align:right;border:1px solid #d1d5db}
-    th:first-child,th:nth-child(2),th:nth-child(3){text-align:left}
-    td{border:1px solid #e5e7eb}
-    .total-row td{background:#f9fafb;font-weight:700;font-size:9pt}
-    @media print{body{padding:8mm 12mm}}</style></head>
-    <body>
-    <h1>${empresa?.razonSocial ?? ''} — Libro de Remuneraciones</h1>
-    <p class="sub">Período: ${mesLabel} ${anio} &nbsp;·&nbsp; RUT: ${empresa?.rut ?? ''} &nbsp;·&nbsp; ${liquidaciones.length} trabajador(es)</p>
-    <table>
-      <thead><tr>
-        <th style="text-align:center">N°</th>
-        <th>Trabajador</th><th>RUT</th>
-        <th>Sueldo Base</th><th>H. Extra</th><th>Bono</th><th>Gratificación</th><th>Mov+Col</th>
-        <th>Imponible</th><th>AFP</th><th>Salud</th><th>CES</th><th>Imp. Único</th>
-        <th>Líquido</th><th style="text-align:center">Firma</th>
-      </tr></thead>
-      <tbody>${filas}</tbody>
-      <tfoot><tr class="total-row">
-        <td colspan="8" style="padding:6px 8px;text-align:right;border:1px solid #d1d5db;">TOTALES</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.imponible)}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.cotizAfp)}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.cotizSalud)}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.cotizCes)}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;border:1px solid #d1d5db;">${clpF(totales.impuesto)}</td>
-        <td style="padding:6px 8px;text-align:right;font-family:monospace;color:#166534;border:1px solid #d1d5db;">${clpF(totales.liquido)}</td>
-        <td style="border:1px solid #d1d5db;"></td>
-      </tr></tfoot>
-    </table>
-    <div style="margin-top:30px;display:flex;justify-content:space-around;">
-      <div style="text-align:center"><div style="border-top:1px solid #333;width:200px;padding-top:4px;font-size:9pt;">Empleador / Representante Legal</div></div>
-      <div style="text-align:center"><div style="border-top:1px solid #333;width:200px;padding-top:4px;font-size:9pt;">Contador / Responsable</div></div>
-    </div>
-    </body></html>`;
+<title>Libro de Remuneraciones ${mesLabel} ${anio}</title>
+<style>
+@page{size:A3 landscape;margin:10mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:8pt;padding:12px 16px}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:20px}
+.empresa-info{flex:1}
+.empresa-info p{margin-bottom:2px;font-size:8pt}
+.titulo-bloque{text-align:center;flex:2}
+.titulo{font-size:13pt;font-weight:700;text-transform:uppercase;margin-bottom:4px}
+.subtitulo{font-size:8pt;color:#555}
+.legal-ref{font-size:7pt;color:#888;margin-top:2px}
+.periodo-bloque{text-align:right;flex:1}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+.total-row td{background:#e5e7eb!important;font-weight:700}
+.firmas{display:flex;justify-content:space-around;margin-top:40px;page-break-inside:avoid}
+.firma-box{text-align:center}
+.firma-line{border-top:1px solid #333;min-width:180px;padding-top:4px;font-size:7.5pt;color:#374151;margin-top:50px}
+.nota{font-size:6.5pt;color:#9ca3af;margin-top:16px;border-top:1px solid #e5e7eb;padding-top:6px}
+@media print{body{padding:0}.nota{color:#bbb}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="empresa-info">
+    <p><strong>Razón Social:</strong> ${empresa?.razonSocial ?? ''}</p>
+    <p><strong>RUT:</strong> ${empresa?.rut ?? ''}</p>
+    <p><strong>Giro:</strong> ${empresa?.giro ?? ''}</p>
+    <p><strong>Dirección:</strong> ${empresa?.direccion ?? ''}</p>
+  </div>
+  <div class="titulo-bloque">
+    <div class="titulo">Libro de Remuneraciones</div>
+    <div class="subtitulo">Período: <strong>${mesLabel} ${anio}</strong> &nbsp;·&nbsp; ${liquidaciones.length} trabajador(es)</div>
+    <div class="legal-ref">Art. 62 Código del Trabajo — DS N°969/1933 Ministerio del Trabajo</div>
+  </div>
+  <div class="periodo-bloque">
+    <p style="font-size:7pt;color:#555">Fecha emisión: ${hoy}</p>
+    <p style="font-size:7pt;color:#555;margin-top:4px">Timbrado SII / LRE-DT</p>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      ${th('N°','center','28px')}
+      ${th('RUT','left')}
+      ${th('Nombre y Apellido','left')}
+      ${th('Cargo','left')}
+      ${th('AFP','left')}
+      ${th('Salud','left')}
+      ${th('Días','center','34px')}
+      ${th('Sueldo Base')}
+      ${th('H. Extra')}
+      ${th('Bonos')}
+      ${th('Gratificación')}
+      ${th('Movilización')}
+      ${th('Colación')}
+      ${th('No Imponible')}
+      ${th('Total Imponible')}
+      ${th('Total Bruto')}
+      ${th('Cotiz. AFP')}
+      ${th('SIS')}
+      ${th('Cotiz. Salud')}
+      ${th('CES')}
+      ${th('Imp. Único')}
+      ${th('Tot. Descuentos')}
+      ${th('Anticipo')}
+      ${th('Líquido','right')}
+      ${th('Firma Trabajador','center')}
+    </tr>
+  </thead>
+  <tbody>${filas}</tbody>
+  <tfoot>
+    <tr class="total-row">
+      <td colspan="7" style="padding:4px 5px;font-size:7pt;text-align:right;border:1px solid #9ca3af;font-weight:700;">TOTALES</td>
+      ${tdC(tots.sueldo,true)}
+      ${tdC(tots.horasExtra,true)}
+      ${tdC(tots.bono,true)}
+      ${tdC(tots.gratif,true)}
+      ${tdC(tots.mov,true)}
+      ${tdC(tots.col,true)}
+      ${tdC(tots.noImponible,true)}
+      ${tdC(tots.imponible,true)}
+      ${tdC(tots.bruto,true)}
+      ${tdC(tots.cotizAfp,true)}
+      ${tdC(tots.cotizSis,true)}
+      ${tdC(tots.cotizSalud,true)}
+      ${tdC(tots.cotizCes,true)}
+      ${tdC(tots.impuesto,true)}
+      ${tdC(tots.descuentos,true)}
+      ${tdC(tots.anticipo,true)}
+      ${tdC(tots.liquido,true,'#166534')}
+      <td style="border:1px solid #9ca3af"></td>
+    </tr>
+  </tfoot>
+</table>
+
+<div class="firmas">
+  <div class="firma-box"><div class="firma-line">Empleador / Representante Legal</div></div>
+  <div class="firma-box"><div class="firma-line">Contador / Responsable de Pago</div></div>
+  <div class="firma-box"><div class="firma-line">Fecha y Lugar</div></div>
+</div>
+
+<p class="nota">
+  Conforme al Art. 62 del Código del Trabajo y DS N°969/1933 del Ministerio del Trabajo y Previsión Social. El empleador que ocupe cinco o más trabajadores
+  deberá llevar un libro auxiliar de remuneraciones timbrado por el SII. Las columnas SIS (Seguro de Invalidez y Sobrevivencia) corresponden al aporte
+  del empleador. CES: Cotización AFC Seguro de Cesantía trabajador. Imp. Único: Impuesto Único de Segunda Categoría (Art. 42 N°1 LIR).
+  Libro generado electrónicamente — versión imprimible del LRE presentado ante la Dirección del Trabajo.
+</p>
+</body></html>`;
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     window.open(URL.createObjectURL(blob), '_blank');
   }
@@ -299,16 +414,31 @@ export default function RRHH() {
 
   const totalLiquido = liquidaciones.reduce((s, l) => s + Number(l.liquido), 0);
   const totalCosto = liquidaciones.reduce((s, l) => s + Number(l.costoEmpleador), 0);
-  type LiqExt = typeof liquidaciones[0] & { sueldoBase?: number; horasExtra?: number; bono?: number; gratificacion?: number; movilizacion?: number; colacion?: number };
+  type LiqExt = typeof liquidaciones[0] & {
+    sueldoBase?: number; horasExtra?: number; bono?: number; gratificacion?: number;
+    movilizacion?: number; colacion?: number; anticipo?: number; cotizSis?: number; diasTrabajados?: number;
+  };
   const liqs = liquidaciones as LiqExt[];
-  const libroTots = liqs.reduce((acc, l) => ({
-    imponible: acc.imponible + Number(l.imponible),
-    cotizAfp: acc.cotizAfp + Number(l.cotizAfp),
-    cotizSalud: acc.cotizSalud + Number(l.cotizSalud),
-    cotizCes: acc.cotizCes + Number(l.cotizCes ?? 0),
-    impuesto: acc.impuesto + Number(l.impuestoUnico ?? 0),
-    liquido: acc.liquido + Number(l.liquido),
-  }), { imponible: 0, cotizAfp: 0, cotizSalud: 0, cotizCes: 0, impuesto: 0, liquido: 0 });
+  const libroTots = liqs.reduce((acc, l) => {
+    const noImp = Number(l.movilizacion ?? 0) + Number(l.colacion ?? 0);
+    const desc = Number(l.cotizAfp) + Number(l.cotizSis ?? 0) + Number(l.cotizSalud) + Number(l.cotizCes ?? 0) + Number(l.impuestoUnico ?? 0);
+    return {
+      sueldo: acc.sueldo + Number(l.sueldoBase ?? 0),
+      horasExtra: acc.horasExtra + Number(l.horasExtra ?? 0),
+      bono: acc.bono + Number(l.bono ?? 0),
+      gratif: acc.gratif + Number(l.gratificacion ?? 0),
+      noImponible: acc.noImponible + noImp,
+      imponible: acc.imponible + Number(l.imponible),
+      cotizAfp: acc.cotizAfp + Number(l.cotizAfp),
+      cotizSis: acc.cotizSis + Number(l.cotizSis ?? 0),
+      cotizSalud: acc.cotizSalud + Number(l.cotizSalud),
+      cotizCes: acc.cotizCes + Number(l.cotizCes ?? 0),
+      impuesto: acc.impuesto + Number(l.impuestoUnico ?? 0),
+      descuentos: acc.descuentos + desc,
+      anticipo: acc.anticipo + Number(l.anticipo ?? 0),
+      liquido: acc.liquido + Number(l.liquido),
+    };
+  }, { sueldo:0, horasExtra:0, bono:0, gratif:0, noImponible:0, imponible:0, cotizAfp:0, cotizSis:0, cotizSalud:0, cotizCes:0, impuesto:0, descuentos:0, anticipo:0, liquido:0 });
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
   if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tenés empresas registradas</p></div>;
@@ -720,52 +850,82 @@ export default function RRHH() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr className="bg-muted/40 border-b">
-                      <th className="px-3 py-2.5 text-center font-medium text-muted-foreground whitespace-nowrap">N°</th>
-                      <th className="px-3 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">Trabajador</th>
-                      <th className="px-3 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">RUT</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Sueldo base</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">H. Extra</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Bono</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Gratif.</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Mov+Col</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Imponible</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">AFP</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Salud</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">CES</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Imp. Único</th>
-                      <th className="px-3 py-2.5 text-right font-medium text-muted-foreground whitespace-nowrap">Líquido</th>
+                    <tr className="bg-muted/40 border-b text-[10px]">
+                      <th className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">N°</th>
+                      <th className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">RUT</th>
+                      <th className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">Trabajador</th>
+                      <th className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">AFP</th>
+                      <th className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">Salud</th>
+                      <th className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">Días</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">Sueldo base</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">H.Extra</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">Bono</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">Gratif.</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">Mov.</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">Col.</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">No Imp.</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">Imponible</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden sm:table-cell">Cotiz.AFP</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">SIS</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden sm:table-cell">Salud</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">CES</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">Imp.Único</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden sm:table-cell">Tot.Desc.</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">Anticipo</th>
+                      <th className="px-2 py-2 text-right font-medium text-muted-foreground whitespace-nowrap font-semibold">Líquido</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {liqs.map((l, i) => (
-                      <tr key={l.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="px-3 py-2 text-center text-muted-foreground">{i + 1}</td>
-                        <td className="px-3 py-2 font-medium whitespace-nowrap">{l.trabajador?.nombre ?? '—'}</td>
-                        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{l.trabajador?.rut ?? '—'}</td>
-                        <td className="px-3 py-2 text-right font-mono">{clp(l.sueldoBase ?? 0)}</td>
-                        <td className="px-3 py-2 text-right font-mono">{clp(l.horasExtra ?? 0)}</td>
-                        <td className="px-3 py-2 text-right font-mono">{clp(l.bono ?? 0)}</td>
-                        <td className="px-3 py-2 text-right font-mono">{clp(l.gratificacion ?? 0)}</td>
-                        <td className="px-3 py-2 text-right font-mono">{clp(Number(l.movilizacion ?? 0) + Number(l.colacion ?? 0))}</td>
-                        <td className="px-3 py-2 text-right font-mono font-semibold">{clp(l.imponible)}</td>
-                        <td className="px-3 py-2 text-right font-mono text-destructive">{clp(l.cotizAfp)}</td>
-                        <td className="px-3 py-2 text-right font-mono text-destructive">{clp(l.cotizSalud)}</td>
-                        <td className="px-3 py-2 text-right font-mono text-destructive">{clp(l.cotizCes ?? 0)}</td>
-                        <td className="px-3 py-2 text-right font-mono text-destructive">{clp(l.impuestoUnico ?? 0)}</td>
-                        <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{clp(l.liquido)}</td>
-                      </tr>
-                    ))}
+                    {liqs.map((l, i) => {
+                      const noImp = Number(l.movilizacion ?? 0) + Number(l.colacion ?? 0);
+                      const totDesc = Number(l.cotizAfp) + Number(l.cotizSis ?? 0) + Number(l.cotizSalud) + Number(l.cotizCes ?? 0) + Number(l.impuestoUnico ?? 0);
+                      return (
+                        <tr key={l.id} className={`border-b last:border-0 transition-colors text-xs ${i % 2 === 0 ? '' : 'bg-muted/10'} hover:bg-primary/5`}>
+                          <td className="px-2 py-1.5 text-center text-muted-foreground">{i + 1}</td>
+                          <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">{l.trabajador?.rut ?? '—'}</td>
+                          <td className="px-2 py-1.5 font-medium whitespace-nowrap">{l.trabajador?.nombre ?? '—'}</td>
+                          <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap hidden lg:table-cell">{l.trabajador?.afp ?? '—'}</td>
+                          <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap hidden lg:table-cell">{l.trabajador?.salud ?? '—'}</td>
+                          <td className="px-2 py-1.5 text-center">{l.diasTrabajados ?? 30}</td>
+                          <td className="px-2 py-1.5 text-right font-mono">{clp(l.sueldoBase ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono hidden md:table-cell">{clp(l.horasExtra ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono hidden md:table-cell">{clp(l.bono ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono hidden md:table-cell">{clp(l.gratificacion ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono hidden xl:table-cell">{clp(l.movilizacion ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono hidden xl:table-cell">{clp(l.colacion ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono hidden md:table-cell">{clp(noImp)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono font-semibold">{clp(l.imponible)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono text-destructive hidden sm:table-cell">{clp(l.cotizAfp)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono text-destructive hidden lg:table-cell">{clp(l.cotizSis ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono text-destructive hidden sm:table-cell">{clp(l.cotizSalud)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono text-destructive hidden lg:table-cell">{clp(l.cotizCes ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono text-destructive hidden lg:table-cell">{clp(l.impuestoUnico ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono font-semibold text-destructive hidden sm:table-cell">{clp(totDesc)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono hidden md:table-cell">{clp(l.anticipo ?? 0)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono font-bold text-green-700">{clp(l.liquido)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-muted/40 border-t-2 font-semibold">
-                      <td colSpan={8} className="px-3 py-2.5 text-right text-muted-foreground text-xs uppercase tracking-wide">Totales</td>
-                      <td className="px-3 py-2.5 text-right font-mono">{clp(libroTots.imponible)}</td>
-                      <td className="px-3 py-2.5 text-right font-mono text-destructive">{clp(libroTots.cotizAfp)}</td>
-                      <td className="px-3 py-2.5 text-right font-mono text-destructive">{clp(libroTots.cotizSalud)}</td>
-                      <td className="px-3 py-2.5 text-right font-mono text-destructive">{clp(libroTots.cotizCes)}</td>
-                      <td className="px-3 py-2.5 text-right font-mono text-destructive">{clp(libroTots.impuesto)}</td>
-                      <td className="px-3 py-2.5 text-right font-mono font-bold text-green-700">{clp(libroTots.liquido)}</td>
+                    <tr className="bg-muted/40 border-t-2 font-semibold text-xs">
+                      <td colSpan={6} className="px-2 py-2 text-right text-muted-foreground uppercase tracking-wide">Totales</td>
+                      <td className="px-2 py-2 text-right font-mono">{clp(libroTots.sueldo)}</td>
+                      <td className="px-2 py-2 text-right font-mono hidden md:table-cell">{clp(libroTots.horasExtra)}</td>
+                      <td className="px-2 py-2 text-right font-mono hidden md:table-cell">{clp(libroTots.bono)}</td>
+                      <td className="px-2 py-2 text-right font-mono hidden md:table-cell">{clp(libroTots.gratif)}</td>
+                      <td className="px-2 py-2 hidden xl:table-cell" />
+                      <td className="px-2 py-2 hidden xl:table-cell" />
+                      <td className="px-2 py-2 text-right font-mono hidden md:table-cell">{clp(libroTots.noImponible)}</td>
+                      <td className="px-2 py-2 text-right font-mono">{clp(libroTots.imponible)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-destructive hidden sm:table-cell">{clp(libroTots.cotizAfp)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-destructive hidden lg:table-cell">{clp(libroTots.cotizSis)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-destructive hidden sm:table-cell">{clp(libroTots.cotizSalud)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-destructive hidden lg:table-cell">{clp(libroTots.cotizCes)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-destructive hidden lg:table-cell">{clp(libroTots.impuesto)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-destructive hidden sm:table-cell">{clp(libroTots.descuentos)}</td>
+                      <td className="px-2 py-2 text-right font-mono hidden md:table-cell">{clp(libroTots.anticipo)}</td>
+                      <td className="px-2 py-2 text-right font-mono font-bold text-green-700">{clp(libroTots.liquido)}</td>
                     </tr>
                   </tfoot>
                 </table>
