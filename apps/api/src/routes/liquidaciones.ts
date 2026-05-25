@@ -22,15 +22,15 @@ router.get('/lre', async (req, res, next) => {
       orderBy: { trabajador: { nombre: 'asc' } },
     });
 
-    // Códigos AFP según tabla DT
+    // Códigos AFP — Tabla N°9 del Manual LRE DT
     const AFP_COD: Record<string, string> = {
-      CAPITAL: '03', CUPRUM: '05', HABITAT: '07', MODELO: '09',
-      PLANVITAL: '10', PROVIDA: '08', UNO: '14',
+      PROVIDA: '6', PLANVITAL: '11', CUPRUM: '13', HABITAT: '14',
+      UNO: '19', CAPITAL: '31', MODELO: '103',
     };
-    // Códigos institución de salud según tabla DT
+    // Códigos FONASA/ISAPRE — Tabla N°11 del Manual LRE DT
     const SALUD_COD: Record<string, string> = {
-      FONASA: '07', BANMEDICA: '04', COLMENA: '06', CRUZ_BLANCA: '01',
-      NUEVA_MASVIDA: '08', VIDA_TRES: '09', CONSALUD: '11', ESENCIAL: '27',
+      CRUZ_BLANCA: '1', BANMEDICA: '3', COLMENA: '4', CONSALUD: '9',
+      VIDA_TRES: '12', NUEVA_MASVIDA: '43', ESENCIAL: '44', FONASA: '102',
     };
 
     const HEADER = 'Rut trabajador(1101);Fecha inicio contrato(1102);Fecha término de contrato(1103);Causal término de contrato(1104);Región prestación de servicios(1105);Comuna prestación de servicios(1106);Tipo impuesto a la renta(1170);Técnico extranjero exención cot. previsionales(1146);Código tipo de jornada(1107);Persona con Discapacidad - Pensionado por Invalidez(1108);Pensionado por vejez(1109);AFP(1141);IPS (ExINP)(1142);FONASA - ISAPRE(1143);AFC(1151);CCAF(1110);Org. administrador ley 16.744(1152);Nro cargas familiares legales autorizadas(1111);Nro de cargas familiares maternales(1112);Nro de cargas familiares invalidez(1113);Tramo asignación familiar(1114);Rut org sindical 1(1171);Rut org sindical 2(1172);Rut org sindical 3(1173);Rut org sindical 4(1174);Rut org sindical 5(1175);Rut org sindical 6(1176);Rut org sindical 7(1177);Rut org sindical 8(1178);Rut org sindical 9(1179);Rut org sindical 10(1180);Nro días trabajados en el mes(1115);Nro días de licencia médica en el mes(1116);Nro días de vacaciones en el mes(1117);Subsidio trabajador joven(1118);Puesto Trabajo Pesado(1154);APVI(1155);APVC(1157);Indemnización a todo evento(1131);Tasa indemnización a todo evento(1132);Sueldo(2101);Sobresueldo(2102);Comisiones(2103);Semana corrida(2104);Participación(2105);Gratificación(2106);Recargo 30% día domingo(2107);Remun. variable pagada en vacaciones(2108);Remun. variable pagada en clausura(2109);Aguinaldo(2110);Bonos u otras remun. fijas mensuales(2111);Tratos(2112);Bonos u otras remun. variables mensuales o superiores a un mes(2113);Ejercicio opción no pactada en contrato(2114);Beneficios en especie constitutivos de remun(2115);Remuneraciones bimestrales(2116);Remuneraciones trimestrales(2117);Remuneraciones cuatrimestral(2118);Remuneraciones semestrales(2119);Remuneraciones anuales(2120);Participación anual(2121);Gratificación anual(2122);Otras remuneraciones superiores a un mes(2123);Pago por horas de trabajo sindical(2124);Sueldo empresarial (2161);Subsidio por incapacidad laboral por licencia médica(2201);Beca de estudio(2202);Gratificaciones de zona(2203);Otros ingresos no constitutivos de renta(2204);Colación(2301);Movilización(2302);Viáticos(2303);Asignación de pérdida de caja(2304);Asignación de desgaste herramienta(2305);Asignación familiar legal(2311);Gastos por causa del trabajo(2306);Gastos por cambio de residencia(2307);Sala cuna(2308);Asignación trabajo a distancia o teletrabajo(2309);Depósito convenido hasta UF 900(2347);Alojamiento por razones de trabajo(2310);Asignación de traslación(2312);Indemnización por feriado legal(2313);Indemnización años de servicio(2314);Indemnización sustitutiva del aviso previo(2315);Indemnización fuero maternal(2316);Pago indemnización a todo evento(2331);Indemnizaciones voluntarias tributables(2417);Indemnizaciones contractuales tributables(2418);Cotización obligatoria previsional (AFP o IPS)(3141);Cotización obligatoria salud 7%(3143);Cotización voluntaria para salud(3144);Cotización AFC - trabajador(3151);Cotizaciones técnico extranjero para seguridad social fuera de Chile(3146);Descuento depósito convenido hasta UF 900 anual(3147);Cotización APVi Mod A(3155);Cotización APVi Mod B hasta UF50(3156);Cotización APVc Mod A(3157);Cotización APVc Mod B hasta UF50(3158);Impuesto retenido por remuneraciones(3161);Impuesto retenido por indemnizaciones(3162);Mayor retención de impuestos solicitada por el trabajador(3163);Impuesto retenido por reliquidación remun. devengadas otros períodos(3164);Diferencia impuesto reliquidación remun. devengadas en este período(3165);Retención préstamo clase media 2020 (Ley 21.252) (3166);Rebaja zona extrema DL 889 (3167);Cuota sindical 1(3171);Cuota sindical 2(3172);Cuota sindical 3(3173);Cuota sindical 4(3174);Cuota sindical 5(3175);Cuota sindical 6(3176);Cuota sindical 7(3177);Cuota sindical 8(3178);Cuota sindical 9(3179);Cuota sindical 10(3180);Crédito social CCAF(3110);Cuota vivienda o educación(3181);Crédito cooperativas de ahorro(3182);Otros descuentos autorizados y solicitados por el trabajador(3183);Cotización adicional trabajo pesado - trabajador(3154);Donaciones culturales y de reconstrucción(3184);Otros descuentos(3185);Pensiones de alimentos(3186);Descuento mujer casada(3187);Descuentos por anticipos y préstamos(3188);AFC - Aporte empleador(4151);Aporte empleador seguro accidentes del trabajo y Ley SANNA(4152);Aporte empleador indemnización a todo evento(4131);Aporte adicional trabajo pesado - empleador(4154);Aporte empleador seguro invalidez y sobrevivencia(4155);APVC - Aporte Empleador(4157);Total haberes(5201);Total haberes imponibles y tributables(5210);Total haberes imponibles no tributables(5220);Total haberes no imponibles y no tributables(5230);Total haberes no imponibles y tributables(5240);Total descuentos(5301);Total descuentos impuestos a las remuneraciones(5361);Total descuentos impuestos por indemnizaciones(5362);Total descuentos por cotizaciones del trabajador(5341);Total otros descuentos(5302);Total aportes empleador(5410);Total líquido(5501);Total indemnizaciones(5502);Total indemnizaciones tributables(5564);Total indemnizaciones no tributables(5565)';
@@ -50,13 +50,15 @@ router.get('/lre', async (req, res, next) => {
       const cesEmpleador = t.tieneCes
         ? Math.round(imponible * (t.tipoContrato === 'INDEFINIDO' ? 0.024 : 0.030))
         : 0;
+      // Seguro accidentes del trabajo Ley 16.744 (OBLIGATORIO en LRE)
+      const seguroAccidentes = Math.round(imponible * 0.0034);
 
-      // Código AFC (1151): 01=indefinido, 02=plazo fijo
-      const afcCod = t.tieneCes ? (t.tipoContrato === 'INDEFINIDO' ? '01' : '02') : '';
+      // Código AFC (1151): 0=no, 1=sí — Tabla N°12 del Manual LRE DT
+      const afcCod = t.tieneCes ? '1' : '0';
 
       const totalCotizTrab = cotizAfp + cotizSalud + cotizCes;
       const totalDescuentos = totalCotizTrab + impuestoUnico + anticipo;
-      const totalAportesEmp = cesEmpleador + cotizSis;
+      const totalAportesEmp = cesEmpleador + cotizSis + seguroAccidentes;
       const totalHaberes = imponible + noImponible;
 
       const fi = new Date(t.fechaIngreso);
@@ -71,15 +73,15 @@ router.get('/lre', async (req, res, next) => {
         /* 1106 */ (t as typeof t & { comuna?: string | null }).comuna ?? '',
         /* 1170 */ '2',
         /* 1146 */ '',
-        /* 1107 */ Number(t.jornadaHoras) >= 30 ? '1' : '2',
-        /* 1108 */ '',
-        /* 1109 */ '',
-        /* 1141 */ AFP_COD[t.afp] ?? '',
-        /* 1142 */ '',
-        /* 1143 */ SALUD_COD[t.salud] ?? '',
+        /* 1107 */ Number(t.jornadaHoras) >= 30 ? '101' : '201',
+        /* 1108 */ '0',
+        /* 1109 */ '0',
+        /* 1141 */ AFP_COD[t.afp] ?? '100',
+        /* 1142 */ '0',
+        /* 1143 */ SALUD_COD[t.salud] ?? '99',
         /* 1151 */ afcCod,
-        /* 1110 */ '',
-        /* 1152 */ '',
+        /* 1110 */ '0',
+        /* 1152 */ '0',
         /* 1111 */ '0',
         /* 1112 */ '0',
         /* 1113 */ '0',
@@ -88,10 +90,10 @@ router.get('/lre', async (req, res, next) => {
         /* 1115 */ String(liq.diasTrabajados ?? 30),
         /* 1116 */ '0',
         /* 1117 */ '0',
-        /* 1118 */ '',
+        /* 1118 */ '0',
         /* 1154 */ '',
-        /* 1155 */ '',
-        /* 1157 */ '',
+        /* 1155 */ '0',
+        /* 1157 */ '0',
         /* 1131 */ '',
         /* 1132 */ '',
         /* 2101 */ Math.round(Number(liq.sueldoBase)),
@@ -172,7 +174,7 @@ router.get('/lre', async (req, res, next) => {
         /* 3187 */ '0',
         /* 3188 */ anticipo,
         /* 4151 */ cesEmpleador,
-        /* 4152 */ '0',
+        /* 4152 */ seguroAccidentes,
         /* 4131 */ '0',
         /* 4154 */ '0',
         /* 4155 */ cotizSis,
