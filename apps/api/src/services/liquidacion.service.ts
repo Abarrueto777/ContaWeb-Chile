@@ -57,6 +57,18 @@ function calcularGratificacion(
   return 0; // ART_47 handled manually; NINGUNA = 0
 }
 
+export interface ConfigCalculo {
+  sis_pct?: number;
+  ces_trabajador_pct?: number;
+  ces_empleador_pct?: number;
+  acc_laboral_pct?: number;
+  aporte_ses_pct?: number;
+  tope_cotiz_uf?: number;
+  tope_se_uf?: number;
+  movilizacion_mensual?: number;
+  colacion_mensual?: number;
+}
+
 export interface LiquidacionCalculada {
   sueldoBase: number;
   horasExtra: number;
@@ -85,9 +97,11 @@ export function calcularLiquidacion(
     utm: number;
     imm: number;
     uf: number;
+    config?: ConfigCalculo;
   },
 ): LiquidacionCalculada {
   const { horasExtra, bono, diasTrabajados, anticipo, utm, imm, uf } = params;
+  const cfg = params.config ?? {};
   const factor = diasTrabajados / 30;
 
   const sueldoBase = Number(trabajador.sueldoBase);
@@ -106,8 +120,17 @@ export function calcularLiquidacion(
     diasTrabajados,
   );
 
+  // Config-overridable rates
+  const TASA_SIS_V = cfg.sis_pct ?? TASA_SIS;
+  const TASA_CES_TRAB_V = cfg.ces_trabajador_pct ?? TASA_CES_TRABAJADOR;
+  const TASA_CES_EMP_V = cfg.ces_empleador_pct ?? TASA_CES_EMPLEADOR;
+  const TASA_ACC_V = cfg.acc_laboral_pct ?? TASA_ACCIDENTE;
+  const TASA_SES_V = cfg.aporte_ses_pct ?? TASA_SES;
+
   // Tope imponible
-  const topeUF = trabajador.tipo === 'SUELDO_EMPRESARIAL' ? TOPE_SE_UF : TOPE_IMPONIBLE_UF;
+  const topeUF = trabajador.tipo === 'SUELDO_EMPRESARIAL'
+    ? (cfg.tope_se_uf ?? TOPE_SE_UF)
+    : (cfg.tope_cotiz_uf ?? TOPE_IMPONIBLE_UF);
   const topePesos = Math.round(topeUF * uf);
   const imponibleBruto = sueldoDevengado + montoHorasExtra + bono + gratificacion;
   const imponible = Math.min(imponibleBruto, topePesos);
@@ -120,7 +143,7 @@ export function calcularLiquidacion(
   const montoIsapre = (trabajador as unknown as { montoIsapre?: string | null }).montoIsapre;
   const planIsapre = montoIsapre ? Math.round(Number(montoIsapre) * uf) : 0;
   const cotizSalud = planIsapre > cotizSaludMandatoria ? planIsapre : cotizSaludMandatoria;
-  const cotizCes = trabajador.tieneCes ? Math.round(imponible * TASA_CES_TRABAJADOR) : 0;
+  const cotizCes = trabajador.tieneCes ? Math.round(imponible * TASA_CES_TRAB_V) : 0;
 
   // Impuesto único
   let impuestoUnico = 0;
@@ -129,23 +152,25 @@ export function calcularLiquidacion(
     impuestoUnico = calcularImpuestoUnico(baseIU, utm);
   }
 
-  // No imponibles
-  const movilizacion = trabajador.tieneMovilizacion
-    ? Math.round(Number(trabajador.montoMovilizacion ?? 0) * factor)
+  // No imponibles — usa monto del trabajador si está seteado, sino el default de empresa
+  const movilizacionBase = trabajador.tieneMovilizacion
+    ? (Number(trabajador.montoMovilizacion ?? 0) || (cfg.movilizacion_mensual ?? 0))
     : 0;
-  const colacion = trabajador.tieneColacion
-    ? Math.round(Number(trabajador.montoColacion ?? 0) * factor)
+  const colacionBase = trabajador.tieneColacion
+    ? (Number(trabajador.montoColacion ?? 0) || (cfg.colacion_mensual ?? 0))
     : 0;
+  const movilizacion = Math.round(movilizacionBase * factor);
+  const colacion = Math.round(colacionBase * factor);
 
   // Líquido
   const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo;
   const liquido = sueldoDevengado + montoHorasExtra + bono + gratificacion + movilizacion + colacion - totalDescuentos;
 
   // Costo empleador
-  const sisEmpleador = Math.round(imponible * TASA_SIS);
-  const cesEmpleador = trabajador.tieneCes ? Math.round(imponible * TASA_CES_EMPLEADOR) : 0;
-  const accidente = Math.round(imponible * TASA_ACCIDENTE);
-  const ses = Math.round(imponible * TASA_SES);
+  const sisEmpleador = Math.round(imponible * TASA_SIS_V);
+  const cesEmpleador = trabajador.tieneCes ? Math.round(imponible * TASA_CES_EMP_V) : 0;
+  const accidente = Math.round(imponible * TASA_ACC_V);
+  const ses = Math.round(imponible * TASA_SES_V);
   const costoEmpleador = sueldoDevengado + montoHorasExtra + bono + gratificacion + movilizacion + colacion + sisEmpleador + cesEmpleador + accidente + ses;
 
   return {

@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import https from 'https';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middlewares/auth';
+import { syncValoresMes, forzarSyncValoresMes } from '../services/uf.service';
 
 const router = Router();
 router.use(requireAuth);
@@ -48,24 +48,34 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.get('/fetch-actual', async (_req, res, next) => {
+// Sincroniza el mes actual: crea en BD si no existe, devuelve los valores
+router.post('/sync', async (_req, res, next) => {
   try {
-    const data = await new Promise<Record<string, unknown>>((resolve, reject) => {
-      https.get('https://mindicador.cl/api', (resp) => {
-        let body = '';
-        resp.on('data', (chunk: Buffer) => { body += chunk.toString(); });
-        resp.on('end', () => {
-          try { resolve(JSON.parse(body) as Record<string, unknown>); }
-          catch { reject(new Error('Respuesta inválida de mindicador.cl')); }
-        });
-      }).on('error', reject);
-    });
+    const now = new Date();
+    const valor = await forzarSyncValoresMes(now.getFullYear(), now.getMonth() + 1);
+    res.json({ data: valor });
+  } catch (err) {
+    next(err);
+  }
+});
 
-    const uf = (data['uf'] as { valor?: number } | undefined)?.valor ?? 0;
-    const utm = (data['utm'] as { valor?: number } | undefined)?.valor ?? 0;
-    const imm = (data['ingreso_minimo_mensual'] as { valor?: number } | undefined)?.valor ?? 0;
+// Sync de un mes específico (sin forzar: solo crea si no existe)
+router.post('/sync/:anio/:mes', async (req, res, next) => {
+  try {
+    const { anio, mes } = req.params as { anio: string; mes: string };
+    const valor = await syncValoresMes(Number(anio), Number(mes));
+    res.json({ data: valor });
+  } catch (err) {
+    next(err);
+  }
+});
 
-    res.json({ data: { uf, utm, imm } });
+// Forzar re-fetch desde mindicador.cl para un mes específico
+router.post('/sync/:anio/:mes/forzar', async (req, res, next) => {
+  try {
+    const { anio, mes } = req.params as { anio: string; mes: string };
+    const valor = await forzarSyncValoresMes(Number(anio), Number(mes));
+    res.json({ data: valor });
   } catch (err) {
     next(err);
   }

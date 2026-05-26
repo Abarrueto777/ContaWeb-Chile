@@ -758,6 +758,8 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Bono $</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Días</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Anticipo $</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden xl:table-cell whitespace-nowrap">Mov.</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden xl:table-cell whitespace-nowrap">Col.</th>
                     <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell whitespace-nowrap">Imponible</th>
                     <th className="text-right px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Líquido</th>
                     <th className="px-2 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden sm:table-cell">Estado</th>
@@ -799,6 +801,12 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                             <Input type="number" min="0" value={mov.anticipo}
                               onChange={e => updateMov(t.id, 'anticipo', Number(e.target.value))}
                               className="w-20 h-7 text-xs text-right px-1" />
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground hidden xl:table-cell">
+                            {t.tieneMovilizacion ? clp(Math.round(Number(t.montoMovilizacion ?? 0) * ((movs[t.id]?.diasTrabajados ?? 30) / 30))) : <span className="opacity-40">—</span>}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground hidden xl:table-cell">
+                            {t.tieneColacion ? clp(Math.round(Number(t.montoColacion ?? 0) * ((movs[t.id]?.diasTrabajados ?? 30) / 30))) : <span className="opacity-40">—</span>}
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-sm hidden lg:table-cell">
                             {liq ? clp(liq.imponible) : <span className="text-muted-foreground">—</span>}

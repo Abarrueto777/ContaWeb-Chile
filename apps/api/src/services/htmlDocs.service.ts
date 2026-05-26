@@ -478,96 +478,270 @@ export function generarLiquidacionPdf(
   liq: LiquidacionDoc,
 ): string {
   const mesLabel = MESES_ES[liq.mes - 1] ?? String(liq.mes);
-  const descuentos = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico + liq.anticipo;
-  const totalHaberes = liq.sueldoBase + liq.horasExtra + liq.bono + liq.gratificacion + liq.movilizacion + liq.colacion;
+  const totalImponible = liq.imponible;
+  const totalNoImponible = liq.movilizacion + liq.colacion;
+  const totalHaberes = totalImponible + totalNoImponible;
+  const totalDescuentos = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico + liq.anticipo;
 
-  const haberes = [
-    { label: 'Sueldo base', monto: liq.sueldoBase, imponible: true },
-    ...(liq.horasExtra > 0 ? [{ label: 'Horas extra (50%)', monto: liq.horasExtra, imponible: true }] : []),
-    ...(liq.bono > 0 ? [{ label: 'Bono', monto: liq.bono, imponible: true }] : []),
-    ...(liq.gratificacion > 0 ? [{ label: 'Gratificación', monto: liq.gratificacion, imponible: true }] : []),
-    ...(liq.movilizacion > 0 ? [{ label: 'Movilización', monto: liq.movilizacion, imponible: false }] : []),
-    ...(liq.colacion > 0 ? [{ label: 'Colación', monto: liq.colacion, imponible: false }] : []),
+  const haberes: { label: string; imponible: number; noImponible: number }[] = [
+    { label: 'Sueldo Base', imponible: liq.sueldoBase, noImponible: 0 },
+    ...(liq.horasExtra > 0 ? [{ label: 'Horas Extraordinarias (50%)', imponible: liq.horasExtra, noImponible: 0 }] : []),
+    ...(liq.bono > 0 ? [{ label: 'Bono', imponible: liq.bono, noImponible: 0 }] : []),
+    ...(liq.gratificacion > 0 ? [{ label: 'Gratificación Legal', imponible: liq.gratificacion, noImponible: 0 }] : []),
+    ...(liq.movilizacion > 0 ? [{ label: 'Asig. de Movilización', imponible: 0, noImponible: liq.movilizacion }] : []),
+    ...(liq.colacion > 0 ? [{ label: 'Asig. de Colación', imponible: 0, noImponible: liq.colacion }] : []),
   ];
 
-  const desc = [
-    { label: `AFP ${trabajador.afp}`, monto: liq.cotizAfp },
-    { label: `Salud ${trabajador.salud} (${(trabajador.pctSalud * 100).toFixed(1)}%)`, monto: liq.cotizSalud },
-    ...(liq.cotizCes > 0 ? [{ label: 'CES trabajador (0.6%)', monto: liq.cotizCes }] : []),
-    ...(liq.impuestoUnico > 0 ? [{ label: 'Impuesto Único 2ª Cat.', monto: liq.impuestoUnico }] : []),
-    ...(liq.anticipo > 0 ? [{ label: 'Anticipo', monto: liq.anticipo }] : []),
+  const descuentos: { label: string; monto: number }[] = [
+    { label: `Cotización AFP ${trabajador.afp}`, monto: liq.cotizAfp },
+    { label: `Cotización Salud ${trabajador.salud} (${(trabajador.pctSalud * 100).toFixed(1)}%)`, monto: liq.cotizSalud },
+    ...(liq.cotizCes > 0 ? [{ label: 'CES — Cotización Trabajador (0.6%)', monto: liq.cotizCes }] : []),
+    ...(liq.impuestoUnico > 0 ? [{ label: 'Impuesto Único 2ª Categoría', monto: liq.impuestoUnico }] : []),
+    ...(liq.anticipo > 0 ? [{ label: 'Anticipo de Remuneración', monto: liq.anticipo }] : []),
   ];
 
-  const haberesHtml = haberes.map(h => `
-    <tr>
-      <td>${h.label}</td>
-      <td class="monto">${clp(h.monto)}</td>
-      <td style="text-align:center;font-size:9pt;color:#777">${h.imponible ? 'Imp.' : 'N/I'}</td>
-    </tr>`).join('');
+  const haberesRows = haberes.map(h => `
+        <tr>
+          <td class="liq-concepto">${h.label}</td>
+          <td class="liq-num">${h.imponible > 0 ? clp(h.imponible) : ''}</td>
+          <td class="liq-num">${h.noImponible > 0 ? clp(h.noImponible) : ''}</td>
+        </tr>`).join('');
 
-  const descHtml = desc.map(d => `
-    <tr><td>${d.label}</td><td class="monto">${clp(d.monto)}</td></tr>`).join('');
+  const descRows = descuentos.map(d => `
+        <tr>
+          <td class="liq-concepto">${d.label}</td>
+          <td class="liq-num">${clp(d.monto)}</td>
+        </tr>`).join('');
+
+  const copia = (titulo: string) => `
+  <div class="liq-page">
+    <!-- ENCABEZADO -->
+    <div class="liq-header">
+      <div class="liq-empresa">
+        <div class="liq-empresa-nombre">${empresa.razonSocial}</div>
+        <div class="liq-empresa-datos">RUT: ${empresa.rut}</div>
+        ${empresa.giro ? `<div class="liq-empresa-datos">Giro: ${empresa.giro}</div>` : ''}
+        ${empresa.direccion ? `<div class="liq-empresa-datos">${empresa.direccion}</div>` : ''}
+      </div>
+      <div class="liq-titulo-bloque">
+        <div class="liq-titulo">LIQUIDACIÓN DE REMUNERACIONES</div>
+        <div class="liq-periodo">${mesLabel.toUpperCase()} ${liq.anio}</div>
+        <div class="liq-copia-label">${titulo}</div>
+      </div>
+    </div>
+
+    <!-- DATOS TRABAJADOR -->
+    <div class="liq-worker-grid">
+      <div class="liq-field"><span class="liq-label">Trabajador/a</span><span class="liq-val">${trabajador.nombre}</span></div>
+      <div class="liq-field"><span class="liq-label">RUT</span><span class="liq-val">${trabajador.rut}</span></div>
+      <div class="liq-field"><span class="liq-label">Cargo</span><span class="liq-val">${trabajador.cargo ?? '—'}</span></div>
+      <div class="liq-field"><span class="liq-label">AFP</span><span class="liq-val">${trabajador.afp}</span></div>
+      <div class="liq-field"><span class="liq-label">Salud</span><span class="liq-val">${trabajador.salud}</span></div>
+      <div class="liq-field"><span class="liq-label">Contrato</span><span class="liq-val">${trabajador.tipoContrato}</span></div>
+    </div>
+
+    <!-- CUERPO: HABERES + DESCUENTOS -->
+    <div class="liq-body">
+      <!-- HABERES -->
+      <div class="liq-section">
+        <table class="liq-table">
+          <thead>
+            <tr class="liq-th-row">
+              <th class="liq-th liq-th-concepto">HABERES</th>
+              <th class="liq-th liq-th-num">Imponible</th>
+              <th class="liq-th liq-th-num">No Imponible</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${haberesRows}
+          </tbody>
+          <tfoot>
+            <tr class="liq-subtotal">
+              <td class="liq-concepto">Total Imponible</td>
+              <td class="liq-num">${clp(totalImponible)}</td>
+              <td class="liq-num"></td>
+            </tr>
+            <tr class="liq-subtotal">
+              <td class="liq-concepto">Total No Imponible</td>
+              <td class="liq-num"></td>
+              <td class="liq-num">${clp(totalNoImponible)}</td>
+            </tr>
+            <tr class="liq-total">
+              <td class="liq-concepto">TOTAL HABERES</td>
+              <td class="liq-num" colspan="2">${clp(totalHaberes)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- DESCUENTOS -->
+      <div class="liq-section">
+        <table class="liq-table">
+          <thead>
+            <tr class="liq-th-row">
+              <th class="liq-th liq-th-concepto">DESCUENTOS</th>
+              <th class="liq-th liq-th-num">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${descRows}
+          </tbody>
+          <tfoot>
+            <tr class="liq-total">
+              <td class="liq-concepto">TOTAL DESCUENTOS</td>
+              <td class="liq-num">${clp(totalDescuentos)}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="liq-costo-emp">Aporte empleador SIS: ${clp(liq.cotizSis)}</div>
+      </div>
+    </div>
+
+    <!-- LÍQUIDO -->
+    <div class="liq-liquido-box">
+      <div class="liq-liquido-label">LÍQUIDO A PAGAR</div>
+      <div class="liq-liquido-monto">${clp(liq.liquido)}</div>
+    </div>
+    <div class="liq-palabras">SON: ${numToWords(liq.liquido)} PESOS</div>
+
+    <!-- RECIBO -->
+    <div class="liq-recibo">
+      <p class="liq-recibo-titulo">RECIBO — Art. 54 bis Código del Trabajo</p>
+      <p class="liq-recibo-texto">Yo, <strong>${trabajador.nombre}</strong>, RUT ${trabajador.rut}, declaro recibir conforme la suma de <strong>${clp(liq.liquido)}</strong> por concepto de remuneración correspondiente al mes de ${mesLabel} ${liq.anio}.</p>
+      <div class="liq-recibo-firmas">
+        <div class="liq-firma-bloque">
+          <div class="liq-firma-linea"></div>
+          <div class="liq-firma-nombre">${trabajador.nombre}</div>
+          <div class="liq-firma-sub">RUT: ${trabajador.rut} &nbsp;·&nbsp; Fecha: _______________</div>
+        </div>
+        <div class="liq-firma-bloque">
+          <div class="liq-firma-linea"></div>
+          <div class="liq-firma-nombre">${empresa.representanteLegal ?? empresa.razonSocial}</div>
+          <div class="liq-firma-sub">Por el Empleador</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
 
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><title>Liquidación ${mesLabel} ${liq.anio} — ${trabajador.nombre}</title>${BASE_CSS}</head>
+<head>
+<meta charset="UTF-8">
+<title>Liquidación ${mesLabel} ${liq.anio} — ${trabajador.nombre}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; background: #fff; }
+
+  .liq-page {
+    padding: 14mm 16mm 10mm;
+    max-width: 210mm;
+    margin: 0 auto;
+  }
+
+  /* ENCABEZADO */
+  .liq-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border: 1.5px solid #333;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    gap: 12px;
+  }
+  .liq-empresa-nombre { font-size: 12pt; font-weight: bold; margin-bottom: 2px; }
+  .liq-empresa-datos { font-size: 8.5pt; color: #444; line-height: 1.4; }
+  .liq-titulo-bloque { text-align: right; flex-shrink: 0; }
+  .liq-titulo { font-size: 11pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+  .liq-periodo { font-size: 10pt; font-weight: bold; color: #333; margin-top: 2px; }
+  .liq-copia-label { font-size: 8pt; color: #888; margin-top: 3px; border: 1px solid #ccc; padding: 1px 6px; display: inline-block; }
+
+  /* DATOS TRABAJADOR */
+  .liq-worker-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 1px solid #aaa;
+    border-bottom: none;
+    margin-bottom: 8px;
+  }
+  .liq-field {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 8px;
+    border-right: 1px solid #aaa;
+    border-bottom: 1px solid #aaa;
+  }
+  .liq-field:nth-child(3n) { border-right: none; }
+  .liq-label { font-size: 7.5pt; color: #666; font-weight: bold; text-transform: uppercase; }
+  .liq-val { font-size: 9.5pt; }
+
+  /* CUERPO */
+  .liq-body { display: flex; gap: 8px; margin-bottom: 8px; }
+  .liq-section { flex: 1; }
+
+  /* TABLAS */
+  .liq-table { width: 100%; border-collapse: collapse; }
+  .liq-th-row { background: #1a1a2e; color: #fff; }
+  .liq-th { padding: 5px 8px; font-size: 9pt; font-weight: bold; text-transform: uppercase; }
+  .liq-th-concepto { text-align: left; }
+  .liq-th-num { text-align: right; min-width: 80px; }
+  .liq-table tbody tr { border-bottom: 1px solid #e0e0e0; }
+  .liq-table tbody tr:nth-child(even) { background: #f7f7f7; }
+  .liq-concepto { padding: 4px 8px; font-size: 9.5pt; }
+  .liq-num { padding: 4px 8px; font-size: 9.5pt; text-align: right; font-family: monospace; }
+  .liq-subtotal { border-top: 1px solid #ccc; background: #f0f0f0; }
+  .liq-subtotal .liq-concepto { font-size: 9pt; font-weight: 600; color: #444; }
+  .liq-subtotal .liq-num { font-size: 9pt; }
+  .liq-total { background: #e8e8e8; border-top: 2px solid #555; }
+  .liq-total .liq-concepto { font-weight: bold; font-size: 9.5pt; }
+  .liq-total .liq-num { font-weight: bold; font-size: 9.5pt; }
+  .liq-costo-emp { font-size: 8pt; color: #666; margin-top: 4px; text-align: right; }
+
+  /* LÍQUIDO */
+  .liq-liquido-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 2px solid #1a1a2e;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 6px 14px;
+    margin-bottom: 4px;
+  }
+  .liq-liquido-label { font-size: 11pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+  .liq-liquido-monto { font-size: 14pt; font-weight: bold; font-family: monospace; }
+  .liq-palabras { font-size: 8.5pt; font-weight: bold; text-transform: uppercase; border: 1px solid #aaa; padding: 3px 10px; margin-bottom: 10px; color: #333; }
+
+  /* RECIBO */
+  .liq-recibo { border: 1px dashed #aaa; padding: 8px 10px; }
+  .liq-recibo-titulo { font-size: 8.5pt; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #333; }
+  .liq-recibo-texto { font-size: 9pt; line-height: 1.4; margin-bottom: 12px; }
+  .liq-recibo-firmas { display: flex; justify-content: space-around; margin-top: 8px; }
+  .liq-firma-bloque { text-align: center; min-width: 160px; }
+  .liq-firma-linea { border-top: 1px solid #333; margin-top: 36px; margin-bottom: 3px; }
+  .liq-firma-nombre { font-size: 9pt; font-weight: bold; }
+  .liq-firma-sub { font-size: 7.5pt; color: #666; margin-top: 1px; }
+
+  /* SEPARADOR entre copias */
+  .liq-separator {
+    border: none;
+    border-top: 1px dashed #bbb;
+    margin: 10px 0;
+    text-align: center;
+    font-size: 8pt;
+    color: #aaa;
+    position: relative;
+  }
+
+  @media print {
+    .liq-page { padding: 8mm 12mm; }
+    .liq-separator { page-break-before: always; border: none; }
+  }
+</style>
+</head>
 <body>
-  <div class="header-box">
-    <div class="empresa">${empresa.razonSocial}<br/><span style="font-size:9.5pt;font-weight:normal">RUT: ${empresa.rut} · ${empresa.giro}</span>${empresa.direccion ? '<br/><span style="font-size:9pt;color:#555">' + empresa.direccion + '</span>' : ''}</div>
-    <div class="info" style="font-size:13pt;font-weight:bold;">LIQUIDACIÓN DE SUELDO<br/><span style="font-size:11pt">${mesLabel} ${liq.anio}</span></div>
-  </div>
-
-  <table class="datos" style="margin-bottom:16px;">
-    <tr><td>Trabajador/a:</td><td>${trabajador.nombre}</td></tr>
-    <tr><td>RUT:</td><td>${trabajador.rut}</td></tr>
-    <tr><td>Cargo:</td><td>${trabajador.cargo ?? '—'}</td></tr>
-    <tr><td>AFP:</td><td>${trabajador.afp}</td></tr>
-    <tr><td>Salud:</td><td>${trabajador.salud}</td></tr>
-  </table>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-    <div>
-      <h2>Haberes</h2>
-      <table class="montos">
-        <thead><tr><th>Concepto</th><th style="text-align:right">Monto</th><th style="text-align:center">Tipo</th></tr></thead>
-        <tbody>
-          ${haberesHtml}
-          <tr class="total"><td>Total haberes</td><td class="monto">${clp(totalHaberes)}</td><td></td></tr>
-          <tr><td style="color:#555;font-size:10pt">Base imponible</td><td class="monto" style="color:#555;font-size:10pt">${clp(liq.imponible)}</td><td></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div>
-      <h2>Descuentos</h2>
-      <table class="montos">
-        <thead><tr><th>Concepto</th><th style="text-align:right">Monto</th></tr></thead>
-        <tbody>
-          ${descHtml}
-          <tr class="total"><td>Total descuentos</td><td class="monto">${clp(descuentos)}</td></tr>
-        </tbody>
-      </table>
-      <div style="margin-top:8px;font-size:9pt;color:#555;">
-        Costo empleador: SIS ${clp(liq.cotizSis)}
-      </div>
-    </div>
-  </div>
-
-  <div style="margin-top:16px;padding:10px 14px;border:2px solid #333;border-radius:4px;">
-    <p style="font-size:12pt;font-weight:bold;">TOTAL LÍQUIDO A PAGAR: ${clp(liq.liquido)}</p>
-    <div class="num-palabras" style="margin-top:6px;">SON: ${numToWords(liq.liquido)} PESOS</div>
-  </div>
-
-  <div style="margin-top:30px;border-top:1px dashed #999;padding-top:14px;">
-    <p style="font-size:10pt;margin-bottom:6px;font-weight:bold;">RECIBO DE PAGO (Art. 54 bis Código del Trabajo)</p>
-    <p style="font-size:10pt;">Yo, <strong>${trabajador.nombre}</strong>, RUT ${trabajador.rut}, declaro haber recibido conforme la cantidad de ${clp(liq.liquido)} (${numToWords(liq.liquido)} PESOS), correspondiente a mi remuneración del mes de ${mesLabel} ${liq.anio}.</p>
-    <div class="firmas" style="margin-top:20px;">
-      <div class="firma-bloque">
-        <div style="height:40px;"></div>
-        <div class="firma-linea">${trabajador.nombre}</div>
-        <div class="firma-label">RUT: ${trabajador.rut} · Fecha: ___________</div>
-      </div>
-    </div>
-  </div>
+${copia('COPIA EMPLEADOR')}
+<hr class="liq-separator" />
+${copia('COPIA TRABAJADOR')}
 </body>
 </html>`;
 }

@@ -3,6 +3,7 @@ import iconv from 'iconv-lite';
 import { prisma } from '../lib/prisma';
 import { liquidacionInputSchema } from '@contaweb/validations';
 import { calcularLiquidacion } from '../services/liquidacion.service';
+import { getConfig } from '../services/config.service';
 import { createError } from '../middlewares/errorHandler';
 import { generarLiquidacionPdf, type EmpresaDoc, type TrabajadorDoc } from '../services/htmlDocs.service';
 
@@ -269,12 +270,26 @@ router.post('/calcular', async (req, res) => {
     if (!parsed.success) return void res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten().fieldErrors });
     const trabajador = await prisma.trabajador.findFirst({ where: { id: parsed.data.trabajadorId, empresaId } });
     if (!trabajador) return void res.status(404).json({ error: 'Trabajador no encontrado' });
-    const valorUF = await prisma.valorUFUTM.findFirst({
-      where: { anio: parsed.data.anio, mes: parsed.data.mes },
-      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
-    });
+    const [valorUF, configRaw] = await Promise.all([
+      prisma.valorUFUTM.findFirst({
+        where: { anio: parsed.data.anio, mes: parsed.data.mes },
+        orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
+      }),
+      getConfig(empresaId),
+    ]);
     const uf = Number(valorUF?.uf ?? 38000);
-    const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf });
+    const config = {
+      sis_pct:              Number(configRaw['sis_pct']),
+      ces_trabajador_pct:   Number(configRaw['ces_trabajador_pct']),
+      ces_empleador_pct:    Number(configRaw['ces_empleador_pct']),
+      acc_laboral_pct:      Number(configRaw['acc_laboral_pct']),
+      aporte_ses_pct:       Number(configRaw['aporte_ses_pct']),
+      tope_cotiz_uf:        Number(configRaw['tope_cotiz_uf']),
+      tope_se_uf:           Number(configRaw['tope_se_uf']),
+      movilizacion_mensual: Number(configRaw['movilizacion_mensual']),
+      colacion_mensual:     Number(configRaw['colacion_mensual']),
+    };
+    const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
     res.json({ data: resultado });
   } catch {
     res.status(500).json({ error: 'Error al calcular liquidación' });
@@ -288,12 +303,26 @@ router.post('/', async (req, res) => {
     if (!parsed.success) return void res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten().fieldErrors });
     const trabajador = await prisma.trabajador.findFirst({ where: { id: parsed.data.trabajadorId, empresaId } });
     if (!trabajador) return void res.status(404).json({ error: 'Trabajador no encontrado' });
-    const valorUF = await prisma.valorUFUTM.findFirst({
-      where: { anio: parsed.data.anio, mes: parsed.data.mes },
-      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
-    });
+    const [valorUF, configRaw] = await Promise.all([
+      prisma.valorUFUTM.findFirst({
+        where: { anio: parsed.data.anio, mes: parsed.data.mes },
+        orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
+      }),
+      getConfig(empresaId),
+    ]);
     const uf = Number(valorUF?.uf ?? 38000);
-    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf });
+    const config = {
+      sis_pct:              Number(configRaw['sis_pct']),
+      ces_trabajador_pct:   Number(configRaw['ces_trabajador_pct']),
+      ces_empleador_pct:    Number(configRaw['ces_empleador_pct']),
+      acc_laboral_pct:      Number(configRaw['acc_laboral_pct']),
+      aporte_ses_pct:       Number(configRaw['aporte_ses_pct']),
+      tope_cotiz_uf:        Number(configRaw['tope_cotiz_uf']),
+      tope_se_uf:           Number(configRaw['tope_se_uf']),
+      movilizacion_mensual: Number(configRaw['movilizacion_mensual']),
+      colacion_mensual:     Number(configRaw['colacion_mensual']),
+    };
+    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
     const liquidacion = await prisma.liquidacion.create({
       data: { empresaId, trabajadorId: parsed.data.trabajadorId, anio: parsed.data.anio, mes: parsed.data.mes, ...calc },
       include: { trabajador: true },
@@ -378,12 +407,26 @@ router.put('/:liquidacionId', async (req, res, next) => {
     if (!liq) return next(createError('Liquidación no encontrada', 404));
     const trabajador = await prisma.trabajador.findFirst({ where: { id: liq.trabajadorId, empresaId } });
     if (!trabajador) return next(createError('Trabajador no encontrado', 404));
-    const valorUF = await prisma.valorUFUTM.findFirst({
-      where: { anio: parsed.data.anio, mes: parsed.data.mes },
-      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
-    });
+    const [valorUF, configRaw] = await Promise.all([
+      prisma.valorUFUTM.findFirst({
+        where: { anio: parsed.data.anio, mes: parsed.data.mes },
+        orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
+      }),
+      getConfig(empresaId),
+    ]);
     const uf = Number(valorUF?.uf ?? 38000);
-    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf });
+    const config = {
+      sis_pct:              Number(configRaw['sis_pct']),
+      ces_trabajador_pct:   Number(configRaw['ces_trabajador_pct']),
+      ces_empleador_pct:    Number(configRaw['ces_empleador_pct']),
+      acc_laboral_pct:      Number(configRaw['acc_laboral_pct']),
+      aporte_ses_pct:       Number(configRaw['aporte_ses_pct']),
+      tope_cotiz_uf:        Number(configRaw['tope_cotiz_uf']),
+      tope_se_uf:           Number(configRaw['tope_se_uf']),
+      movilizacion_mensual: Number(configRaw['movilizacion_mensual']),
+      colacion_mensual:     Number(configRaw['colacion_mensual']),
+    };
+    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
     const updated = await prisma.liquidacion.update({
       where: { id: liquidacionId },
       data: { ...calc },

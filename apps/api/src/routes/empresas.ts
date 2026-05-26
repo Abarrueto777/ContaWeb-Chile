@@ -18,6 +18,7 @@ import liquidacionesRouter from './liquidaciones';
 import activosRouter from './activos';
 import reportesRouter from './reportes';
 import siiRouter from './sii';
+import configEmpresaRoutes from './config-empresa';
 
 const router = Router();
 router.use(requireAuth);
@@ -95,5 +96,6 @@ router.use('/:empresaId/liquidaciones', liquidacionesRouter);
 router.use('/:empresaId/activos', activosRouter);
 router.use('/:empresaId/reportes', reportesRouter);
 router.use('/:empresaId/sii', siiRouter);
+router.use('/:empresaId/config', configEmpresaRoutes);
 
 export default router;

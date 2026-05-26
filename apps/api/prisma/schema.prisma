@@ -159,6 +159,7 @@ model Empresa {
   liquidaciones      Liquidacion[]
   activosFijos       ActivoFijo[]
   finiquitos         Finiquito[]
+  configEmpresa      ConfigEmpresa[]
 
   @@map("empresas")
 }
@@ -468,4 +469,15 @@ model ValorUFUTM {
 
   @@unique([anio, mes])
   @@map("valores_uf_utm")
+}
+
+model ConfigEmpresa {
+  id        String  @id @default(cuid())
+  empresaId String
+  clave     String
+  valor     String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, clave])
+  @@map("config_empresa")
 }
