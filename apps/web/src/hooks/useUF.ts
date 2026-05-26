@@ -15,6 +15,9 @@ export interface ValorUFUTM {
   afpProvida: number;
   afpModelo: number;
   afpUno: number;
+  sisEmpleador: number;
+  topeImponibleUf: number;
+  previredSyncAt: string | null;
 }
 
 interface ApiResponse<T> { data: T; fallback?: boolean }
@@ -38,12 +41,21 @@ export interface UpsertUFInput {
   anio: number; mes: number; uf: number; utm: number; imm: number;
   afpCapital?: number; afpCuprum?: number; afpHabitat?: number; afpPlanvital?: number;
   afpProvida?: number; afpModelo?: number; afpUno?: number;
+  sisEmpleador?: number; topeImponibleUf?: number;
 }
 
 export function useUpsertValorUF() {
   const qc = useQueryClient();
   return useMutation<ApiResponse<ValorUFUTM>, Error, UpsertUFInput>({
     mutationFn: (data) => api.post<ApiResponse<ValorUFUTM>>('/api/uf', data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['uf'] }),
+  });
+}
+
+export function useSyncPrevired() {
+  const qc = useQueryClient();
+  return useMutation<ApiResponse<ValorUFUTM>, Error, void>({
+    mutationFn: () => api.post<ApiResponse<ValorUFUTM>>('/api/uf/sync-previred').then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['uf'] }),
   });
 }

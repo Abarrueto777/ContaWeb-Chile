@@ -67,7 +67,7 @@ export interface ConfigCalculo {
   tope_se_uf?: number;
   movilizacion_mensual?: number;
   colacion_mensual?: number;
-  // Tasas AFP desde indicadores del mes (ValorUFUTM)
+  // Tasas AFP + indicadores previsionales desde ValorUFUTM del mes
   afp_capital?: number;
   afp_cuprum?: number;
   afp_habitat?: number;
@@ -75,6 +75,8 @@ export interface ConfigCalculo {
   afp_provida?: number;
   afp_modelo?: number;
   afp_uno?: number;
+  sis_empleador_previred?: number;
+  tope_imponible_uf_previred?: number;
 }
 
 export interface LiquidacionCalculada {
@@ -128,17 +130,17 @@ export function calcularLiquidacion(
     diasTrabajados,
   );
 
-  // Config-overridable rates
-  const TASA_SIS_V = cfg.sis_pct ?? TASA_SIS;
+  // Config-overridable rates — Previred del mes tiene prioridad sobre config empresa
+  const TASA_SIS_V = cfg.sis_empleador_previred ?? cfg.sis_pct ?? TASA_SIS;
   const TASA_CES_TRAB_V = cfg.ces_trabajador_pct ?? TASA_CES_TRABAJADOR;
   const TASA_CES_EMP_V = cfg.ces_empleador_pct ?? TASA_CES_EMPLEADOR;
   const TASA_ACC_V = cfg.acc_laboral_pct ?? TASA_ACCIDENTE;
   const TASA_SES_V = cfg.aporte_ses_pct ?? TASA_SES;
 
-  // Tope imponible
+  // Tope imponible — Previred del mes tiene prioridad
   const topeUF = trabajador.tipo === 'SUELDO_EMPRESARIAL'
     ? (cfg.tope_se_uf ?? TOPE_SE_UF)
-    : (cfg.tope_cotiz_uf ?? TOPE_IMPONIBLE_UF);
+    : (cfg.tope_imponible_uf_previred ?? cfg.tope_cotiz_uf ?? TOPE_IMPONIBLE_UF);
   const topePesos = Math.round(topeUF * uf);
   const imponibleBruto = sueldoDevengado + montoHorasExtra + bono + gratificacion;
   const imponible = Math.min(imponibleBruto, topePesos);
