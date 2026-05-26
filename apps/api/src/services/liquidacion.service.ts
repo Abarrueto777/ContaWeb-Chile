@@ -1,7 +1,7 @@
 import type { Trabajador } from '@prisma/client';
 
-// AFP rates 2024 (tasa trabajador, excl. SIS)
-const AFP_TASAS: Record<string, number> = {
+// AFP rates vigentes — fallback si no vienen en config
+const AFP_TASAS_DEFAULT: Record<string, number> = {
   CAPITAL: 0.1144,
   CUPRUM: 0.1144,
   HABITAT: 0.1127,
@@ -67,6 +67,14 @@ export interface ConfigCalculo {
   tope_se_uf?: number;
   movilizacion_mensual?: number;
   colacion_mensual?: number;
+  // Tasas AFP desde indicadores del mes (ValorUFUTM)
+  afp_capital?: number;
+  afp_cuprum?: number;
+  afp_habitat?: number;
+  afp_planvital?: number;
+  afp_provida?: number;
+  afp_modelo?: number;
+  afp_uno?: number;
 }
 
 export interface LiquidacionCalculada {
@@ -135,8 +143,20 @@ export function calcularLiquidacion(
   const imponibleBruto = sueldoDevengado + montoHorasExtra + bono + gratificacion;
   const imponible = Math.min(imponibleBruto, topePesos);
 
+  // Tasas AFP: usa indicadores del mes si vienen en config, sino los defaults
+  const ra = (v: number | undefined, d: number): number => v !== undefined ? v : d;
+  const AFP_TASAS_V: Record<string, number> = {
+    CAPITAL:   ra(cfg.afp_capital,   0.1144),
+    CUPRUM:    ra(cfg.afp_cuprum,    0.1144),
+    HABITAT:   ra(cfg.afp_habitat,   0.1127),
+    PLANVITAL: ra(cfg.afp_planvital, 0.1127),
+    PROVIDA:   ra(cfg.afp_provida,   0.1145),
+    MODELO:    ra(cfg.afp_modelo,    0.1077),
+    UNO:       ra(cfg.afp_uno,       0.1049),
+  };
+
   // Descuentos previsionales
-  const tasaAfp = AFP_TASAS[trabajador.afp] ?? 0.1127;
+  const tasaAfp = AFP_TASAS_V[trabajador.afp] ?? 0.1127;
   const cotizAfp = Math.round(imponible * tasaAfp);
   const cotizSis = 0; // SIS lo paga el empleador
   const cotizSaludMandatoria = Math.round(imponible * Number(trabajador.pctSalud));

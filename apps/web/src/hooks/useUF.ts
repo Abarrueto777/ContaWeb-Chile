@@ -8,6 +8,13 @@ export interface ValorUFUTM {
   uf: number;
   utm: number;
   imm: number;
+  afpCapital: number;
+  afpCuprum: number;
+  afpHabitat: number;
+  afpPlanvital: number;
+  afpProvida: number;
+  afpModelo: number;
+  afpUno: number;
 }
 
 interface ApiResponse<T> { data: T; fallback?: boolean }
@@ -27,9 +34,15 @@ export function useValorUFMes(anio: number, mes: number) {
   });
 }
 
+export interface UpsertUFInput {
+  anio: number; mes: number; uf: number; utm: number; imm: number;
+  afpCapital?: number; afpCuprum?: number; afpHabitat?: number; afpPlanvital?: number;
+  afpProvida?: number; afpModelo?: number; afpUno?: number;
+}
+
 export function useUpsertValorUF() {
   const qc = useQueryClient();
-  return useMutation<ApiResponse<ValorUFUTM>, Error, { anio: number; mes: number; uf: number; utm: number; imm: number }>({
+  return useMutation<ApiResponse<ValorUFUTM>, Error, UpsertUFInput>({
     mutationFn: (data) => api.post<ApiResponse<ValorUFUTM>>('/api/uf', data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['uf'] }),
   });

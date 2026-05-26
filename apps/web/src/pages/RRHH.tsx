@@ -335,6 +335,20 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
     URL.revokeObjectURL(url);
   }
 
+  async function descargarPrevired() {
+    if (!empresa) return;
+    const res = await api.get(`/api/empresas/${empresa.id}/liquidaciones/previred`, {
+      params: { anio, mes },
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Previred_${empresa.rut}_${anio}_${String(mes).padStart(2, '0')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function normalizarCodigoDT<T extends { codigo: string; nombre: string }>(
     valor: string | undefined | null,
     lista: T[]
@@ -511,7 +525,22 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                 <form id="form-trab" onSubmit={formTrab.handleSubmit(onSubmitTrab)} className="space-y-4">
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5"><Label>RUT *</Label><Input {...formTrab.register('rut')} placeholder="12.345.678-9" />{formTrab.formState.errors.rut && <p className="text-xs text-destructive">{formTrab.formState.errors.rut.message}</p>}</div>
-                    <div className="space-y-1.5"><Label>Nombre *</Label><Input {...formTrab.register('nombre')} placeholder="Juan Pérez" /></div>
+                    <div className="space-y-1.5"><Label>Nombre completo *</Label><Input {...formTrab.register('nombre')} placeholder="Juan Pérez González" /></div>
+                    <div className="space-y-1.5 sm:col-span-2 border-t pt-3">
+                      <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2">Para Previred (opcional pero recomendado)</p>
+                      <div className="grid sm:grid-cols-3 gap-3">
+                        <div className="space-y-1"><Label className="text-xs">Apellido paterno</Label><Input {...formTrab.register('apellidoPaterno')} placeholder="Pérez" /></div>
+                        <div className="space-y-1"><Label className="text-xs">Apellido materno</Label><Input {...formTrab.register('apellidoMaterno')} placeholder="González" /></div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Sexo</Label>
+                          <select {...formTrab.register('sexo')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                            <option value="">— —</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                     <div className="space-y-1.5 sm:col-span-2"><Label>Correo electrónico</Label><Input {...formTrab.register('email')} type="email" placeholder="juan@empresa.cl" /></div>
                   </div>
                   <div className="border-t pt-3 space-y-3">
@@ -721,6 +750,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
               <Button variant="outline" size="sm" onClick={descargarLRE} disabled={liquidaciones.length === 0}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
               </Button>
+              <Button variant="outline" size="sm" onClick={descargarPrevired} disabled={liquidaciones.length === 0}>
+                <Download className="mr-1.5 h-3.5 w-3.5" />Previred
+              </Button>
               {dirty.size > 0 && (
                 <Button size="sm" variant="outline" onClick={calcularConCambios}>
                   <Zap className="mr-1.5 h-3.5 w-3.5" />Calcular cambios ({dirty.size})
@@ -866,6 +898,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
             <div className="ml-auto flex gap-2">
               <Button variant="outline" size="sm" onClick={descargarLRE} disabled={liquidaciones.length === 0}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />LRE / DT
+              </Button>
+              <Button variant="outline" size="sm" onClick={descargarPrevired} disabled={liquidaciones.length === 0}>
+                <Download className="mr-1.5 h-3.5 w-3.5" />Previred
               </Button>
               <Button variant="outline" size="sm" onClick={() => abrirLibroRemuneraciones()} disabled={liquidaciones.length === 0}>
                 <Printer className="mr-1.5 h-3.5 w-3.5" />Imprimir

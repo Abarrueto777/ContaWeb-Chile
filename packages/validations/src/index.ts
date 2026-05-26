@@ -153,6 +153,9 @@ export const movimientoBancoSchema = z.object({
 export const trabajadorSchema = z.object({
   rut: rutSchema,
   nombre: z.string().min(2, 'Nombre requerido'),
+  apellidoPaterno: z.string().optional().or(z.literal('')),
+  apellidoMaterno: z.string().optional().or(z.literal('')),
+  sexo: z.enum(['M', 'F']).optional(),
   cargo: z.string().min(2, 'Cargo requerido (Art. 10 CT)'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   domicilio: z.string().min(5, 'Domicilio requerido (Art. 10 CT)'),

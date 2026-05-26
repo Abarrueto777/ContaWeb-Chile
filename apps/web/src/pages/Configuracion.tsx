@@ -15,7 +15,11 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-type UFForm = { uf: number; utm: number; imm: number };
+type UFForm = {
+  uf: number; utm: number; imm: number;
+  afpCapital: number; afpCuprum: number; afpHabitat: number; afpPlanvital: number;
+  afpProvida: number; afpModelo: number; afpUno: number;
+};
 
 export default function Configuracion() {
   const hoy = new Date();
@@ -90,16 +94,27 @@ export default function Configuracion() {
   const { data: ufData, isLoading: loadingUF } = useValorUFMes(anio, mes);
 
   const { register: regUF, handleSubmit: handleUF, setValue: setUFValue, formState: { isSubmitting: savingUF } } = useForm<UFForm>({
-    defaultValues: { uf: 0, utm: 0, imm: 0 },
+    defaultValues: {
+      uf: 0, utm: 0, imm: 0,
+      afpCapital: 0.1144, afpCuprum: 0.1144, afpHabitat: 0.1127, afpPlanvital: 0.1127,
+      afpProvida: 0.1145, afpModelo: 0.1077, afpUno: 0.1049,
+    },
   });
 
   // Auto-carga valores desde la BD cuando cambia el mes/año
   useEffect(() => {
     if (ufData?.data) {
-      const { uf, utm, imm } = ufData.data;
-      setUFValue('uf', Number(uf));
-      setUFValue('utm', Number(utm));
-      setUFValue('imm', Number(imm));
+      const d = ufData.data;
+      setUFValue('uf', Number(d.uf));
+      setUFValue('utm', Number(d.utm));
+      setUFValue('imm', Number(d.imm));
+      if (d.afpCapital)   setUFValue('afpCapital',   Number(d.afpCapital));
+      if (d.afpCuprum)    setUFValue('afpCuprum',    Number(d.afpCuprum));
+      if (d.afpHabitat)   setUFValue('afpHabitat',   Number(d.afpHabitat));
+      if (d.afpPlanvital) setUFValue('afpPlanvital', Number(d.afpPlanvital));
+      if (d.afpProvida)   setUFValue('afpProvida',   Number(d.afpProvida));
+      if (d.afpModelo)    setUFValue('afpModelo',    Number(d.afpModelo));
+      if (d.afpUno)       setUFValue('afpUno',       Number(d.afpUno));
     }
   }, [ufData, setUFValue]);
 
@@ -311,9 +326,31 @@ export default function Configuracion() {
                 </div>
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Los valores se sincronizan automáticamente desde mindicador.cl al iniciar el servidor. Podés corregirlos manualmente si es necesario.
-            </p>
+            {/* Tasas AFP mensuales — se copian de previred.com */}
+            <div className="pt-2 border-t">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Tasas AFP del mes (tasa trabajador, sin SIS) — copiá de previred.com
+              </p>
+              <div className="grid sm:grid-cols-4 gap-3">
+                {[
+                  { key: 'afpCapital' as const,   label: 'Capital' },
+                  { key: 'afpCuprum' as const,    label: 'Cuprum' },
+                  { key: 'afpHabitat' as const,   label: 'Hábitat' },
+                  { key: 'afpPlanvital' as const, label: 'PlanVital' },
+                  { key: 'afpProvida' as const,   label: 'ProVida' },
+                  { key: 'afpModelo' as const,    label: 'Modelo' },
+                  { key: 'afpUno' as const,       label: 'Uno' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs">{label}</Label>
+                    <Input {...regUF(key, { valueAsNumber: true })} type="number" step="0.0001" min="0" max="0.5" className="h-8 text-sm" />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Expresadas como decimal (ej.: 0.1127 = 11.27%). Las tasas AFP cambian anualmente — revisá en previred.com cada enero.
+              </p>
+            </div>
             <Button type="submit" disabled={savingUF || upsertUF.isPending || loadingUF}>
               {(savingUF || upsertUF.isPending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               {savedUF ? 'Guardado ✓' : 'Guardar valores'}

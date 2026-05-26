@@ -27,7 +27,203 @@ const REGION_COD: Record<string, string> = {
   'nuble': '16', 'ñuble': '16',
 };
 
+// AFP codes — Tabla N°10 Previred (distintos de LRE)
+const AFP_COD_PREV: Record<string, string> = {
+  CAPITAL: '31', CUPRUM: '03', HABITAT: '05',
+  PLANVITAL: '29', PROVIDA: '08', MODELO: '34', UNO: '35',
+};
+
+// Salud codes — Tabla N°16 Previred
+const SALUD_COD_PREV: Record<string, string> = {
+  FONASA: '07', BANMEDICA: '01', CONSALUD: '02', VIDA_TRES: '03',
+  COLMENA: '04', NUEVA_MASVIDA: '10', ESENCIAL: '10', CRUZ_BLANCA: '01',
+};
+
 const router = Router({ mergeParams: true });
+
+router.get('/previred', async (req, res, next) => {
+  try {
+    const { empresaId } = req.params as { empresaId: string };
+    const { anio, mes } = req.query;
+    if (!anio || !mes) return next(createError('Parámetros anio y mes requeridos', 400));
+
+    const liquidaciones = await prisma.liquidacion.findMany({
+      where: { empresaId, anio: Number(anio), mes: Number(mes) },
+      include: { trabajador: true },
+      orderBy: { trabajador: { nombre: 'asc' } },
+    });
+
+    const mesPad = String(mes).padStart(2, '0');
+    const periodo = `${mesPad}${anio}`; // mmaaaa
+
+    const rows = liquidaciones.map((liq) => {
+      const t = liq.trabajador as typeof liq.trabajador & {
+        apellidoPaterno?: string | null;
+        apellidoMaterno?: string | null;
+        sexo?: string | null;
+      };
+
+      // RUT: separar número de DV
+      const rutLimpio = t.rut.replace(/\./g, '');
+      const dashIdx = rutLimpio.lastIndexOf('-');
+      const rutNum = dashIdx >= 0 ? rutLimpio.slice(0, dashIdx) : rutLimpio;
+      const rutDV  = dashIdx >= 0 ? rutLimpio.slice(dashIdx + 1) : '0';
+
+      // Nombre — fallback: parsear desde nombre completo
+      const partes = t.nombre.trim().split(/\s+/);
+      const apPat  = (t.apellidoPaterno ?? partes[0] ?? '').toUpperCase();
+      const apMat  = (t.apellidoMaterno ?? (partes.length > 2 ? partes[1] ?? '' : '')).toUpperCase();
+      const nombres = t.apellidoPaterno
+        ? t.nombre.replace(apPat, '').replace((t.apellidoMaterno ?? ''), '').trim().toUpperCase()
+        : partes.slice(partes.length > 2 ? 2 : 1).join(' ').toUpperCase();
+
+      const sexo = t.sexo ?? 'M';
+      const nac  = (t.nacionalidad ?? 'Chilena').toLowerCase().startsWith('chil') ? '0' : '1';
+      const esFonasa = t.salud === 'FONASA';
+
+      const imponible = Math.round(Number(liq.imponible));
+      const cotizAfp  = Math.round(Number(liq.cotizAfp));
+      const cotizSis  = Math.round(Number(liq.cotizSis));
+      const cotizSalud = Math.round(Number(liq.cotizSalud));
+      const cotizCes   = Math.round(Number(liq.cotizCes));
+
+      // FONASA: campo 70; ISAPRE: campos 75-80
+      const cotizFonasa = esFonasa ? cotizSalud : 0;
+      const codSalud    = SALUD_COD_PREV[t.salud] ?? '07';
+      const riIsapre    = esFonasa ? 0 : imponible;
+      const cotizOblIsapre = esFonasa ? 0 : Math.round(imponible * Number(t.pctSalud));
+      const planIsapreUF   = !esFonasa && t.montoIsapre ? Number(t.montoIsapre) : 0;
+      const monedaPlan  = planIsapreUF > 0 ? '2' : '0';  // 2=UF, 0=no aplica
+      const cotizPactada = planIsapreUF > 0 ? planIsapreUF.toFixed(8).replace('.', ',') : '0';
+
+      // AFC / Cesantía
+      const riCes = t.tieneCes ? imponible : 0;
+      const cesEmp = t.tieneCes
+        ? Math.round(imponible * (t.tipoContrato === 'INDEFINIDO' ? 0.024 : 0.030))
+        : 0;
+
+      const afpCod = AFP_COD_PREV[t.afp] ?? '05';
+
+      return [
+        /* 1  RUT Trabajador    */ rutNum,
+        /* 2  DV                */ rutDV,
+        /* 3  Apellido Paterno  */ apPat,
+        /* 4  Apellido Materno  */ apMat,
+        /* 5  Nombres           */ nombres,
+        /* 6  Sexo              */ sexo,
+        /* 7  Nacionalidad      */ nac,
+        /* 8  Tipo Pago         */ '01',
+        /* 9  Período Desde     */ periodo,
+        /* 10 Período Hasta     */ '',
+        /* 11 Régimen Prev.     */ 'AFP',
+        /* 12 Tipo Trabajador   */ '0',
+        /* 13 Días Trabajados   */ String(liq.diasTrabajados ?? 30),
+        /* 14 Tipo Línea        */ '00',
+        /* 15 Cód.Mov.Personal  */ '0',
+        /* 16 Fecha Desde       */ '',
+        /* 17 Fecha Hasta       */ '',
+        /* 18 Tramo Asig.Fam.   */ 'D',
+        /* 19 N°Cargas Simples  */ '0',
+        /* 20 N°Cargas Matern.  */ '0',
+        /* 21 N°Cargas Inválid. */ '0',
+        /* 22 Asig.Familiar     */ '0',
+        /* 23 Asig.Fam.Retroac. */ '0',
+        /* 24 Reintegro Cargas  */ '0',
+        /* 25 Trab.Joven        */ 'N',
+        /* 26 Código AFP        */ afpCod,
+        /* 27 Renta Imponible AFP */ imponible,
+        /* 28 Cotiz.Oblig.AFP   */ cotizAfp,
+        /* 29 SIS Empleador     */ cotizSis,
+        /* 30 Ahorro Vol.AFP    */ '0',
+        /* 31 Renta Imp.Sust.   */ '0',
+        /* 32 Tasa Pactada      */ '00,00',
+        /* 33 Aporte Indemn.    */ '0',
+        /* 34 N°Períodos Sust.  */ '0',
+        /* 35 Período desde Sus.*/ '',
+        /* 36 Período Hasta Sus.*/ '',
+        /* 37 Puesto Trab.Pes.  */ '',
+        /* 38 % Cot.Trab.Pes.   */ '00,00',
+        /* 39 Cot.Trab.Pesado   */ '0',
+        /* 40 Cód.Inst.APVI     */ '000',
+        /* 41 N°Contrato APVI   */ '',
+        /* 42 Forma Pago APVI   */ '0',
+        /* 43 Cotiz.APVI        */ '0',
+        /* 44 Depósito Conv.    */ '0',
+        /* 45 Cód.Inst.APVC     */ '000',
+        /* 46 N°Contrato APVC   */ '',
+        /* 47 Forma Pago APVC   */ '0',
+        /* 48 Cotiz.APVC Trab.  */ '0',
+        /* 49 Cotiz.APVC Emp.   */ '0',
+        /* 50 RUT Afil.Volunt.  */ '',
+        /* 51 DV Afil.Volunt.   */ '',
+        /* 52 Ap.Pat.Afil.Vol.  */ '',
+        /* 53 Ap.Mat.Afil.Vol.  */ '',
+        /* 54 Nombres Afil.Vol. */ '',
+        /* 55 Cód.Mov.P.Afil.   */ '',
+        /* 56 Fecha Desde Afil. */ '',
+        /* 57 Fecha Hasta Afil. */ '',
+        /* 58 Cód.AFP Afil.Vol. */ '',
+        /* 59 Mont.Cap.Volunt.  */ '0',
+        /* 60 Mont.Ahorro Vol.  */ '0',
+        /* 61 N°Períodos Cotiz. */ '',
+        /* 62 Cód.Ex-Caja Rég.  */ '0',
+        /* 63 Tasa Cot.Ex-Caja  */ '00,00',
+        /* 64 Renta Imp.IPS     */ '0',
+        /* 65 Cotiz.Oblig.IPS   */ '0',
+        /* 66 Renta Imp.Desahuc.*/ '0',
+        /* 67 Cód.Ex-Caja Desha.*/ '0000',
+        /* 68 Tasa Cot.Desahuc. */ '00,00',
+        /* 69 Cotiz.Desahucio   */ '0',
+        /* 70 Cotiz.Fonasa      */ cotizFonasa,
+        /* 71 Cotiz.Acc.ISL     */ '0',
+        /* 72 Bonif.Ley 15.386  */ '0',
+        /* 73 Desc.Cargas IPS   */ '0',
+        /* 74 Bonos Gobierno    */ '0',
+        /* 75 Cód.Inst.Salud    */ esFonasa ? '07' : codSalud,
+        /* 76 N°FUN             */ '',
+        /* 77 Renta Imp.ISAPRE  */ riIsapre,
+        /* 78 Moneda Plan ISAPRE*/ monedaPlan,
+        /* 79 Cotiz.Pactada     */ cotizPactada,
+        /* 80 Cotiz.Oblig.ISAPRE*/ cotizOblIsapre,
+        /* 81 Cotiz.Adic.Volunt. */ '0',
+        /* 82 Monto GES         */ '0',
+        /* 83 Código CCAF       */ '00',
+        /* 84 Renta Imp.CCAF    */ '0',
+        /* 85 Créditos CCAF     */ '0',
+        /* 86 Desc.Dental CCAF  */ '0',
+        /* 87 Desc.Leasing CCAF */ '0',
+        /* 88 Desc.Seg.Vida CCAF */ '0',
+        /* 89 Otros Desc.CCAF   */ '0',
+        /* 90 Cot.No-Afil.ISAPRE*/ '0',
+        /* 91 Desc.Cargas CCAF  */ '0',
+        /* 92 Otros Desc.CCAF1  */ '0',
+        /* 93 Otros Desc.CCAF2  */ '0',
+        /* 94 Bonos Gobierno CC.*/ '0',
+        /* 95 Cód.Sucursal      */ '',
+        /* 96 Código Mutual      */ '00',
+        /* 97 Renta Imp.Mutual   */ '0',
+        /* 98 Cotiz.Acc.Mutual   */ '0',
+        /* 99 Sucursal Mutual    */ '',
+        /* 100 Renta Imp.Cesant. */ riCes,
+        /* 101 Aporte Trab.Ces.  */ cotizCes,
+        /* 102 Aporte Emp.Ces.   */ cesEmp,
+        /* 103 RUT Pag.Subsidio  */ '',
+        /* 104 DV Pag.Subsidio   */ '',
+        /* 105 Centro de Costos  */ '',
+      ].join(';');
+    });
+
+    const rutEmpSinPuntos = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { rut: true } });
+    const rutEmp = (rutEmpSinPuntos?.rut ?? empresaId).replace(/\./g, '');
+    const nombreArchivo = `Previred_${rutEmp}_${anio}${mesPad}.txt`;
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
+    res.send(rows.join('\r\n'));
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get('/lre', async (req, res, next) => {
   try {
@@ -288,6 +484,13 @@ router.post('/calcular', async (req, res) => {
       tope_se_uf:           Number(configRaw['tope_se_uf']),
       movilizacion_mensual: Number(configRaw['movilizacion_mensual']),
       colacion_mensual:     Number(configRaw['colacion_mensual']),
+      ...(valorUF?.afpCapital   !== undefined && { afp_capital:   Number(valorUF.afpCapital) }),
+      ...(valorUF?.afpCuprum    !== undefined && { afp_cuprum:    Number(valorUF.afpCuprum) }),
+      ...(valorUF?.afpHabitat   !== undefined && { afp_habitat:   Number(valorUF.afpHabitat) }),
+      ...(valorUF?.afpPlanvital !== undefined && { afp_planvital: Number(valorUF.afpPlanvital) }),
+      ...(valorUF?.afpProvida   !== undefined && { afp_provida:   Number(valorUF.afpProvida) }),
+      ...(valorUF?.afpModelo    !== undefined && { afp_modelo:    Number(valorUF.afpModelo) }),
+      ...(valorUF?.afpUno       !== undefined && { afp_uno:       Number(valorUF.afpUno) }),
     };
     const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
     res.json({ data: resultado });
@@ -321,6 +524,13 @@ router.post('/', async (req, res) => {
       tope_se_uf:           Number(configRaw['tope_se_uf']),
       movilizacion_mensual: Number(configRaw['movilizacion_mensual']),
       colacion_mensual:     Number(configRaw['colacion_mensual']),
+      ...(valorUF?.afpCapital   !== undefined && { afp_capital:   Number(valorUF.afpCapital) }),
+      ...(valorUF?.afpCuprum    !== undefined && { afp_cuprum:    Number(valorUF.afpCuprum) }),
+      ...(valorUF?.afpHabitat   !== undefined && { afp_habitat:   Number(valorUF.afpHabitat) }),
+      ...(valorUF?.afpPlanvital !== undefined && { afp_planvital: Number(valorUF.afpPlanvital) }),
+      ...(valorUF?.afpProvida   !== undefined && { afp_provida:   Number(valorUF.afpProvida) }),
+      ...(valorUF?.afpModelo    !== undefined && { afp_modelo:    Number(valorUF.afpModelo) }),
+      ...(valorUF?.afpUno       !== undefined && { afp_uno:       Number(valorUF.afpUno) }),
     };
     const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
     const liquidacion = await prisma.liquidacion.create({
@@ -425,6 +635,13 @@ router.put('/:liquidacionId', async (req, res, next) => {
       tope_se_uf:           Number(configRaw['tope_se_uf']),
       movilizacion_mensual: Number(configRaw['movilizacion_mensual']),
       colacion_mensual:     Number(configRaw['colacion_mensual']),
+      ...(valorUF?.afpCapital   !== undefined && { afp_capital:   Number(valorUF.afpCapital) }),
+      ...(valorUF?.afpCuprum    !== undefined && { afp_cuprum:    Number(valorUF.afpCuprum) }),
+      ...(valorUF?.afpHabitat   !== undefined && { afp_habitat:   Number(valorUF.afpHabitat) }),
+      ...(valorUF?.afpPlanvital !== undefined && { afp_planvital: Number(valorUF.afpPlanvital) }),
+      ...(valorUF?.afpProvida   !== undefined && { afp_provida:   Number(valorUF.afpProvida) }),
+      ...(valorUF?.afpModelo    !== undefined && { afp_modelo:    Number(valorUF.afpModelo) }),
+      ...(valorUF?.afpUno       !== undefined && { afp_uno:       Number(valorUF.afpUno) }),
     };
     const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
     const updated = await prisma.liquidacion.update({

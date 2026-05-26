@@ -34,13 +34,27 @@ router.get('/:anio/:mes', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { anio, mes, uf, utm, imm } = req.body as {
+    const {
+      anio, mes, uf, utm, imm,
+      afpCapital, afpCuprum, afpHabitat, afpPlanvital, afpProvida, afpModelo, afpUno,
+    } = req.body as {
       anio: number; mes: number; uf: number; utm: number; imm: number;
+      afpCapital?: number; afpCuprum?: number; afpHabitat?: number; afpPlanvital?: number;
+      afpProvida?: number; afpModelo?: number; afpUno?: number;
+    };
+    const afpFields = {
+      ...(afpCapital   !== undefined && { afpCapital }),
+      ...(afpCuprum    !== undefined && { afpCuprum }),
+      ...(afpHabitat   !== undefined && { afpHabitat }),
+      ...(afpPlanvital !== undefined && { afpPlanvital }),
+      ...(afpProvida   !== undefined && { afpProvida }),
+      ...(afpModelo    !== undefined && { afpModelo }),
+      ...(afpUno       !== undefined && { afpUno }),
     };
     const valor = await prisma.valorUFUTM.upsert({
       where: { anio_mes: { anio, mes } },
-      create: { anio, mes, uf, utm, imm },
-      update: { uf, utm, imm },
+      create: { anio, mes, uf, utm, imm, ...afpFields },
+      update: { uf, utm, imm, ...afpFields },
     });
     res.status(201).json({ data: valor });
   } catch (err) {
