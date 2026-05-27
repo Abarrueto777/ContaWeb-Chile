@@ -468,86 +468,225 @@ export function generarFiniquito(empresa: EmpresaDoc, trabajador: TrabajadorDoc,
   const ciudadEmpresa = empresa.direccion?.split(',').pop()?.trim() ?? 'Santiago';
 
   const filas = [
-    { label: 'Vacaciones proporcionales', dias: `${doc.diasVacaciones} días`, monto: doc.montoVacaciones },
-    ...(doc.indemnizacion > 0 ? [{ label: `Indemnización por años de servicio (${Math.min(Math.floor(doc.aniosServicio), 11)} año(s))`, dias: '', monto: doc.indemnizacion }] : []),
-    ...(doc.avisoPrevio > 0 ? [{ label: 'Aviso previo (sustitución de aviso)', dias: '', monto: doc.avisoPrevio }] : []),
-    ...(doc.otrosDescuentos > 0 ? [{ label: 'Otros descuentos', dias: '', monto: -doc.otrosDescuentos }] : []),
+    { label: 'Vacaciones proporcionales', detalle: `${doc.diasVacaciones} días`, monto: doc.montoVacaciones },
+    ...(doc.indemnizacion > 0 ? [{ label: `Indemnización por años de servicio (${Math.min(Math.floor(doc.aniosServicio), 11)} año(s))`, detalle: '', monto: doc.indemnizacion }] : []),
+    ...(doc.avisoPrevio > 0 ? [{ label: 'Aviso previo (sustitución de aviso)', detalle: '', monto: doc.avisoPrevio }] : []),
+    ...(doc.otrosDescuentos > 0 ? [{ label: 'Otros descuentos', detalle: '', monto: -doc.otrosDescuentos }] : []),
   ];
 
   const filasHtml = filas.map(f => `
     <tr>
-      <td>${f.label}</td>
-      <td class="monto">${f.dias}</td>
-      <td class="monto" style="color:${f.monto < 0 ? '#c00' : 'inherit'}">${clp(Math.abs(f.monto))}</td>
+      <td class="fq-concepto">${f.label}</td>
+      <td class="fq-detalle">${f.detalle}</td>
+      <td class="fq-monto${f.monto < 0 ? ' fq-negativo' : ''}">${clp(Math.abs(f.monto))}</td>
     </tr>`).join('');
 
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><title>Finiquito — ${trabajador.nombre}</title>${BASE_CSS}</head>
+<head>
+<meta charset="UTF-8">
+<title>Finiquito — ${trabajador.nombre}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; background: #fff; padding: 18mm 20mm 14mm; }
+
+  /* ── ENCABEZADO ── */
+  .fq-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    border: 1.5px solid #1a1a2e;
+    margin-bottom: 0;
+  }
+  .fq-empresa-col { padding: 10px 14px; flex: 1; border-right: 1.5px solid #1a1a2e; }
+  .fq-empresa-nombre { font-size: 12.5pt; font-weight: bold; color: #1a1a2e; margin-bottom: 3px; }
+  .fq-empresa-sub { font-size: 8.5pt; color: #555; line-height: 1.5; }
+  .fq-titulo-col {
+    background: #1a1a2e; color: #fff;
+    padding: 10px 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 180px; text-align: center;
+  }
+  .fq-titulo-doc { font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; margin-bottom: 4px; }
+  .fq-titulo-main { font-size: 11pt; font-weight: bold; letter-spacing: 0.5px; }
+  .fq-fecha-doc { font-size: 8pt; opacity: 0.7; margin-top: 4px; }
+
+  /* ── TITLE BAR ── */
+  .fq-title-bar {
+    border-left: 1.5px solid #1a1a2e; border-right: 1.5px solid #1a1a2e; border-bottom: 1.5px solid #1a1a2e;
+    text-align: center; padding: 8px 0 6px; margin-bottom: 14px;
+  }
+  .fq-title-bar h1 { font-size: 13pt; text-transform: uppercase; letter-spacing: 2px; color: #1a1a2e; }
+
+  /* ── SECCIÓN HEADER ── */
+  .fq-seccion-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px;
+    color: #fff; background: #2c3e6b;
+    padding: 4px 10px; margin: 12px 0 8px;
+  }
+
+  /* ── GRILLA PARTES ── */
+  .fq-partes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 16px; margin-bottom: 12px; }
+  .fq-parte-col { border: 1px solid #c8d0e8; border-radius: 4px; padding: 8px 12px; background: #f8f9fc; }
+  .fq-parte-titulo { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; color: #2c3e6b; margin-bottom: 6px; border-bottom: 1px solid #d0d8f0; padding-bottom: 4px; }
+  .fq-parte-row { display: flex; gap: 6px; padding: 2px 0; font-size: 9.5pt; }
+  .fq-parte-lbl { font-weight: bold; color: #555; min-width: 95px; flex-shrink: 0; font-size: 9pt; }
+
+  /* ── CAUSAL ── */
+  .fq-causal-box {
+    border-left: 4px solid #2c3e6b; background: #f0f2fa;
+    padding: 8px 14px; margin-bottom: 12px; font-size: 10.5pt; line-height: 1.55;
+  }
+
+  /* ── TABLA HABERES ── */
+  .fq-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  .fq-table thead tr { background: #2c3e6b; color: #fff; }
+  .fq-table thead th { padding: 5px 10px; font-size: 8.5pt; text-align: left; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; }
+  .fq-table thead th.right { text-align: right; }
+  .fq-table tbody tr { border-bottom: 1px solid #eee; }
+  .fq-table tbody tr:nth-child(even) { background: #f7f8fc; }
+  .fq-concepto { padding: 5px 10px; font-size: 10pt; }
+  .fq-detalle { padding: 5px 10px; font-size: 9.5pt; color: #555; text-align: right; }
+  .fq-monto { padding: 5px 10px; font-size: 10pt; text-align: right; font-family: monospace; }
+  .fq-negativo { color: #b00; }
+  .fq-table tfoot tr.fq-bruto td { background: #e8ecf5; font-weight: 600; border-top: 1.5px solid #9aabce; padding: 5px 10px; font-size: 10pt; }
+  .fq-table tfoot tr.fq-neto td { background: #1a1a2e; color: #fff; font-weight: bold; font-size: 11pt; padding: 6px 10px; }
+  .fq-table tfoot td.right { text-align: right; font-family: monospace; }
+
+  /* ── SON: ── */
+  .fq-palabras {
+    font-weight: bold; text-transform: uppercase;
+    border: 1.5px solid #2c3e6b; border-radius: 3px;
+    padding: 6px 12px; margin: 8px 0 14px;
+    font-size: 9.5pt; color: #1a1a2e; letter-spacing: 0.3px;
+  }
+
+  /* ── DECLARACIÓN ── */
+  .fq-declaracion {
+    border: 1px solid #c8d0e8; border-radius: 4px;
+    padding: 12px 16px; margin-bottom: 18px;
+    background: #fafbfe; font-size: 10.5pt; line-height: 1.65;
+    text-align: justify;
+  }
+
+  /* ── FIRMAS ── */
+  .fq-firmas { display: flex; justify-content: space-around; gap: 28px; margin-bottom: 20px; }
+  .fq-firma-box { flex: 1; border: 1px solid #bbb; border-radius: 4px; padding: 14px 16px 10px; text-align: center; }
+  .fq-firma-espacio { height: 52px; }
+  .fq-firma-nombre { border-top: 1.5px solid #333; padding-top: 5px; font-weight: bold; font-size: 10.5pt; }
+  .fq-firma-rut { font-size: 8.5pt; color: #555; margin-top: 3px; }
+  .fq-firma-rol { font-size: 8.5pt; color: #333; margin-top: 2px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; }
+
+  /* ── RATIFICACIÓN ── */
+  .fq-ratificacion {
+    border: 1px dashed #aaa; border-radius: 4px;
+    padding: 10px 14px; font-size: 9pt; color: #444;
+    display: flex; justify-content: space-between; align-items: center; gap: 20px;
+  }
+  .fq-rat-texto { flex: 1; line-height: 1.5; }
+  .fq-rat-sello { border: 1px dashed #bbb; border-radius: 4px; min-width: 100px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #bbb; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  @media print { body { padding: 10mm 15mm; } }
+</style>
+</head>
 <body>
-  <div class="header-box">
-    <div class="empresa">${empresa.razonSocial}<br/><span style="font-size:9.5pt;font-weight:normal">RUT: ${empresa.rut}</span></div>
-    <div class="info">Fecha: ${fecha(fechaT)}</div>
+
+  <!-- ENCABEZADO -->
+  <div class="fq-header">
+    <div class="fq-empresa-col">
+      <div class="fq-empresa-nombre">${empresa.razonSocial}</div>
+      <div class="fq-empresa-sub">RUT: ${empresa.rut} &nbsp;·&nbsp; Giro: ${empresa.giro}${empresa.direccion ? '<br/>' + empresa.direccion : ''}</div>
+    </div>
+    <div class="fq-titulo-col">
+      <div class="fq-titulo-doc">Documento Laboral</div>
+      <div class="fq-titulo-main">FINIQUITO</div>
+      <div class="fq-fecha-doc">${ciudadEmpresa}, ${fecha(fechaT)}</div>
+    </div>
+  </div>
+  <div class="fq-title-bar">
+    <h1>Finiquito de Contrato de Trabajo</h1>
   </div>
 
-  <h1>Finiquito de Contrato de Trabajo</h1>
+  <!-- PARTES -->
+  <div class="fq-seccion-label">Individualización de las Partes</div>
+  <div class="fq-partes">
+    <div class="fq-parte-col">
+      <div class="fq-parte-titulo">Empleador</div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">Empresa:</span><span>${empresa.razonSocial}</span></div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">RUT:</span><span>${empresa.rut}</span></div>
+      ${empresa.representanteLegal ? `<div class="fq-parte-row"><span class="fq-parte-lbl">Representante:</span><span>${empresa.representanteLegal}${empresa.rutRepresentante ? ' (RUT ' + empresa.rutRepresentante + ')' : ''}</span></div>` : ''}
+    </div>
+    <div class="fq-parte-col">
+      <div class="fq-parte-titulo">Trabajador/a</div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">Nombre:</span><span>${trabajador.nombre}</span></div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">RUT:</span><span>${trabajador.rut}</span></div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">Cargo:</span><span>${trabajador.cargo ?? '—'}</span></div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">Fecha ingreso:</span><span>${fecha(fechaI)}</span></div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">Fecha término:</span><span>${fecha(fechaT)}</span></div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">Años de servicio:</span><span>${doc.aniosServicio.toFixed(2)}</span></div>
+      <div class="fq-parte-row"><span class="fq-parte-lbl">Último sueldo:</span><span>${clp(trabajador.sueldoBase)}</span></div>
+    </div>
+  </div>
 
-  <h2>Datos de las partes</h2>
-  <table class="datos">
-    <tr><td>Empleador:</td><td>${empresa.razonSocial} (RUT ${empresa.rut})</td></tr>
-    <tr><td>Representante:</td><td>${empresa.representanteLegal ?? '—'} ${empresa.rutRepresentante ? '(RUT ' + empresa.rutRepresentante + ')' : ''}</td></tr>
-    <tr><td>Trabajador/a:</td><td>${trabajador.nombre} (RUT ${trabajador.rut})</td></tr>
-    <tr><td>Cargo:</td><td>${trabajador.cargo ?? '—'}</td></tr>
-    <tr><td>Fecha de ingreso:</td><td>${fecha(fechaI)}</td></tr>
-    <tr><td>Fecha de término:</td><td>${fecha(fechaT)}</td></tr>
-    <tr><td>Años de servicio:</td><td>${doc.aniosServicio.toFixed(2)}</td></tr>
-    <tr><td>Último sueldo base:</td><td>${clp(trabajador.sueldoBase)}</td></tr>
-  </table>
+  <!-- CAUSAL -->
+  <div class="fq-seccion-label">Causal de Término</div>
+  <div class="fq-causal-box">${causalTexto}</div>
 
-  <h2>Causal de término</h2>
-  <p style="font-size:10.5pt;margin-bottom:12px;">${causalTexto}</p>
-
-  <h2>Liquidación de haberes</h2>
-  <table class="montos">
-    <thead><tr><th>Concepto</th><th style="text-align:right">Días / detalle</th><th style="text-align:right">Monto</th></tr></thead>
-    <tbody>
-      ${filasHtml}
-      <tr class="total">
-        <td colspan="2">TOTAL BRUTO</td>
-        <td class="monto">${clp(doc.totalBruto)}</td>
+  <!-- LIQUIDACIÓN DE HABERES -->
+  <div class="fq-seccion-label">Liquidación de Haberes</div>
+  <table class="fq-table">
+    <thead>
+      <tr>
+        <th>Concepto</th>
+        <th class="right">Detalle</th>
+        <th class="right">Monto</th>
       </tr>
-      <tr class="total">
+    </thead>
+    <tbody>${filasHtml}</tbody>
+    <tfoot>
+      <tr class="fq-bruto">
+        <td colspan="2">Total Bruto</td>
+        <td class="right">${clp(doc.totalBruto)}</td>
+      </tr>
+      <tr class="fq-neto">
         <td colspan="2">TOTAL NETO A PAGAR</td>
-        <td class="monto">${clp(doc.totalNeto)}</td>
+        <td class="right">${clp(doc.totalNeto)}</td>
       </tr>
-    </tbody>
+    </tfoot>
   </table>
+  <div class="fq-palabras">SON: ${numToWords(doc.totalNeto)} PESOS</div>
 
-  <div class="num-palabras">SON: ${numToWords(doc.totalNeto)} PESOS</div>
-
-  <div class="clausula" style="margin-top:14px;">
-    <p>En ${ciudadEmpresa}, a ${fecha(fechaT)}, las partes suscriben el presente finiquito de mutuo acuerdo,
-    declarando el trabajador/a haber recibido íntegra y cabalmente todas las prestaciones adeudadas
-    por concepto del contrato de trabajo que por este acto se da por terminado, no teniendo
-    cargo ni acción alguna que deducir contra el empleador por dicho contrato de trabajo.</p>
+  <!-- DECLARACIÓN -->
+  <div class="fq-declaracion">
+    En ${ciudadEmpresa}, a ${fecha(fechaT)}, las partes suscriben el presente finiquito de mutuo acuerdo, declarando el/la trabajador/a haber recibido íntegra y cabalmente todas las prestaciones adeudadas por concepto del contrato de trabajo que por este acto se da por terminado, <strong>no teniendo cargo ni acción alguna que deducir contra el Empleador</strong> por dicho contrato de trabajo ni por las prestaciones derivadas del mismo.
   </div>
 
-  <div class="firmas">
-    <div class="firma-bloque">
-      <div style="height:50px;"></div>
-      <div class="firma-linea">${empresa.representanteLegal ?? empresa.razonSocial}</div>
-      <div class="firma-label">RUT: ${empresa.rutRepresentante ?? empresa.rut}<br/>Por el Empleador</div>
+  <!-- FIRMAS -->
+  <div class="fq-firmas">
+    <div class="fq-firma-box">
+      <div class="fq-firma-espacio"></div>
+      <div class="fq-firma-nombre">${empresa.representanteLegal ?? empresa.razonSocial}</div>
+      <div class="fq-firma-rut">RUT: ${empresa.rutRepresentante ?? empresa.rut}</div>
+      <div class="fq-firma-rol">${empresa.razonSocial} · Por el Empleador</div>
     </div>
-    <div class="firma-bloque">
-      <div style="height:50px;"></div>
-      <div class="firma-linea">${trabajador.nombre}</div>
-      <div class="firma-label">RUT: ${trabajador.rut}<br/>Trabajador/a</div>
+    <div class="fq-firma-box">
+      <div class="fq-firma-espacio"></div>
+      <div class="fq-firma-nombre">${trabajador.nombre}</div>
+      <div class="fq-firma-rut">RUT: ${trabajador.rut}</div>
+      <div class="fq-firma-rol">Trabajador/a</div>
     </div>
   </div>
 
-  <div style="margin-top:30px;border-top:1px solid #ccc;padding-top:10px;font-size:9pt;color:#555;">
-    <p>Ratificado ante Notario / Inspector del Trabajo — Firma y timbre: _______________________</p>
+  <!-- RATIFICACIÓN -->
+  <div class="fq-ratificacion">
+    <div class="fq-rat-texto">
+      <strong>Ratificación ante ministro de fe (Art. 177 CT):</strong><br/>
+      El presente finiquito fue ratificado ante Notario Público / Inspector del Trabajo / Presidente del Sindicato. Ministro de fe: _______________________________ &nbsp; Fecha: _______________
+    </div>
+    <div class="fq-rat-sello">Timbre y<br/>firma</div>
   </div>
+
 </body>
 </html>`;
 }
