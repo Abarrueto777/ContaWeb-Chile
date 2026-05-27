@@ -294,6 +294,9 @@ export interface Liquidacion {
   mes: number;
   sueldoBase: string;
   horasExtra: string;
+  cantHorasExtra: string;
+  horasDescuento: string;
+  otrosDescuentos: string;
   bono: string;
   diasTrabajados: number;
   imponible: string;

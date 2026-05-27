@@ -82,6 +82,9 @@ export interface ConfigCalculo {
 export interface LiquidacionCalculada {
   sueldoBase: number;
   horasExtra: number;
+  cantHorasExtra: number;
+  horasDescuento: number;
+  otrosDescuentos: number;
   bono: number;
   gratificacion: number;
   imponible: number;
@@ -101,6 +104,8 @@ export function calcularLiquidacion(
   trabajador: Trabajador,
   params: {
     horasExtra: number;
+    horasDescuento: number;
+    otrosDescuentos: number;
     bono: number;
     diasTrabajados: number;
     anticipo: number;
@@ -110,17 +115,18 @@ export function calcularLiquidacion(
     config?: ConfigCalculo;
   },
 ): LiquidacionCalculada {
-  const { horasExtra, bono, diasTrabajados, anticipo, utm, imm, uf } = params;
+  const { horasExtra, horasDescuento, otrosDescuentos, bono, diasTrabajados, anticipo, utm, imm, uf } = params;
   const cfg = params.config ?? {};
   const factor = diasTrabajados / 30;
 
   const sueldoBase = Number(trabajador.sueldoBase);
   const sueldoDevengado = Math.round(sueldoBase * factor);
 
-  // Hora extra
+  // Horas extra y descuento
   const horasMes = (Number(trabajador.jornadaHoras) * 52) / 12;
   const valorHora = sueldoBase / horasMes;
   const montoHorasExtra = Math.round(horasExtra * valorHora * 1.5);
+  const montoHorasDescuento = Math.round(horasDescuento * valorHora);
 
   // Gratificación
   const gratificacion = calcularGratificacion(
@@ -185,7 +191,7 @@ export function calcularLiquidacion(
   const colacion = Math.round(colacionBase * factor);
 
   // Líquido
-  const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo;
+  const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo + montoHorasDescuento + otrosDescuentos;
   const liquido = sueldoDevengado + montoHorasExtra + bono + gratificacion + movilizacion + colacion - totalDescuentos;
 
   // Costo empleador
@@ -198,6 +204,9 @@ export function calcularLiquidacion(
   return {
     sueldoBase: sueldoDevengado,
     horasExtra: montoHorasExtra,
+    cantHorasExtra: horasExtra,
+    horasDescuento: horasDescuento,
+    otrosDescuentos: otrosDescuentos,
     bono,
     gratificacion,
     imponible,

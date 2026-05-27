@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap } from 'lucide-react';
 import api from '@/lib/api';
@@ -59,7 +59,7 @@ export default function RRHH() {
   const [filtroActivo, setFiltroActivo] = useState<'todos' | 'activos' | 'inactivos'>('activos');
   const [utm, setUtm] = useState(68400);
   const [imm, setImm] = useState(539000);
-  const [movs, setMovs] = useState<Record<string, { horasExtra: number; bono: number; diasTrabajados: number; anticipo: number }>>({});
+  const [movs, setMovs] = useState<Record<string, { horasExtra: number; bono: number; diasTrabajados: number; anticipo: number; horasDescuento: number; otrosDescuentos: number }>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [procesando, setProcesando] = useState<Set<string>>(new Set());
 
@@ -367,7 +367,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
       rut: t.rut, nombre: t.nombre, cargo: t.cargo ?? '',
       ...(t.email ? { email: t.email } : {}),
       ...(t.domicilio ? { domicilio: t.domicilio } : {}),
-      ...(t.fechaNacimiento ? { fechaNacimiento: new Date(t.fechaNacimiento) } : {}),
+      ...(t.fechaNacimiento ? { fechaNacimiento: t.fechaNacimiento.slice(0, 10) as unknown as Date } : {}),
       ...(t.estadoCivil ? { estadoCivil: t.estadoCivil as TrabajadorInput['estadoCivil'] } : {}),
       ...(t.nacionalidad ? { nacionalidad: t.nacionalidad } : {}),
       ...(regionNorm ? { region: regionNorm } : {}),
@@ -396,10 +396,12 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
         const tid = l.trabajador?.id ?? '';
         if (!tid || tid in prev) continue;
         next[tid] = {
-          horasExtra: Number(l.horasExtra ?? 0),
+          horasExtra: Number(l.cantHorasExtra ?? 0),
           bono: Number(l.bono ?? 0),
           diasTrabajados: Number(l.diasTrabajados ?? 30),
           anticipo: Number(l.anticipo ?? 0),
+          horasDescuento: Number(l.horasDescuento ?? 0),
+          otrosDescuentos: Number(l.otrosDescuentos ?? 0),
         };
       }
       return next;
@@ -411,13 +413,13 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
   function updateMov(trabId: string, field: string, val: number) {
     setMovs(prev => ({
       ...prev,
-      [trabId]: { ...(prev[trabId] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0 }), [field]: val },
+      [trabId]: { ...(prev[trabId] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 }), [field]: val },
     }));
     setDirty(prev => { const s = new Set(prev); s.add(trabId); return s; });
   }
 
   async function calcularUno(trabId: string, liqExistente: typeof liquidaciones[0] | undefined) {
-    const mov = movs[trabId] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0 };
+    const mov = movs[trabId] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 };
     const input: LiquidacionInput = { trabajadorId: trabId, anio, mes, ...mov, utm, imm };
     setProcesando(s => { const n = new Set(s); n.add(trabId); return n; });
     try {
@@ -533,11 +535,13 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                         <div className="space-y-1"><Label className="text-xs">Apellido materno</Label><Input {...formTrab.register('apellidoMaterno')} placeholder="González" /></div>
                         <div className="space-y-1">
                           <Label className="text-xs">Sexo</Label>
-                          <select {...formTrab.register('sexo')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                            <option value="">— —</option>
-                            <option value="M">Masculino</option>
-                            <option value="F">Femenino</option>
-                          </select>
+                          <Controller control={formTrab.control} name="sexo" render={({ field }) => (
+                            <select {...field} value={field.value ?? ''} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                              <option value="">— —</option>
+                              <option value="M">Masculino</option>
+                              <option value="F">Femenino</option>
+                            </select>
+                          )} />
                         </div>
                       </div>
                     </div>
@@ -549,34 +553,40 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                       <div className="space-y-1.5 sm:col-span-2"><Label>Domicilio *</Label><Input {...formTrab.register('domicilio')} placeholder="Av. Ejemplo 123, Santiago" />{formTrab.formState.errors.domicilio && <p className="text-xs text-destructive">{formTrab.formState.errors.domicilio.message}</p>}</div>
                       <div className="space-y-1.5"><Label>Fecha de nacimiento *</Label><Input {...formTrab.register('fechaNacimiento')} type="date" />{formTrab.formState.errors.fechaNacimiento && <p className="text-xs text-destructive">{formTrab.formState.errors.fechaNacimiento.message}</p>}</div>
                       <div className="space-y-1.5"><Label>Estado civil *</Label>
-                        <select {...formTrab.register('estadoCivil')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                          <option value="">— seleccionar —</option>
-                          <option value="SOLTERO">Soltero/a</option>
-                          <option value="CASADO">Casado/a</option>
-                          <option value="DIVORCIADO">Divorciado/a</option>
-                          <option value="VIUDO">Viudo/a</option>
-                          <option value="CONVIVIENTE_CIVIL">Conviviente civil</option>
-                        </select>
+                        <Controller control={formTrab.control} name="estadoCivil" render={({ field }) => (
+                          <select {...field} value={field.value ?? ''} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                            <option value="">— seleccionar —</option>
+                            <option value="SOLTERO">Soltero/a</option>
+                            <option value="CASADO">Casado/a</option>
+                            <option value="DIVORCIADO">Divorciado/a</option>
+                            <option value="VIUDO">Viudo/a</option>
+                            <option value="CONVIVIENTE_CIVIL">Conviviente civil</option>
+                          </select>
+                        )} />
                         {formTrab.formState.errors.estadoCivil && <p className="text-xs text-destructive">{formTrab.formState.errors.estadoCivil.message}</p>}
                       </div>
                       <div className="space-y-1.5"><Label>Nacionalidad *</Label><Input {...formTrab.register('nacionalidad')} placeholder="Chilena" />{formTrab.formState.errors.nacionalidad && <p className="text-xs text-destructive">{formTrab.formState.errors.nacionalidad.message}</p>}</div>
                       <div className="space-y-1.5">
                         <Label>Región *</Label>
-                        <select {...formTrab.register('region')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                          <option value="">— seleccionar —</option>
-                          {REGIONES_DT.map(r => (
-                            <option key={r.codigo} value={r.codigo}>{r.nombre}</option>
-                          ))}
-                        </select>
+                        <Controller control={formTrab.control} name="region" render={({ field }) => (
+                          <select {...field} value={field.value ?? ''} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                            <option value="">— seleccionar —</option>
+                            {REGIONES_DT.map(r => (
+                              <option key={r.codigo} value={r.codigo}>{r.nombre}</option>
+                            ))}
+                          </select>
+                        )} />
                       </div>
                       <div className="space-y-1.5">
                         <Label>Comuna *</Label>
-                        <select {...formTrab.register('comuna')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                          <option value="">— seleccionar —</option>
-                          {comunasFiltradas.map(c => (
-                            <option key={c.codigo} value={c.codigo}>{c.nombre}</option>
-                          ))}
-                        </select>
+                        <Controller control={formTrab.control} name="comuna" render={({ field }) => (
+                          <select {...field} value={field.value ?? ''} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                            <option value="">— seleccionar —</option>
+                            {comunasFiltradas.map(c => (
+                              <option key={c.codigo} value={c.codigo}>{c.nombre}</option>
+                            ))}
+                          </select>
+                        )} />
                       </div>
                     </div>
                   </div>
@@ -787,9 +797,11 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                   <thead><tr className="border-b bg-muted/50 text-xs">
                     <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Trabajador</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">H.Extra</th>
+                    <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">H.Desc.</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Bono $</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Días</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Anticipo $</th>
+                    <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Otros Desc. $</th>
                     <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden xl:table-cell whitespace-nowrap">Mov.</th>
                     <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden xl:table-cell whitespace-nowrap">Col.</th>
                     <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell whitespace-nowrap">Imponible</th>
@@ -800,7 +812,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                   <tbody>
                     {todosLosTrabajadores.filter(t => t.activo).map(t => {
                       const liq = liqPorTrab.get(t.id);
-                      const mov = movs[t.id] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0 };
+                      const mov = movs[t.id] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 };
                       const isDirty = dirty.has(t.id);
                       const isProc = procesando.has(t.id);
                       return (
@@ -820,6 +832,11 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                               className="w-14 h-7 text-xs text-center px-1" />
                           </td>
                           <td className="px-1 py-1.5">
+                            <Input type="number" min="0" step="0.5" value={mov.horasDescuento}
+                              onChange={e => updateMov(t.id, 'horasDescuento', Number(e.target.value))}
+                              className="w-14 h-7 text-xs text-center px-1 text-destructive" />
+                          </td>
+                          <td className="px-1 py-1.5">
                             <Input type="number" min="0" value={mov.bono}
                               onChange={e => updateMov(t.id, 'bono', Number(e.target.value))}
                               className="w-20 h-7 text-xs text-right px-1" />
@@ -833,6 +850,11 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                             <Input type="number" min="0" value={mov.anticipo}
                               onChange={e => updateMov(t.id, 'anticipo', Number(e.target.value))}
                               className="w-20 h-7 text-xs text-right px-1" />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <Input type="number" min="0" value={mov.otrosDescuentos}
+                              onChange={e => updateMov(t.id, 'otrosDescuentos', Number(e.target.value))}
+                              className="w-20 h-7 text-xs text-right px-1 text-destructive" />
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground hidden xl:table-cell">
                             {t.tieneMovilizacion ? clp(Math.round(Number(t.montoMovilizacion ?? 0) * ((movs[t.id]?.diasTrabajados ?? 30) / 30))) : <span className="opacity-40">—</span>}

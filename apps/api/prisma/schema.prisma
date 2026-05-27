@@ -419,6 +419,9 @@ model Liquidacion {
   mes            Int
   sueldoBase     Decimal    @db.Decimal(19, 4)
   horasExtra     Decimal    @default(0) @db.Decimal(19, 4)
+  cantHorasExtra Decimal    @default(0) @db.Decimal(19, 4)
+  horasDescuento Decimal    @default(0) @db.Decimal(19, 4)
+  otrosDescuentos Decimal   @default(0) @db.Decimal(19, 4)
   bono           Decimal    @default(0) @db.Decimal(19, 4)
   diasTrabajados Int        @default(30)
   imponible      Decimal    @db.Decimal(19, 4)

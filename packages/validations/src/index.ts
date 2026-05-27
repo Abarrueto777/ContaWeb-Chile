@@ -208,9 +208,11 @@ export const liquidacionInputSchema = z.object({
   anio: z.number().int().min(2000).max(2100),
   mes: z.number().int().min(1).max(12),
   horasExtra: z.number().min(0).default(0),
+  horasDescuento: z.number().min(0).default(0),
   bono: z.number().min(0).default(0),
   diasTrabajados: z.number().int().min(0).max(31).default(30),
   anticipo: z.number().min(0).default(0),
+  otrosDescuentos: z.number().min(0).default(0),
   utm: z.number().positive('UTM del período requerida'),
   imm: z.number().positive('IMM del período requerida'),
 });
