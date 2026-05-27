@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 
-export function diasHabilesPermiso(inicio: Date, fin: Date): number {
+export function diasHabilesPermiso(inicio: Date, fin: Date, includeWeekends = false): number {
   let count = 0;
   const d = new Date(inicio);
   d.setHours(0, 0, 0, 0);
@@ -8,7 +8,7 @@ export function diasHabilesPermiso(inicio: Date, fin: Date): number {
   end.setHours(0, 0, 0, 0);
   while (d <= end) {
     const day = d.getDay();
-    if (day !== 0 && day !== 6) count++;
+    if (includeWeekends || (day !== 0 && day !== 6)) count++;
     d.setDate(d.getDate() + 1);
   }
   return count;
@@ -38,14 +38,18 @@ export async function diasSinGoceEnMes(
 ): Promise<number> {
   const inicioMes = new Date(anio, mes - 1, 1);
   const finMes = new Date(anio, mes, 0, 23, 59, 59);
-  const permisos = await prisma.permiso.findMany({
-    where: { empresaId, trabajadorId, conGoce: false, fechaInicio: { lte: finMes }, fechaFin: { gte: inicioMes } },
-  });
+  const [permisos, trabajador] = await Promise.all([
+    prisma.permiso.findMany({
+      where: { empresaId, trabajadorId, conGoce: false, fechaInicio: { lte: finMes }, fechaFin: { gte: inicioMes } },
+    }),
+    prisma.trabajador.findUnique({ where: { id: trabajadorId }, select: { trabajaFinSemana: true } }),
+  ]);
+  const includeWeekends = trabajador?.trabajaFinSemana ?? false;
   let total = 0;
   for (const p of permisos) {
     const pInicio = p.fechaInicio < inicioMes ? inicioMes : p.fechaInicio;
     const pFin = p.fechaFin > finMes ? finMes : p.fechaFin;
-    total += diasHabilesPermiso(pInicio, pFin);
+    total += diasHabilesPermiso(pInicio, pFin, includeWeekends);
   }
   return total;
 }

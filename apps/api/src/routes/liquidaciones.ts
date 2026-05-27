@@ -541,7 +541,7 @@ router.post('/', async (req, res) => {
     const diasSinGoce = await diasSinGoceEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma);
     const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce });
     const liquidacion = await prisma.liquidacion.create({
-      data: { empresaId, trabajadorId: parsed.data.trabajadorId, anio: parsed.data.anio, mes: parsed.data.mes, ...calc },
+      data: { empresaId, trabajadorId: parsed.data.trabajadorId, anio: parsed.data.anio, mes: parsed.data.mes, diasTrabajados: parsed.data.diasTrabajados, ...calc },
       include: { trabajador: true },
     });
     res.status(201).json({ data: liquidacion });
@@ -593,9 +593,12 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
     const liqDoc = {
       anio: liq.anio,
       mes: liq.mes,
+      diasTrabajados: Number(liq.diasTrabajados ?? 30),
       sueldoBase: Number(liq.sueldoBase),
       horasExtra: Number(liq.horasExtra),
       cantHorasExtra: Number(liq.cantHorasExtra),
+      horasExtraFeriado: Number((liq as typeof liq & { horasExtraFeriado?: number | null }).horasExtraFeriado ?? 0),
+      cantHorasExtraFeriado: Number((liq as typeof liq & { cantHorasExtraFeriado?: number | null }).cantHorasExtraFeriado ?? 0),
       bono: Number(liq.bono),
       gratificacion: Number(liq.gratificacion),
       imponible: Number(liq.imponible),
@@ -660,10 +663,11 @@ router.put('/:liquidacionId', async (req, res, next) => {
       ...(valorUF?.sisEmpleador    !== undefined && { sis_empleador_previred:     Number(valorUF.sisEmpleador) }),
       ...(valorUF?.topeImponibleUf !== undefined && { tope_imponible_uf_previred: Number(valorUF.topeImponibleUf) }),
     };
-    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
+    const diasSinGoce = await diasSinGoceEnMes(empresaId, liq.trabajadorId, parsed.data.anio, parsed.data.mes, prisma);
+    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce });
     const updated = await prisma.liquidacion.update({
       where: { id: liquidacionId },
-      data: { ...calc },
+      data: { ...calc, diasTrabajados: parsed.data.diasTrabajados },
       include: { trabajador: true },
     });
     res.json({ data: updated });

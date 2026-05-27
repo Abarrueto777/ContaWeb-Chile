@@ -293,6 +293,7 @@ export interface Trabajador {
   tipoGratificacion: TipoGratificacion;
   tieneMovilizacion: boolean;
   tieneColacion: boolean;
+  trabajaFinSemana: boolean;
   montoMovilizacion?: string;
   montoColacion?: string;
   jornadaHoras: number;
@@ -331,6 +332,8 @@ export interface Liquidacion {
   sueldoBase: string;
   horasExtra: string;
   cantHorasExtra: string;
+  horasExtraFeriado: string;
+  cantHorasExtraFeriado: string;
   horasDescuento: string;
   otrosDescuentos: string;
   bono: string;

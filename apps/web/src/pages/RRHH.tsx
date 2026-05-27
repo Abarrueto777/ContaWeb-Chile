@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList, AlertTriangle } from 'lucide-react';
 import api from '@/lib/api';
 import { REGIONES_DT, COMUNAS_DT } from '@/lib/dt-geo';
 import { trabajadorSchema, finiquitoInputSchema, vacacionSchema, permisoSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput, type VacacionInput, type PermisoInput } from '@contaweb/validations';
@@ -73,7 +73,7 @@ const CON_GOCE_PERMISO: Record<string, boolean> = {
   OTRO: true,
 };
 
-function diasHabilesEntre(inicio: string, fin: string): number {
+function diasHabilesEntre(inicio: string, fin: string, includeWeekends = false): number {
   if (!inicio || !fin) return 0;
   let count = 0;
   const d = new Date(inicio + 'T12:00:00');
@@ -81,7 +81,7 @@ function diasHabilesEntre(inicio: string, fin: string): number {
   if (d > end) return 0;
   while (d <= end) {
     const day = d.getDay();
-    if (day !== 0 && day !== 6) count++;
+    if (includeWeekends || (day !== 0 && day !== 6)) count++;
     d.setDate(d.getDate() + 1);
   }
   return count;
@@ -99,7 +99,7 @@ export default function RRHH() {
   const [filtroActivo, setFiltroActivo] = useState<'todos' | 'activos' | 'inactivos'>('activos');
   const [utm, setUtm] = useState(68400);
   const [imm, setImm] = useState(539000);
-  const [movs, setMovs] = useState<Record<string, { horasExtra: number; bono: number; diasTrabajados: number; anticipo: number; horasDescuento: number; otrosDescuentos: number }>>({});
+  const [movs, setMovs] = useState<Record<string, { horasExtra: number; horasExtraFeriado: number; bono: number; diasTrabajados: number; anticipo: number; horasDescuento: number; otrosDescuentos: number }>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [procesando, setProcesando] = useState<Set<string>>(new Set());
   const [openVacacion, setOpenVacacion] = useState(false);
@@ -146,10 +146,16 @@ export default function RRHH() {
   const watchPermFechaFin = formPerm.watch('fechaFin');
   const watchPermTipo = formPerm.watch('tipo');
   const watchPermConGoce = formPerm.watch('conGoce');
+  const watchPermTrabId = formPerm.watch('trabajadorId');
+  const permTrabajador = (trabData?.data ?? []).find((t: Trabajador) => t.id === watchPermTrabId);
   const diasHabilesPermCalc = diasHabilesEntre(
     watchPermFechaInicio ? String(watchPermFechaInicio).slice(0, 10) : '',
     watchPermFechaFin ? String(watchPermFechaFin).slice(0, 10) : '',
+    permTrabajador?.trabajaFinSemana ?? false,
   );
+  const fechasPermValidas = !!watchPermFechaInicio && !!watchPermFechaFin &&
+    new Date(String(watchPermFechaFin).slice(0, 10) + 'T12:00:00') >=
+    new Date(String(watchPermFechaInicio).slice(0, 10) + 'T12:00:00');
 
   const todosLosTrabajadores = trabData?.data ?? [];
 
@@ -209,7 +215,7 @@ export default function RRHH() {
 
   const formTrab = useForm<TrabajadorInput>({
     resolver: zodResolver(trabajadorSchema),
-    defaultValues: { tipo: 'DEPENDIENTE', afp: 'HABITAT', salud: 'FONASA', pctSalud: 0.07, tieneCes: false, tipoGratificacion: 'ART_50', tieneMovilizacion: false, tieneColacion: false, jornadaHoras: 42, tipoContrato: 'INDEFINIDO' },
+    defaultValues: { tipo: 'DEPENDIENTE', afp: 'HABITAT', salud: 'FONASA', pctSalud: 0.07, tieneCes: false, tipoGratificacion: 'ART_50', tieneMovilizacion: false, tieneColacion: false, trabajaFinSemana: false, jornadaHoras: 42, tipoContrato: 'INDEFINIDO' },
   });
 
   const regionSeleccionada = formTrab.watch('region');
@@ -531,7 +537,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
       afp: t.afp, salud: t.salud, pctSalud: Number(t.pctSalud),
       ...(t.montoIsapre ? { montoIsapre: Number(t.montoIsapre) } : {}),
       tieneCes: t.tieneCes, tipoGratificacion: t.tipoGratificacion,
-      tieneMovilizacion: t.tieneMovilizacion, tieneColacion: t.tieneColacion,
+      tieneMovilizacion: t.tieneMovilizacion, tieneColacion: t.tieneColacion, trabajaFinSemana: t.trabajaFinSemana,
       montoMovilizacion: t.montoMovilizacion ? Number(t.montoMovilizacion) : undefined,
       montoColacion: t.montoColacion ? Number(t.montoColacion) : undefined,
       jornadaHoras: t.jornadaHoras, tipoContrato: t.tipoContrato,
@@ -540,8 +546,10 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
     setOpenTrabajador(true);
   }
 
+  const [sinGoceDesync, setSinGoceDesync] = useState<Set<string>>(new Set());
+
   // reset movimientos cuando cambia el período
-  useEffect(() => { setMovs({}); setDirty(new Set()); }, [anio, mes]);
+  useEffect(() => { setMovs({}); setDirty(new Set()); setSinGoceDesync(new Set()); }, [anio, mes]);
 
   // inicializar desde liquidaciones existentes (solo filas no-dirty)
   useEffect(() => {
@@ -553,6 +561,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
         if (!tid || tid in prev) continue;
         next[tid] = {
           horasExtra: Number(l.cantHorasExtra ?? 0),
+          horasExtraFeriado: Number((l as typeof l & { cantHorasExtraFeriado?: string | null }).cantHorasExtraFeriado ?? 0),
           bono: Number(l.bono ?? 0),
           diasTrabajados: Number(l.diasTrabajados ?? 30),
           anticipo: Number(l.anticipo ?? 0),
@@ -564,18 +573,42 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
     });
   }, [liquidaciones, loadingLiq]);
 
+  // Detectar desincronización: si el diasSinGoce guardado difiere de los permisos actuales
+  useEffect(() => {
+    if (!permData?.data || liquidaciones.length === 0) return;
+    const desynced = new Set<string>();
+    for (const liq of liquidaciones) {
+      const tid = liq.trabajador?.id ?? '';
+      if (!tid) continue;
+      const savedSinGoce = Number(liq.diasSinGoce ?? 0);
+      const estimado = (permData.data ?? [])
+        .filter(p => {
+          if (p.trabajadorId !== tid || p.conGoce) return false;
+          const pI = new Date(p.fechaInicio); const pF = new Date(p.fechaFin);
+          const mI = new Date(anio, mes - 1, 1); const mF = new Date(anio, mes, 0);
+          return pI <= mF && pF >= mI;
+        })
+        .reduce((s, p) => s + p.diasHabiles, 0);
+      if (estimado !== savedSinGoce) desynced.add(tid);
+    }
+    setSinGoceDesync(desynced);
+    if (desynced.size > 0) {
+      setDirty(prev => { const s = new Set(prev); desynced.forEach(id => s.add(id)); return s; });
+    }
+  }, [permData, liquidaciones, anio, mes]);
+
   const liqPorTrab = new Map(liquidaciones.map(l => [l.trabajador?.id ?? '', l]));
 
   function updateMov(trabId: string, field: string, val: number) {
     setMovs(prev => ({
       ...prev,
-      [trabId]: { ...(prev[trabId] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 }), [field]: val },
+      [trabId]: { ...(prev[trabId] ?? { horasExtra: 0, horasExtraFeriado: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 }), [field]: val },
     }));
     setDirty(prev => { const s = new Set(prev); s.add(trabId); return s; });
   }
 
   async function calcularUno(trabId: string, liqExistente: typeof liquidaciones[0] | undefined) {
-    const mov = movs[trabId] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 };
+    const mov = movs[trabId] ?? { horasExtra: 0, horasExtraFeriado: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 };
     const input: LiquidacionInput = { trabajadorId: trabId, anio, mes, ...mov, utm, imm };
     setProcesando(s => { const n = new Set(s); n.add(trabId); return n; });
     try {
@@ -585,6 +618,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
         await createLiq.mutateAsync(input);
       }
       setDirty(s => { const n = new Set(s); n.delete(trabId); return n; });
+      setSinGoceDesync(s => { const n = new Set(s); n.delete(trabId); return n; });
     } catch { /* mutation error surfaced via hook */ } finally {
       setProcesando(s => { const n = new Set(s); n.delete(trabId); return n; });
     }
@@ -807,6 +841,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                     <label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" {...formTrab.register('tieneCes')} className="h-4 w-4 accent-primary" /> CES (Seguro cesantía)</label>
                     <label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" {...formTrab.register('tieneMovilizacion')} className="h-4 w-4 accent-primary" /> Movilización</label>
                     <label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" {...formTrab.register('tieneColacion')} className="h-4 w-4 accent-primary" /> Colación</label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm" title="Restaurantes, comercio, etc. — cuenta sábado y domingo como días hábiles"><input type="checkbox" {...formTrab.register('trabajaFinSemana')} className="h-4 w-4 accent-primary" /> Trabaja fines de semana</label>
                   </div>
                   {createTrab.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createTrab.error.message}</p>}
                 </form>
@@ -936,6 +971,19 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
             </div>
           </div>
 
+          {/* Banner desincronización sin goce */}
+          {sinGoceDesync.size > 0 && (
+            <div className="flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-800">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                {sinGoceDesync.size === 1
+                  ? '1 liquidación tiene permisos sin goce que cambiaron desde el último cálculo.'
+                  : `${sinGoceDesync.size} liquidaciones tienen permisos sin goce que cambiaron desde el último cálculo.`}
+                {' '}Presioná <strong>Calcular cambios</strong> para actualizar.
+              </span>
+            </div>
+          )}
+
           {/* Tarjetas resumen */}
           {liquidaciones.length > 0 && (
             <div className="grid grid-cols-2 gap-4">
@@ -959,6 +1007,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                   <thead><tr className="border-b bg-muted/50 text-xs">
                     <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Trabajador</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">H.Extra</th>
+                    <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap" title="Horas extras trabajadas en feriado (recargo 100%)">H.Feriado</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">H.Desc.</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Bono $</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Días</th>
@@ -974,9 +1023,16 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                   <tbody>
                     {todosLosTrabajadores.filter(t => t.activo).map(t => {
                       const liq = liqPorTrab.get(t.id);
-                      const mov = movs[t.id] ?? { horasExtra: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 };
+                      const mov = movs[t.id] ?? { horasExtra: 0, horasExtraFeriado: 0, bono: 0, diasTrabajados: 30, anticipo: 0, horasDescuento: 0, otrosDescuentos: 0 };
                       const isDirty = dirty.has(t.id);
                       const isProc = procesando.has(t.id);
+                      const diasSinGoceEst = (permData?.data ?? []).filter(p =>
+                        p.trabajadorId === t.id && !p.conGoce && (() => {
+                          const pI = new Date(p.fechaInicio); const pF = new Date(p.fechaFin);
+                          const mI = new Date(anio, mes - 1, 1); const mF = new Date(anio, mes, 0);
+                          return pI <= mF && pF >= mI;
+                        })()
+                      ).reduce((s, p) => s + p.diasHabiles, 0);
                       return (
                         <tr key={t.id} className={`border-b last:border-0 transition-colors ${isDirty ? 'bg-amber-50 dark:bg-amber-950/20' : 'hover:bg-muted/20'}`}>
                           <td className="px-3 py-2">
@@ -994,6 +1050,11 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                               className="w-14 h-7 text-xs text-center px-1" />
                           </td>
                           <td className="px-1 py-1.5">
+                            <Input type="number" min="0" step="0.5" value={mov.horasExtraFeriado}
+                              onChange={e => updateMov(t.id, 'horasExtraFeriado', Number(e.target.value))}
+                              className="w-14 h-7 text-xs text-center px-1 text-orange-600" title="Horas en feriado — recargo 100%" />
+                          </td>
+                          <td className="px-1 py-1.5">
                             <Input type="number" min="0" step="0.5" value={mov.horasDescuento}
                               onChange={e => updateMov(t.id, 'horasDescuento', Number(e.target.value))}
                               className="w-14 h-7 text-xs text-center px-1 text-destructive" />
@@ -1004,9 +1065,16 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                               className="w-20 h-7 text-xs text-right px-1" />
                           </td>
                           <td className="px-1 py-1.5">
-                            <Input type="number" min="0" max="31" value={mov.diasTrabajados}
-                              onChange={e => updateMov(t.id, 'diasTrabajados', Number(e.target.value))}
-                              className="w-12 h-7 text-xs text-center px-1" />
+                            <div className="flex flex-col items-center gap-0.5">
+                              <Input type="number" min="0" max="31" value={mov.diasTrabajados}
+                                onChange={e => updateMov(t.id, 'diasTrabajados', Number(e.target.value))}
+                                className="w-12 h-7 text-xs text-center px-1" />
+                              {diasSinGoceEst > 0 && (
+                                <span className="text-[9px] leading-none text-muted-foreground" title={`${diasSinGoceEst} día${diasSinGoceEst > 1 ? 's' : ''} sin goce de sueldo — se calculan ${mov.diasTrabajados - diasSinGoceEst} días efectivos`}>
+                                  {mov.diasTrabajados - diasSinGoceEst} ef.
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-1 py-1.5">
                             <Input type="number" min="0" value={mov.anticipo}
@@ -1350,10 +1418,15 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                     {formPerm.formState.errors.fechaFin && <p className="text-xs text-red-500 mt-1">{formPerm.formState.errors.fechaFin.message}</p>}
                   </div>
                 </div>
-                {diasHabilesPermCalc > 0 && (
-                  <div className="border rounded-md px-3 py-2 text-sm font-medium bg-blue-50 border-blue-200 text-blue-800">
-                    Días hábiles del período: <span className="text-lg font-bold">{diasHabilesPermCalc}</span>
+                {fechasPermValidas && (
+                  <div className={`border rounded-md px-3 py-2 text-sm font-medium ${diasHabilesPermCalc > 0 ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+                    {diasHabilesPermCalc > 0
+                      ? <>Días hábiles del período: <span className="text-lg font-bold">{diasHabilesPermCalc}</span></>
+                      : 'El período cae en fin de semana — se registra igual, pero no generará descuento salarial.'}
                   </div>
+                )}
+                {!fechasPermValidas && !watchPermFechaInicio && (
+                  <p className="text-xs text-muted-foreground">Completá las fechas para continuar.</p>
                 )}
                 <div className="flex items-center gap-2">
                   <Controller
@@ -1388,7 +1461,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                 </div>
                 {createPerm.error && <p className="text-xs text-red-500">{createPerm.error.message}</p>}
                 <DialogFooter>
-                  <Button type="submit" disabled={createPerm.isPending || diasHabilesPermCalc === 0}>
+                  <Button type="submit" disabled={createPerm.isPending || !fechasPermValidas}>
                     {createPerm.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Registrar Permiso
                   </Button>

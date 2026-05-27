@@ -117,9 +117,12 @@ export interface TrabajadorDoc {
 export interface LiquidacionDoc {
   anio: number;
   mes: number;
+  diasTrabajados: number;
   sueldoBase: number;
   horasExtra: number;
   cantHorasExtra: number;
+  horasExtraFeriado: number;
+  cantHorasExtraFeriado: number;
   bono: number;
   gratificacion: number;
   imponible: number;
@@ -1064,12 +1067,19 @@ export function generarLiquidacionPdf(
   const totalNoImponible = liq.movilizacion + liq.colacion;
   const totalHaberes = totalImponible + totalNoImponible;
   const subtotalLegal = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico;
-  const subtotalOtros = (liq.montoSinGoce ?? 0) + liq.anticipo + liq.montoHorasDescuento + liq.otrosDescuentos;
+  const subtotalOtros = liq.anticipo + liq.montoHorasDescuento + liq.otrosDescuentos;
   const totalDescuentos = subtotalLegal + subtotalOtros;
 
+  const diasEfectivos = liq.diasTrabajados - (liq.diasSinGoce ?? 0);
+  const labelDias = `(${diasEfectivos} de ${liq.diasTrabajados} días)`;
+  const notaSinGoce = (liq.diasSinGoce ?? 0) > 0
+    ? `<tr><td class="liq-concepto" style="color:#888;font-size:8.5pt;padding-left:16px;">↳ ${liq.diasSinGoce} día${(liq.diasSinGoce ?? 0) > 1 ? 's' : ''} permiso sin goce de sueldo</td><td></td></tr>`
+    : '';
+
   const imponiblesRows = [
-    `<tr><td class="liq-concepto">Sueldo Base</td><td class="liq-num">${clp(liq.sueldoBase)}</td></tr>`,
-    ...(liq.horasExtra > 0 ? [`<tr><td class="liq-concepto">Horas Extraordinarias${liq.cantHorasExtra > 0 ? ` (${liq.cantHorasExtra} hrs)` : ''}</td><td class="liq-num">${clp(liq.horasExtra)}</td></tr>`] : []),
+    `<tr><td class="liq-concepto">Sueldo Base ${labelDias}</td><td class="liq-num">${clp(liq.sueldoBase)}</td></tr>${notaSinGoce}`,
+    ...(liq.horasExtra > 0 ? [`<tr><td class="liq-concepto">Horas Extraordinarias${liq.cantHorasExtra > 0 ? ` (${liq.cantHorasExtra} hrs · 50%)` : ''}</td><td class="liq-num">${clp(liq.horasExtra)}</td></tr>`] : []),
+    ...(liq.horasExtraFeriado > 0 ? [`<tr><td class="liq-concepto">Horas Extraordinarias Feriado${liq.cantHorasExtraFeriado > 0 ? ` (${liq.cantHorasExtraFeriado} hrs · 100%)` : ''}</td><td class="liq-num">${clp(liq.horasExtraFeriado)}</td></tr>`] : []),
     ...(liq.bono > 0 ? [`<tr><td class="liq-concepto">Bono</td><td class="liq-num">${clp(liq.bono)}</td></tr>`] : []),
     ...(liq.gratificacion > 0 ? [`<tr><td class="liq-concepto">Gratificación Legal</td><td class="liq-num">${clp(liq.gratificacion)}</td></tr>`] : []),
   ].join('');
@@ -1087,7 +1097,6 @@ export function generarLiquidacionPdf(
   ].join('');
 
   const descOtrosRows = [
-    ...(liq.diasSinGoce && liq.diasSinGoce > 0 ? [`<tr><td class="liq-concepto">Permiso sin Goce de Sueldo (${liq.diasSinGoce} día${liq.diasSinGoce > 1 ? 's' : ''})</td><td class="liq-num">${clp(liq.montoSinGoce ?? 0)}</td></tr>`] : []),
     ...(liq.anticipo > 0 ? [`<tr><td class="liq-concepto">Anticipo de Remuneración</td><td class="liq-num">${clp(liq.anticipo)}</td></tr>`] : []),
     ...(liq.montoHorasDescuento > 0 ? [`<tr><td class="liq-concepto">Horas de Descuento / Atraso</td><td class="liq-num">${clp(liq.montoHorasDescuento)}</td></tr>`] : []),
     ...(liq.otrosDescuentos > 0 ? [`<tr><td class="liq-concepto">Otros Descuentos</td><td class="liq-num">${clp(liq.otrosDescuentos)}</td></tr>`] : []),
@@ -1115,6 +1124,7 @@ export function generarLiquidacionPdf(
       <div class="liq-field"><span class="liq-label">Trabajador/a</span><span class="liq-val">${trabajador.nombre}</span></div>
       <div class="liq-field"><span class="liq-label">RUT</span><span class="liq-val">${trabajador.rut}</span></div>
       <div class="liq-field"><span class="liq-label">Cargo</span><span class="liq-val">${trabajador.cargo ?? '—'}</span></div>
+      <div class="liq-field"><span class="liq-label">Días Trabajados</span><span class="liq-val">${diasEfectivos}${(liq.diasSinGoce ?? 0) > 0 ? ` <span style="color:#e55;font-size:8.5pt">(${liq.diasSinGoce} sin goce)</span>` : ''}</span></div>
       <div class="liq-field"><span class="liq-label">AFP</span><span class="liq-val">${trabajador.afp}</span></div>
       <div class="liq-field"><span class="liq-label">Salud</span><span class="liq-val">${trabajador.salud}</span></div>
       <div class="liq-field"><span class="liq-label">Contrato</span><span class="liq-val">${trabajador.tipoContrato}</span></div>
@@ -1185,7 +1195,6 @@ export function generarLiquidacionPdf(
             </tr>
           </tfoot>
         </table>
-        <div class="liq-costo-emp">Aporte empleador SIS: ${clp(liq.cotizSis)}</div>
       </div>
     </div>
 

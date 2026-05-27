@@ -32,8 +32,11 @@ router.post('/', async (req, res) => {
     const trabajador = await prisma.trabajador.findFirst({ where: { id: trabajadorId, empresaId } });
     if (!trabajador) return void res.status(404).json({ error: 'Trabajador no encontrado' });
 
-    const diasHabiles = diasHabilesPermiso(fechaInicio, fechaFin);
-    if (diasHabiles === 0) return void res.status(400).json({ error: 'El período no contiene días hábiles' });
+    const diasHabiles = diasHabilesPermiso(fechaInicio, fechaFin, trabajador.trabajaFinSemana);
+    const tiposLegales = ['MATRIMONIO', 'UNION_CIVIL', 'FALLECIMIENTO'];
+    if (diasHabiles === 0 && tiposLegales.includes(tipo)) {
+      return void res.status(400).json({ error: 'El período no contiene días hábiles' });
+    }
 
     const permiso = await prisma.permiso.create({
       data: {

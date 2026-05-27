@@ -388,6 +388,7 @@ model Trabajador {
   tipoGratificacion TipoGratificacion @default(ART_50)
   tieneMovilizacion Boolean           @default(false)
   tieneColacion     Boolean           @default(false)
+  trabajaFinSemana  Boolean           @default(false)
   montoMovilizacion Decimal?          @db.Decimal(19, 4)
   montoColacion     Decimal?          @db.Decimal(19, 4)
   email             String?
@@ -443,9 +444,11 @@ model Liquidacion {
   anio           Int
   mes            Int
   sueldoBase     Decimal    @db.Decimal(19, 4)
-  horasExtra     Decimal    @default(0) @db.Decimal(19, 4)
-  cantHorasExtra Decimal    @default(0) @db.Decimal(19, 4)
-  horasDescuento Decimal    @default(0) @db.Decimal(19, 4)
+  horasExtra          Decimal  @default(0) @db.Decimal(19, 4)
+  cantHorasExtra      Decimal  @default(0) @db.Decimal(19, 4)
+  horasExtraFeriado   Decimal  @default(0) @db.Decimal(19, 4)
+  cantHorasExtraFeriado Decimal @default(0) @db.Decimal(19, 4)
+  horasDescuento      Decimal  @default(0) @db.Decimal(19, 4)
   otrosDescuentos Decimal   @default(0) @db.Decimal(19, 4)
   bono           Decimal    @default(0) @db.Decimal(19, 4)
   diasTrabajados Int        @default(30)

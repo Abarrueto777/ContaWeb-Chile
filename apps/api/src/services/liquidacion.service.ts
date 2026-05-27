@@ -83,6 +83,8 @@ export interface LiquidacionCalculada {
   sueldoBase: number;
   horasExtra: number;
   cantHorasExtra: number;
+  horasExtraFeriado: number;
+  cantHorasExtraFeriado: number;
   horasDescuento: number;
   otrosDescuentos: number;
   bono: number;
@@ -106,6 +108,7 @@ export function calcularLiquidacion(
   trabajador: Trabajador,
   params: {
     horasExtra: number;
+    horasExtraFeriado: number;
     horasDescuento: number;
     otrosDescuentos: number;
     bono: number;
@@ -118,10 +121,11 @@ export function calcularLiquidacion(
     diasSinGoce?: number;
   },
 ): LiquidacionCalculada {
-  const { horasExtra, horasDescuento, otrosDescuentos, bono, diasTrabajados, anticipo, utm, imm, uf } = params;
+  const { horasExtra, horasExtraFeriado, horasDescuento, otrosDescuentos, bono, diasTrabajados, anticipo, utm, imm, uf } = params;
   const cfg = params.config ?? {};
-  const factor = diasTrabajados / 30;
   const diasSG = params.diasSinGoce ?? 0;
+  const diasEfectivos = Math.max(0, diasTrabajados - diasSG);
+  const factor = diasEfectivos / 30;
 
   const sueldoBase = Number(trabajador.sueldoBase);
   const sueldoDevengado = Math.round(sueldoBase * factor);
@@ -130,6 +134,8 @@ export function calcularLiquidacion(
   const horasMes = (Number(trabajador.jornadaHoras) * 52) / 12;
   const valorHora = sueldoBase / horasMes;
   const montoHorasExtra = Math.round(horasExtra * valorHora * 1.5);
+  // Horas extras en feriado: recargo 100% (valor hora × 2.0) — práctica de mercado, mínimo legal es 50%
+  const montoHorasExtraFeriado = Math.round(horasExtraFeriado * valorHora * 2.0);
   const montoHorasDescuento = Math.round(horasDescuento * valorHora);
 
   // Gratificación
@@ -152,7 +158,7 @@ export function calcularLiquidacion(
     ? (cfg.tope_se_uf ?? TOPE_SE_UF)
     : (cfg.tope_imponible_uf_previred ?? cfg.tope_cotiz_uf ?? TOPE_IMPONIBLE_UF);
   const topePesos = Math.round(topeUF * uf);
-  const imponibleBruto = sueldoDevengado + montoHorasExtra + bono + gratificacion;
+  const imponibleBruto = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion;
   const imponible = Math.min(imponibleBruto, topePesos);
 
   // Tasas AFP: usa indicadores del mes si vienen en config, sino los defaults
@@ -194,24 +200,26 @@ export function calcularLiquidacion(
   const movilizacion = Math.round(movilizacionBase * factor);
   const colacion = Math.round(colacionBase * factor);
 
-  // Permiso sin goce
+  // Sin goce: ya descontado en sueldoDevengado vía diasEfectivos; se guarda solo informativamente
   const montoSinGoce = Math.round(diasSG * (sueldoBase / 30));
 
   // Líquido
-  const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo + montoHorasDescuento + otrosDescuentos + montoSinGoce;
-  const liquido = sueldoDevengado + montoHorasExtra + bono + gratificacion + movilizacion + colacion - totalDescuentos;
+  const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo + montoHorasDescuento + otrosDescuentos;
+  const liquido = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion - totalDescuentos;
 
   // Costo empleador
   const sisEmpleador = Math.round(imponible * TASA_SIS_V);
   const cesEmpleador = trabajador.tieneCes ? Math.round(imponible * TASA_CES_EMP_V) : 0;
   const accidente = Math.round(imponible * TASA_ACC_V);
   const ses = Math.round(imponible * TASA_SES_V);
-  const costoEmpleador = sueldoDevengado + montoHorasExtra + bono + gratificacion + movilizacion + colacion + sisEmpleador + cesEmpleador + accidente + ses;
+  const costoEmpleador = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + sisEmpleador + cesEmpleador + accidente + ses;
 
   return {
     sueldoBase: sueldoDevengado,
     horasExtra: montoHorasExtra,
     cantHorasExtra: horasExtra,
+    horasExtraFeriado: montoHorasExtraFeriado,
+    cantHorasExtraFeriado: horasExtraFeriado,
     horasDescuento: horasDescuento,
     otrosDescuentos: otrosDescuentos,
     bono,
