@@ -1128,7 +1128,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                             <div className="font-medium">{s.trabajadorNombre}</div>
                             <div className="text-xs text-muted-foreground">{s.trabajadorRut}</div>
                           </td>
-                          <td className="px-4 py-2 hidden md:table-cell text-muted-foreground">{new Date(s.fechaIngreso).toLocaleDateString('es-CL')}</td>
+                          <td className="px-4 py-2 hidden md:table-cell text-muted-foreground">{new Date(s.fechaIngreso.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')}</td>
                           <td className="px-4 py-2 text-right">{s.aniosServicio.toFixed(1)}</td>
                           <td className="px-4 py-2 text-right">{s.diasGanados}</td>
                           <td className="px-4 py-2 text-right text-orange-600">{s.diasUsados}</td>
@@ -1179,7 +1179,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                             <div className="font-medium">{(v.trabajador as { nombre?: string })?.nombre ?? '—'}</div>
                           </td>
                           <td className="px-4 py-2">
-                            <div>{new Date(v.fechaInicio).toLocaleDateString('es-CL')} – {new Date(v.fechaFin).toLocaleDateString('es-CL')}</div>
+                            <div>{new Date(v.fechaInicio.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')} – {new Date(v.fechaFin.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')}</div>
                           </td>
                           <td className="px-4 py-2 text-right font-medium">{v.diasHabiles}</td>
                           <td className="px-4 py-2 hidden md:table-cell">
