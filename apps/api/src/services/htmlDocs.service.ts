@@ -197,185 +197,264 @@ export function generarContrato(empresa: EmpresaDoc, trabajador: TrabajadorDoc):
   const fnLabel = trabajador.fechaNacimiento ? fecha(trabajador.fechaNacimiento) : null;
   const nacionalidad = trabajador.nacionalidad ?? 'chilena';
 
-  const remuneracionItems: string[] = [
-    `<tr><td>Sueldo base mensual:</td><td><strong>${clp(trabajador.sueldoBase)}</strong> (${numToWords(trabajador.sueldoBase)} PESOS)</td></tr>`,
-  ];
-  if (trabajador.tieneMovilizacion && trabajador.montoMovilizacion) {
-    remuneracionItems.push(`<tr><td>Asignación de movilización (no imponible):</td><td>${clp(trabajador.montoMovilizacion)} mensuales</td></tr>`);
-  }
-  if (trabajador.tieneColacion && trabajador.montoColacion) {
-    remuneracionItems.push(`<tr><td>Asignación de colación (no imponible):</td><td>${clp(trabajador.montoColacion)} mensuales</td></tr>`);
-  }
-  remuneracionItems.push(`<tr><td>Gratificación:</td><td>${GRATIFICACION_LABEL[trabajador.tipoGratificacion] ?? ''}</td></tr>`);
-
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><title>Contrato de Trabajo — ${trabajador.nombre}</title>${BASE_CSS}
+<head>
+<meta charset="UTF-8">
+<title>Contrato de Trabajo — ${trabajador.nombre}</title>
 <style>
-  .numero-contrato { text-align:right; font-size:9.5pt; color:#555; margin-bottom:4px; }
-  .identificacion-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 24px; }
-  .id-row { display:flex; gap:6px; font-size:10.5pt; padding:2px 0; }
-  .id-row span:first-child { font-weight:bold; color:#333; min-width:140px; flex-shrink:0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; background: #fff; padding: 18mm 20mm 14mm; }
+
+  /* ── ENCABEZADO ── */
+  .ct-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    border: 1.5px solid #1a1a2e;
+    margin-bottom: 0;
+  }
+  .ct-empresa-col {
+    padding: 10px 14px;
+    flex: 1;
+    border-right: 1.5px solid #1a1a2e;
+  }
+  .ct-empresa-nombre { font-size: 12.5pt; font-weight: bold; color: #1a1a2e; margin-bottom: 3px; }
+  .ct-empresa-sub { font-size: 8.5pt; color: #555; line-height: 1.5; }
+  .ct-titulo-col {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 180px;
+    text-align: center;
+  }
+  .ct-titulo-doc { font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; margin-bottom: 4px; }
+  .ct-tipo-badge { font-size: 10pt; font-weight: bold; letter-spacing: 0.5px; }
+  .ct-fecha-doc { font-size: 8pt; opacity: 0.7; margin-top: 4px; }
+
+  /* ── TÍTULO ── */
+  .ct-title-bar {
+    border-left: 1.5px solid #1a1a2e;
+    border-right: 1.5px solid #1a1a2e;
+    border-bottom: 1.5px solid #1a1a2e;
+    text-align: center;
+    padding: 8px 0 6px;
+    margin-bottom: 14px;
+  }
+  .ct-title-bar h1 { font-size: 13pt; text-transform: uppercase; letter-spacing: 2px; color: #1a1a2e; }
+
+  /* ── CLÁUSULAS ── */
+  .clausula { margin-bottom: 12px; }
+  .clausula h2 {
+    display: flex;
+    align-items: center;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #fff;
+    background: #2c3e6b;
+    padding: 4px 10px;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+  .clausula h2 .cl-num { background: #1a1a2e; padding: 2px 7px; font-size: 8pt; border-radius: 2px; flex-shrink: 0; }
+  .clausula p { text-align: justify; line-height: 1.6; font-size: 10.5pt; margin-bottom: 6px; }
+  .clausula ol { margin-left: 20px; line-height: 1.75; font-size: 10.5pt; }
+
+  /* ── GRILLA IDENTIFICACIÓN ── */
+  .id-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 16px; margin: 10px 0 12px; }
+  .id-cell { border: 1px solid #ddd; border-radius: 3px; padding: 4px 10px; }
+  .id-cell .id-lbl { font-size: 7pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; color: #888; margin-bottom: 1px; }
+  .id-cell .id-val { font-size: 10pt; }
+
+  /* ── TABLAS DE DATOS ── */
+  .ct-table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
+  .ct-table thead tr { background: #2c3e6b; color: #fff; }
+  .ct-table thead th { padding: 5px 10px; font-size: 8.5pt; text-align: left; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; }
+  .ct-table tbody td { padding: 5px 10px; font-size: 10pt; border-bottom: 1px solid #eee; }
+  .ct-table tbody td:first-child { font-weight: 600; color: #333; font-size: 9.5pt; width: 40%; }
+  .ct-table tbody tr:nth-child(even) { background: #f7f8fc; }
+  .ct-table tfoot td { padding: 5px 10px; font-size: 9.5pt; font-weight: bold; background: #f0f0f0; border-top: 1.5px solid #aaa; }
+
+  /* ── FIRMAS ── */
+  .ct-firmas { display: flex; justify-content: space-around; gap: 28px; margin-top: 50px; }
+  .ct-firma-box { flex: 1; border: 1px solid #bbb; border-radius: 4px; padding: 14px 16px 10px; text-align: center; }
+  .ct-firma-espacio { height: 52px; }
+  .ct-firma-nombre { border-top: 1.5px solid #333; padding-top: 5px; font-weight: bold; font-size: 10.5pt; }
+  .ct-firma-rut { font-size: 8.5pt; color: #555; margin-top: 3px; }
+  .ct-firma-rol { font-size: 8.5pt; color: #333; margin-top: 2px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; }
+
+  /* ── RECEPCIÓN ── */
+  .ct-recepcion { margin-top: 22px; border-top: 1px dashed #bbb; padding-top: 8px; font-size: 9pt; color: #555; }
+
+  @media print { body { padding: 10mm 15mm; } }
 </style>
 </head>
 <body>
-  <p class="numero-contrato">Fecha: ${fecha(hoy)}</p>
 
-  <div class="header-box">
-    <div class="empresa">${empresa.razonSocial}<br/><span style="font-size:9.5pt;font-weight:normal">RUT: ${empresa.rut} &nbsp;·&nbsp; Giro: ${empresa.giro}</span>${empresa.direccion ? '<br/><span style="font-size:9pt;color:#555">' + empresa.direccion + '</span>' : ''}</div>
-    <div class="info" style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;">
-      <span style="font-size:8.5pt;color:#888;margin-bottom:2px;">TIPO DE CONTRATO</span>
-      <span style="font-size:10pt;font-weight:bold;">${tipoContratoLabel}</span>
+  <!-- ENCABEZADO -->
+  <div class="ct-header">
+    <div class="ct-empresa-col">
+      <div class="ct-empresa-nombre">${empresa.razonSocial}</div>
+      <div class="ct-empresa-sub">RUT: ${empresa.rut} &nbsp;·&nbsp; Giro: ${empresa.giro}${empresa.direccion ? '<br/>' + empresa.direccion : ''}</div>
+    </div>
+    <div class="ct-titulo-col">
+      <div class="ct-titulo-doc">Contrato de Trabajo</div>
+      <div class="ct-tipo-badge">${tipoContratoLabel}</div>
+      <div class="ct-fecha-doc">${ciudadEmpresa}, ${fecha(hoy)}</div>
     </div>
   </div>
+  <div class="ct-title-bar">
+    <h1>Contrato Individual de Trabajo</h1>
+  </div>
 
-  <h1>Contrato Individual de Trabajo</h1>
-
-  <!-- CLÁUSULA PRIMERA: COMPARECENCIA -->
+  <!-- CLÁUSULA PRIMERA -->
   <div class="clausula">
-    <h2>Cláusula Primera — Comparecencia e Individualización de las Partes</h2>
+    <h2><span class="cl-num">I</span> Comparecencia e Individualización de las Partes</h2>
     <p>En ${ciudadEmpresa}, a ${fecha(hoy)}, comparecen:</p>
-    <br/>
-    <p><strong>EMPLEADOR:</strong> <strong>${empresa.razonSocial}</strong>, RUT N° ${empresa.rut}, con giro <em>${empresa.giro}</em>${empresa.direccion ? ', domiciliada en ' + empresa.direccion : ''}, representada legalmente${empresa.representanteLegal ? ' por don/doña <strong>' + empresa.representanteLegal + '</strong>, cédula de identidad / RUT N° ' + (empresa.rutRepresentante ?? '—') + ',' : ','} en adelante denominada indistintamente "<strong>la Empresa</strong>" o "<strong>el Empleador</strong>".</p>
-    <br/>
+    <p><strong>EMPLEADOR:</strong> <strong>${empresa.razonSocial}</strong>, RUT N° ${empresa.rut}, con giro <em>${empresa.giro}</em>${empresa.direccion ? ', domiciliada en ' + empresa.direccion : ''}${empresa.representanteLegal ? ', representada legalmente por don/doña <strong>' + empresa.representanteLegal + '</strong>, RUT N° ' + (empresa.rutRepresentante ?? '—') + ',' : ','} en adelante "<strong>el Empleador</strong>".</p>
     <p><strong>TRABAJADOR/A:</strong></p>
-    <div class="identificacion-grid" style="margin-top:8px;">
-      <div>
-        <div class="id-row"><span>Nombre completo:</span><span>${trabajador.nombre}</span></div>
-        <div class="id-row"><span>RUT:</span><span>${trabajador.rut}</span></div>
-        ${fnLabel ? `<div class="id-row"><span>Fecha de nacimiento:</span><span>${fnLabel}</span></div>` : ''}
-        ${ecLabel ? `<div class="id-row"><span>Estado civil:</span><span style="text-transform:capitalize">${ecLabel}</span></div>` : ''}
-      </div>
-      <div>
-        <div class="id-row"><span>Nacionalidad:</span><span style="text-transform:capitalize">${nacionalidad}</span></div>
-        ${trabajador.domicilio ? `<div class="id-row"><span>Domicilio:</span><span>${trabajador.domicilio}${trabajador.comuna ? ', ' + trabajador.comuna : ''}${trabajador.region ? ', ' + trabajador.region : ''}</span></div>` : ''}
-      </div>
+    <div class="id-grid">
+      <div class="id-cell"><div class="id-lbl">Nombre completo</div><div class="id-val">${trabajador.nombre}</div></div>
+      <div class="id-cell"><div class="id-lbl">RUT</div><div class="id-val">${trabajador.rut}</div></div>
+      ${fnLabel ? `<div class="id-cell"><div class="id-lbl">Fecha de nacimiento</div><div class="id-val">${fnLabel}</div></div>` : ''}
+      ${ecLabel ? `<div class="id-cell"><div class="id-lbl">Estado civil</div><div class="id-val" style="text-transform:capitalize">${ecLabel}</div></div>` : ''}
+      <div class="id-cell"><div class="id-lbl">Nacionalidad</div><div class="id-val" style="text-transform:capitalize">${nacionalidad}</div></div>
+      ${trabajador.domicilio ? `<div class="id-cell"><div class="id-lbl">Domicilio</div><div class="id-val">${trabajador.domicilio}${trabajador.comuna ? ', ' + trabajador.comuna : ''}${trabajador.region ? ', ' + trabajador.region : ''}</div></div>` : ''}
     </div>
-    <br/>
-    <p>En adelante denominado/a "<strong>el Trabajador</strong>", han convenido el siguiente Contrato Individual de Trabajo, sujeto a las normas del Código del Trabajo y demás disposiciones legales vigentes.</p>
+    <p>En adelante denominado/a "<strong>el Trabajador</strong>", han convenido el siguiente Contrato Individual de Trabajo, sujeto al Código del Trabajo y disposiciones legales vigentes.</p>
   </div>
 
-  <!-- CLÁUSULA SEGUNDA: FUNCIONES Y LUGAR DE TRABAJO -->
+  <!-- CLÁUSULA SEGUNDA -->
   <div class="clausula">
-    <h2>Cláusula Segunda — Naturaleza de los Servicios y Lugar de Trabajo</h2>
+    <h2><span class="cl-num">II</span> Naturaleza de los Servicios y Lugar de Trabajo</h2>
     <p>El Trabajador se obliga a desempeñar el cargo de <strong>${trabajador.cargo ?? 'los servicios pactados'}</strong> y a ejecutar todas las funciones y labores inherentes al mismo que le sean encomendadas por el Empleador, de acuerdo con la naturaleza del cargo y las instrucciones que imparta la jefatura correspondiente.</p>
-    <br/>
-    <p>Los servicios se prestarán en el establecimiento del Empleador ubicado en <strong>${empresa.direccion ?? ciudadEmpresa}</strong>, sin perjuicio de las necesidades de la empresa que pudieren requerir que el trabajador preste servicios en otros lugares dentro del territorio nacional, de conformidad al Artículo 10 N°3 del Código del Trabajo.</p>
+    <p>Los servicios se prestarán en el establecimiento del Empleador ubicado en <strong>${empresa.direccion ?? ciudadEmpresa}</strong>, sin perjuicio de las necesidades de la empresa que pudieren requerir que el Trabajador preste servicios en otros lugares dentro del territorio nacional, conforme al Artículo 10 N°3 del Código del Trabajo.</p>
   </div>
 
-  <!-- CLÁUSULA TERCERA: JORNADA DE TRABAJO -->
+  <!-- CLÁUSULA TERCERA -->
   <div class="clausula">
-    <h2>Cláusula Tercera — Jornada de Trabajo</h2>
-    <p>La jornada ordinaria de trabajo será de <strong>${trabajador.jornadaHoras} horas semanales</strong>, distribuidas de lunes a viernes, en los horarios que el Empleador determine, respetando en todo caso los límites establecidos en el Artículo 22 del Código del Trabajo y la jornada máxima legal vigente.</p>
-    <br/>
-    <p>Las horas trabajadas en exceso de la jornada ordinaria pactada serán consideradas horas extraordinarias y se pagarán con el recargo del 50% sobre el valor de la hora ordinaria, conforme al Artículo 32 del Código del Trabajo. Las horas extraordinarias deberán ser autorizadas previamente y por escrito por el Empleador.</p>
-    <br/>
-    <p>El Trabajador tendrá derecho a un descanso de, al menos, treinta minutos durante la jornada diaria, el que no se imputará a la jornada de trabajo.</p>
+    <h2><span class="cl-num">III</span> Jornada de Trabajo</h2>
+    <p>La jornada ordinaria de trabajo será de <strong>${trabajador.jornadaHoras} horas semanales</strong>, distribuidas de lunes a viernes, en los horarios que el Empleador determine, respetando los límites del Artículo 22 del Código del Trabajo.</p>
+    <p>Las horas trabajadas en exceso de la jornada ordinaria serán consideradas horas extraordinarias y se pagarán con el recargo del 50% sobre el valor de la hora ordinaria, conforme al Artículo 32 del Código del Trabajo. Deberán ser autorizadas previamente y por escrito por el Empleador.</p>
+    <p>El Trabajador tendrá derecho a un descanso mínimo de treinta minutos durante la jornada diaria, tiempo no imputable a la jornada.</p>
   </div>
 
-  <!-- CLÁUSULA CUARTA: REMUNERACIÓN -->
+  <!-- CLÁUSULA CUARTA -->
   <div class="clausula">
-    <h2>Cláusula Cuarta — Remuneración</h2>
+    <h2><span class="cl-num">IV</span> Remuneración</h2>
     <p>El Empleador pagará al Trabajador las siguientes remuneraciones y beneficios:</p>
-    <table class="datos" style="margin-top:8px;margin-bottom:8px;">
-      ${remuneracionItems.join('\n      ')}
+    <table class="ct-table">
+      <thead><tr><th>Concepto</th><th>Monto / Detalle</th></tr></thead>
+      <tbody>
+        <tr><td>Sueldo base mensual</td><td><strong>${clp(trabajador.sueldoBase)}</strong> &nbsp;(${numToWords(trabajador.sueldoBase)} PESOS)</td></tr>
+        ${trabajador.tieneMovilizacion && trabajador.montoMovilizacion ? `<tr><td>Asig. movilización (no imponible)</td><td>${clp(trabajador.montoMovilizacion)} mensuales</td></tr>` : ''}
+        ${trabajador.tieneColacion && trabajador.montoColacion ? `<tr><td>Asig. colación (no imponible)</td><td>${clp(trabajador.montoColacion)} mensuales</td></tr>` : ''}
+        <tr><td>Gratificación</td><td>${GRATIFICACION_LABEL[trabajador.tipoGratificacion] ?? ''}</td></tr>
+      </tbody>
     </table>
-    <p>Las remuneraciones serán liquidadas y pagadas mensualmente, el último día hábil de cada mes, mediante cheque, transferencia electrónica u otro medio de pago convenido. El Empleador entregará al Trabajador la correspondiente liquidación de sueldo, conforme al Artículo 54 bis del Código del Trabajo.</p>
-    <br/>
-    <p>Las asignaciones de movilización y colación, en caso de corresponder, no constituyen remuneración y no son imponibles, conforme al Artículo 41 del Código del Trabajo.</p>
+    <p>Las remuneraciones serán liquidadas y pagadas mensualmente, el último día hábil de cada mes, mediante transferencia electrónica u otro medio convenido. El Empleador entregará la correspondiente liquidación de sueldo conforme al Artículo 54 bis del Código del Trabajo.</p>
+    <p>Las asignaciones de movilización y colación no constituyen remuneración y no son imponibles (Artículo 41 CT).</p>
   </div>
 
-  <!-- CLÁUSULA QUINTA: DURACIÓN -->
+  <!-- CLÁUSULA QUINTA -->
   <div class="clausula">
-    <h2>Cláusula Quinta — Duración y Vigencia del Contrato</h2>
+    <h2><span class="cl-num">V</span> Duración y Vigencia del Contrato</h2>
     ${trabajador.tipoContrato === 'INDEFINIDO'
       ? `<p>El presente contrato es de duración <strong>indefinida</strong> y comenzará a regir a contar del <strong>${fecha(fechaIngreso)}</strong>, fecha en que el Trabajador inició la prestación de sus servicios.</p>`
-      : `<p>El presente contrato es <strong>${tipoContratoLabel}</strong> y comenzará a regir a contar del <strong>${fecha(fechaIngreso)}</strong>. La duración y término del contrato se regirán por las normas aplicables al tipo de contratación pactado y lo dispuesto en el Código del Trabajo.</p>`
+      : `<p>El presente contrato es <strong>${tipoContratoLabel}</strong> y comenzará a regir a contar del <strong>${fecha(fechaIngreso)}</strong>. La duración y término se regirán por las normas aplicables al tipo de contratación pactado y el Código del Trabajo.</p>`
     }
-    <br/>
-    <p>Las partes dejan constancia de que el presente instrumento se suscribe dentro del plazo legal de 15 días corridos contados desde la incorporación del Trabajador, conforme al Artículo 9° del Código del Trabajo.</p>
+    <p>Las partes dejan constancia de que el presente instrumento se suscribe dentro del plazo legal de 15 días corridos desde la incorporación del Trabajador, conforme al Artículo 9° del Código del Trabajo.</p>
   </div>
 
-  <!-- CLÁUSULA SEXTA: PREVISIÓN SOCIAL -->
+  <!-- CLÁUSULA SEXTA -->
   <div class="clausula">
-    <h2>Cláusula Sexta — Previsión Social y Seguro de Salud</h2>
-    <p>El Trabajador se encuentra afiliado y cotizará en las siguientes instituciones previsionales:</p>
-    <table class="datos" style="margin-top:8px;margin-bottom:8px;">
-      <tr><td>AFP:</td><td><strong>${trabajador.afp}</strong></td></tr>
-      <tr><td>Institución de Salud:</td><td><strong>${trabajador.salud}</strong> (cotización del ${(trabajador.pctSalud * 100).toFixed(1)}% sobre la remuneración imponible)</td></tr>
-      ${trabajador.tieneCes ? '<tr><td>Seguro de Cesantía:</td><td>Administradora de Fondos de Cesantía (AFC Chile S.A.)</td></tr>' : ''}
+    <h2><span class="cl-num">VI</span> Previsión Social y Seguro de Salud</h2>
+    <p>El Trabajador cotizará en las siguientes instituciones previsionales:</p>
+    <table class="ct-table">
+      <thead><tr><th>Institución</th><th>Detalle</th></tr></thead>
+      <tbody>
+        <tr><td>AFP</td><td><strong>${trabajador.afp}</strong></td></tr>
+        <tr><td>Institución de Salud</td><td><strong>${trabajador.salud}</strong> — cotización del ${(trabajador.pctSalud * 100).toFixed(1)}% sobre la remuneración imponible</td></tr>
+        ${trabajador.tieneCes ? '<tr><td>Seguro de Cesantía</td><td>AFC Chile S.A. (Administradora de Fondos de Cesantía)</td></tr>' : ''}
+      </tbody>
     </table>
-    <p>El Empleador se obliga a efectuar las retenciones y a enterar las cotizaciones previsionales dentro de los plazos establecidos por la ley, bajo apercibimiento de las sanciones previstas en el Decreto Ley N° 3.500 y demás normativa vigente.</p>
+    <p>El Empleador se obliga a enterar las cotizaciones previsionales dentro de los plazos establecidos por la ley.</p>
   </div>
 
-  <!-- CLÁUSULA SÉPTIMA: VACACIONES -->
+  <!-- CLÁUSULA SÉPTIMA -->
   <div class="clausula">
-    <h2>Cláusula Séptima — Feriado Anual</h2>
+    <h2><span class="cl-num">VII</span> Feriado Anual</h2>
     <p>El Trabajador tendrá derecho a un feriado anual de quince días hábiles con goce íntegro de remuneraciones, una vez cumplido un año de servicio continuo con el Empleador, conforme al Artículo 67 del Código del Trabajo.</p>
-    <br/>
-    <p>En los contratos a plazo fijo o por obra o faena determinada, el trabajador tendrá derecho a feriado proporcional al tiempo trabajado, con goce de las remuneraciones correspondientes, si el contrato durase más de treinta días.</p>
-    <br/>
-    <p>El feriado deberá ser concedido preferentemente en primavera o verano, pudiendo las partes acordar su fraccionamiento, pero siempre que uno de los períodos tenga, a lo menos, diez días hábiles continuos.</p>
+    <p>En contratos a plazo fijo o por obra o faena, el Trabajador tendrá derecho a feriado proporcional al tiempo trabajado si el contrato durase más de treinta días. El feriado podrá fraccionarse, debiendo un período tener al menos diez días hábiles continuos.</p>
   </div>
 
-  <!-- CLÁUSULA OCTAVA: OBLIGACIONES DEL TRABAJADOR -->
+  <!-- CLÁUSULA OCTAVA -->
   <div class="clausula">
-    <h2>Cláusula Octava — Obligaciones del Trabajador</h2>
-    <p>Sin perjuicio de las normas del Código del Trabajo y del Reglamento Interno, el Trabajador se obliga especialmente a:</p>
-    <ol style="margin-left:18px;line-height:1.7;font-size:10.5pt;">
+    <h2><span class="cl-num">VIII</span> Obligaciones del Trabajador</h2>
+    <p>Sin perjuicio del Código del Trabajo y del Reglamento Interno, el Trabajador se obliga especialmente a:</p>
+    <ol>
       <li>Prestar sus servicios con la debida diligencia, cuidado y esmero.</li>
       <li>Respetar los horarios y jornadas de trabajo establecidos.</li>
-      <li>Observar las medidas de prevención de riesgos y las normas de seguridad e higiene ocupacional.</li>
-      <li>Guardar la debida reserva respecto de los negocios, documentos e información confidencial de la empresa.</li>
+      <li>Observar las medidas de prevención de riesgos y las normas de seguridad e higiene.</li>
+      <li>Guardar la debida reserva respecto de los negocios e información confidencial de la empresa.</li>
       <li>Cuidar los bienes, herramientas e instalaciones que le sean encomendados.</li>
-      <li>Comunicar al Empleador con la debida anticipación cualquier ausencia por enfermedad u otra causa justificada.</li>
       <li>Comunicar oportunamente cualquier cambio de domicilio, estado civil u otros datos que afecten su situación previsional o tributaria.</li>
     </ol>
   </div>
 
-  <!-- CLÁUSULA NOVENA: PROHIBICIONES -->
+  <!-- CLÁUSULA NOVENA -->
   <div class="clausula">
-    <h2>Cláusula Novena — Prohibiciones</h2>
+    <h2><span class="cl-num">IX</span> Prohibiciones</h2>
     <p>Queda especialmente prohibido al Trabajador:</p>
-    <ol style="margin-left:18px;line-height:1.7;font-size:10.5pt;">
-      <li>Trabajar para otra empresa o persona en actividades que compitan directa o indirectamente con el giro del Empleador, durante la vigencia del presente contrato.</li>
-      <li>Revelar información confidencial, secretos comerciales o datos de clientes de la empresa a terceros, durante y con posterioridad a la vigencia del contrato.</li>
-      <li>Realizar actividades ajenas a sus funciones dentro del horario de trabajo sin autorización escrita del Empleador.</li>
+    <ol>
+      <li>Trabajar para otra empresa en actividades que compitan directa o indirectamente con el giro del Empleador.</li>
+      <li>Revelar información confidencial, secretos comerciales o datos de clientes a terceros.</li>
+      <li>Realizar actividades ajenas a sus funciones dentro del horario de trabajo sin autorización escrita.</li>
       <li>Introducir al lugar de trabajo o consumir bebidas alcohólicas, estupefacientes u otras sustancias prohibidas.</li>
-      <li>Utilizar los bienes, equipos y sistemas informáticos del Empleador para fines particulares o ajenos al servicio.</li>
+      <li>Utilizar los bienes y sistemas informáticos del Empleador para fines particulares.</li>
     </ol>
   </div>
 
-  <!-- CLÁUSULA DÉCIMA: REGLAMENTO INTERNO Y DISPOSICIONES GENERALES -->
+  <!-- CLÁUSULA DÉCIMA -->
   <div class="clausula">
-    <h2>Cláusula Décima — Reglamento Interno y Normativa Aplicable</h2>
-    <p>El Trabajador declara haber recibido un ejemplar del Reglamento Interno de Orden, Higiene y Seguridad de la empresa, cuyas disposiciones conoce, acepta y se compromete a cumplir. El incumplimiento de dichas normas podrá dar lugar a las sanciones previstas en el mismo Reglamento y en la ley.</p>
-    <br/>
-    <p>En lo no previsto en el presente contrato, se estará a lo dispuesto en el Código del Trabajo, sus reglamentos y demás disposiciones legales y reglamentarias vigentes o que se dicten en el futuro.</p>
+    <h2><span class="cl-num">X</span> Reglamento Interno y Normativa Aplicable</h2>
+    <p>El Trabajador declara haber recibido un ejemplar del Reglamento Interno de Orden, Higiene y Seguridad, cuyas disposiciones conoce y se compromete a cumplir.</p>
+    <p>En lo no previsto en el presente contrato, se estará a lo dispuesto en el Código del Trabajo y demás disposiciones legales vigentes.</p>
   </div>
 
-  <!-- CLÁUSULA UNDÉCIMA: EJEMPLARES -->
+  <!-- CLÁUSULA UNDÉCIMA -->
   <div class="clausula">
-    <h2>Cláusula Undécima — Número de Ejemplares</h2>
+    <h2><span class="cl-num">XI</span> Número de Ejemplares</h2>
     <p>El presente contrato se firma en <strong>dos ejemplares</strong> del mismo tenor y fecha, quedando uno en poder de cada parte, con pleno valor y eficacia legal para ambas.</p>
   </div>
 
-  <div class="firmas">
-    <div class="firma-bloque">
-      <div style="height:55px;"></div>
-      <div class="firma-linea">${empresa.representanteLegal ?? empresa.razonSocial}</div>
-      <div class="firma-label">RUT: ${empresa.rutRepresentante ?? empresa.rut}<br/><strong>${empresa.razonSocial}</strong><br/>Por el Empleador</div>
+  <!-- FIRMAS -->
+  <div class="ct-firmas">
+    <div class="ct-firma-box">
+      <div class="ct-firma-espacio"></div>
+      <div class="ct-firma-nombre">${empresa.representanteLegal ?? empresa.razonSocial}</div>
+      <div class="ct-firma-rut">RUT: ${empresa.rutRepresentante ?? empresa.rut}</div>
+      <div class="ct-firma-rol">${empresa.razonSocial} · Por el Empleador</div>
     </div>
-    <div class="firma-bloque">
-      <div style="height:55px;"></div>
-      <div class="firma-linea">${trabajador.nombre}</div>
-      <div class="firma-label">RUT: ${trabajador.rut}<br/>Trabajador/a</div>
+    <div class="ct-firma-box">
+      <div class="ct-firma-espacio"></div>
+      <div class="ct-firma-nombre">${trabajador.nombre}</div>
+      <div class="ct-firma-rut">RUT: ${trabajador.rut}</div>
+      <div class="ct-firma-rol">Trabajador/a</div>
     </div>
   </div>
 
-  <div style="margin-top:28px;border-top:1px solid #ccc;padding-top:10px;font-size:9pt;color:#666;">
-    <p><strong>Recepción de copia:</strong> El/la trabajador/a declara haber recibido un ejemplar del presente contrato en la fecha indicada. ______________________________</p>
+  <!-- RECEPCIÓN DE COPIA -->
+  <div class="ct-recepcion">
+    <strong>Recepción de copia (Art. 9° CT):</strong> El/la trabajador/a declara haber recibido un ejemplar íntegro del presente contrato en la fecha indicada. &nbsp;&nbsp;Firma: ____________________________
   </div>
+
 </body>
 </html>`;
 }
