@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella } from 'lucide-react';
 import api from '@/lib/api';
 import { REGIONES_DT, COMUNAS_DT } from '@/lib/dt-geo';
-import { trabajadorSchema, finiquitoInputSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput } from '@contaweb/validations';
-import type { Trabajador, Liquidacion } from '@contaweb/shared-types';
+import { trabajadorSchema, finiquitoInputSchema, vacacionSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput, type VacacionInput } from '@contaweb/validations';
+import type { Trabajador, Liquidacion, VacacionSaldo } from '@contaweb/shared-types';
 import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador, useReactivarTrabajador } from '@/hooks/useTrabajadores';
 import { useLiquidaciones, useCreateLiquidacion, useUpdateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion } from '@/hooks/useLiquidaciones';
+import { useVacaciones, useVacacionSaldos, useCreateVacacion, useDeleteVacacion } from '@/hooks/useVacaciones';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +46,21 @@ function clp(n: string | number) {
   return Number(n).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
 
-type Vista = 'trabajadores' | 'liquidaciones' | 'libro';
+type Vista = 'trabajadores' | 'liquidaciones' | 'libro' | 'vacaciones';
+
+function diasHabilesEntre(inicio: string, fin: string): number {
+  if (!inicio || !fin) return 0;
+  let count = 0;
+  const d = new Date(inicio + 'T12:00:00');
+  const end = new Date(fin + 'T12:00:00');
+  if (d > end) return 0;
+  while (d <= end) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
 
 export default function RRHH() {
   const hoy = new Date();
@@ -62,6 +77,8 @@ export default function RRHH() {
   const [movs, setMovs] = useState<Record<string, { horasExtra: number; bono: number; diasTrabajados: number; anticipo: number; horasDescuento: number; otrosDescuentos: number }>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [procesando, setProcesando] = useState<Set<string>>(new Set());
+  const [openVacacion, setOpenVacacion] = useState(false);
+  const [filtroVacTrab, setFiltroVacTrab] = useState<string>('todos');
 
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data: trabData, isLoading: loadingTrab } = useTrabajadores(empresa?.id ?? '');
@@ -74,6 +91,21 @@ export default function RRHH() {
   const updateLiq = useUpdateLiquidacion(empresa?.id ?? '');
   const deleteLiq = useDeleteLiquidacion(empresa?.id ?? '');
   const pagarLiq = usePagarLiquidacion(empresa?.id ?? '');
+  const { data: vacData } = useVacaciones(empresa?.id ?? '');
+  const { data: saldosData, isLoading: loadingSaldos } = useVacacionSaldos(empresa?.id ?? '');
+  const createVac = useCreateVacacion(empresa?.id ?? '');
+  const deleteVac = useDeleteVacacion(empresa?.id ?? '');
+
+  const formVac = useForm<VacacionInput>({
+    resolver: zodResolver(vacacionSchema),
+    defaultValues: { tipo: 'NORMAL' },
+  });
+  const watchFechaInicio = formVac.watch('fechaInicio');
+  const watchFechaFin = formVac.watch('fechaFin');
+  const diasHabilesCalc = diasHabilesEntre(
+    watchFechaInicio ? String(watchFechaInicio).slice(0, 10) : '',
+    watchFechaFin ? String(watchFechaFin).slice(0, 10) : '',
+  );
 
   const todosLosTrabajadores = trabData?.data ?? [];
   const trabajadores = todosLosTrabajadores.filter((t) =>
@@ -101,6 +133,19 @@ export default function RRHH() {
     mutation.mutate(d, {
       onSuccess: () => { formTrab.reset(); mutation.reset(); setOpenTrabajador(false); setEditando(null); },
     });
+  }
+
+  async function onSubmitVac(d: VacacionInput) {
+    createVac.mutate(d, {
+      onSuccess: () => { formVac.reset({ tipo: 'NORMAL' }); createVac.reset(); setOpenVacacion(false); },
+    });
+  }
+
+  async function abrirComprobanteFeriado(vacId: string) {
+    if (!empresa) return;
+    const res = await api.get(`/api/empresas/${empresa.id}/vacaciones/${vacId}/comprobante`, { responseType: 'text' });
+    const blob = new Blob([res.data as string], { type: 'text/html; charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
   }
 
   async function abrirContrato(t: Trabajador) {
@@ -497,6 +542,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
           </Button>
           <Button variant={vista === 'libro' ? 'default' : 'outline'} size="sm" onClick={() => setVista('libro')}>
             <Printer className="mr-1.5 h-3.5 w-3.5" />Libro Rem.
+          </Button>
+          <Button variant={vista === 'vacaciones' ? 'default' : 'outline'} size="sm" onClick={() => setVista('vacaciones')}>
+            <Umbrella className="mr-1.5 h-3.5 w-3.5" />Vacaciones
           </Button>
         </div>
       </div>
@@ -1035,6 +1083,212 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
               </div>
             </div>
           )}
+        </>
+      )}
+
+      {/* VISTA VACACIONES */}
+      {vista === 'vacaciones' && (
+        <>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base font-semibold">Registro de Vacaciones</h2>
+              <p className="text-xs text-muted-foreground">Feriado anual Art. 67 CT — 15 días hábiles por año</p>
+            </div>
+            <Button size="sm" onClick={() => setOpenVacacion(true)}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />Registrar Feriado
+            </Button>
+          </div>
+
+          {/* SALDOS POR TRABAJADOR */}
+          <Card className="mb-4">
+            <CardContent className="p-0">
+              <div className="px-4 py-2 border-b bg-muted/40">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Saldo por Trabajador</span>
+              </div>
+              {loadingSaldos ? (
+                <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/20 text-xs text-muted-foreground">
+                        <th className="px-4 py-2 text-left font-medium">Trabajador</th>
+                        <th className="px-4 py-2 text-left font-medium hidden md:table-cell">Ingreso</th>
+                        <th className="px-4 py-2 text-right font-medium">Años</th>
+                        <th className="px-4 py-2 text-right font-medium">Ganados</th>
+                        <th className="px-4 py-2 text-right font-medium">Usados</th>
+                        <th className="px-4 py-2 text-right font-medium font-bold">Saldo</th>
+                        <th className="px-4 py-2 text-right font-medium hidden md:table-cell">Prog.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(saldosData?.data ?? []).map((s: VacacionSaldo) => (
+                        <tr key={s.trabajadorId} className="border-b hover:bg-muted/10 cursor-pointer" onClick={() => setFiltroVacTrab(filtroVacTrab === s.trabajadorId ? 'todos' : s.trabajadorId)}>
+                          <td className="px-4 py-2">
+                            <div className="font-medium">{s.trabajadorNombre}</div>
+                            <div className="text-xs text-muted-foreground">{s.trabajadorRut}</div>
+                          </td>
+                          <td className="px-4 py-2 hidden md:table-cell text-muted-foreground">{new Date(s.fechaIngreso).toLocaleDateString('es-CL')}</td>
+                          <td className="px-4 py-2 text-right">{s.aniosServicio.toFixed(1)}</td>
+                          <td className="px-4 py-2 text-right">{s.diasGanados}</td>
+                          <td className="px-4 py-2 text-right text-orange-600">{s.diasUsados}</td>
+                          <td className={`px-4 py-2 text-right font-bold ${s.saldo <= 0 ? 'text-red-600' : 'text-green-700'}`}>{s.saldo}</td>
+                          <td className="px-4 py-2 text-right hidden md:table-cell text-blue-600">{s.diasProgresivos > 0 ? `+${s.diasProgresivos}` : '—'}</td>
+                        </tr>
+                      ))}
+                      {(saldosData?.data ?? []).length === 0 && (
+                        <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Sin trabajadores activos</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* HISTORIAL */}
+          <Card>
+            <CardContent className="p-0">
+              <div className="px-4 py-2 border-b bg-muted/40 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Historial de Feriados</span>
+                {filtroVacTrab !== 'todos' && (
+                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setFiltroVacTrab('todos')}>
+                    Ver todos ×
+                  </Button>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/20 text-xs text-muted-foreground">
+                      <th className="px-4 py-2 text-left font-medium">Trabajador</th>
+                      <th className="px-4 py-2 text-left font-medium">Período</th>
+                      <th className="px-4 py-2 text-right font-medium">Días háb.</th>
+                      <th className="px-4 py-2 text-left font-medium hidden md:table-cell">Tipo</th>
+                      <th className="px-4 py-2 text-right font-medium hidden md:table-cell">Saldo ant.</th>
+                      <th className="px-4 py-2 text-right font-medium hidden md:table-cell">Saldo post.</th>
+                      <th className="px-4 py-2 text-right font-medium">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(vacData?.data ?? [])
+                      .filter(v => filtroVacTrab === 'todos' || v.trabajadorId === filtroVacTrab)
+                      .map(v => (
+                        <tr key={v.id} className="border-b hover:bg-muted/10">
+                          <td className="px-4 py-2">
+                            <div className="font-medium">{(v.trabajador as { nombre?: string })?.nombre ?? '—'}</div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <div>{new Date(v.fechaInicio).toLocaleDateString('es-CL')} – {new Date(v.fechaFin).toLocaleDateString('es-CL')}</div>
+                          </td>
+                          <td className="px-4 py-2 text-right font-medium">{v.diasHabiles}</td>
+                          <td className="px-4 py-2 hidden md:table-cell">
+                            <Badge variant="outline" className="text-xs">{v.tipo}</Badge>
+                          </td>
+                          <td className="px-4 py-2 text-right hidden md:table-cell">{Number(v.saldoPrevio)}</td>
+                          <td className="px-4 py-2 text-right hidden md:table-cell font-medium text-green-700">{Number(v.saldoPosterior)}</td>
+                          <td className="px-4 py-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => abrirComprobanteFeriado(v.id)}>
+                                <FileText className="h-3 w-3 mr-1" />Comprobante
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => { if (confirm('¿Eliminar este registro de feriado?')) deleteVac.mutate(v.id); }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    {(vacData?.data ?? []).filter(v => filtroVacTrab === 'todos' || v.trabajadorId === filtroVacTrab).length === 0 && (
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Sin feriados registrados</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* DIALOG REGISTRAR FERIADO */}
+          <Dialog open={openVacacion} onOpenChange={(o) => { setOpenVacacion(o); if (!o) { formVac.reset({ tipo: 'NORMAL' }); createVac.reset(); } }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Registrar Feriado Legal</DialogTitle>
+                <DialogDescription>Art. 67 CT — El período se cuenta en días hábiles (lunes a viernes).</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={formVac.handleSubmit(onSubmitVac)} className="space-y-4 pt-2">
+                <div>
+                  <Label>Trabajador</Label>
+                  <Controller
+                    control={formVac.control}
+                    name="trabajadorId"
+                    render={({ field }) => (
+                      <select {...field} className="w-full border rounded-md px-3 py-2 text-sm mt-1">
+                        <option value="">Seleccionar trabajador…</option>
+                        {todosLosTrabajadores.filter(t => t.activo).map(t => (
+                          <option key={t.id} value={t.id}>{t.nombre} — {t.rut}</option>
+                        ))}
+                      </select>
+                    )}
+                  />
+                  {formVac.formState.errors.trabajadorId && <p className="text-xs text-red-500 mt-1">{formVac.formState.errors.trabajadorId.message}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Fecha inicio</Label>
+                    <Controller
+                      control={formVac.control}
+                      name="fechaInicio"
+                      render={({ field }) => (
+                        <Input type="date" className="mt-1" value={field.value ? String(field.value).slice(0, 10) : ''} onChange={e => field.onChange(e.target.value)} />
+                      )}
+                    />
+                    {formVac.formState.errors.fechaInicio && <p className="text-xs text-red-500 mt-1">Requerida</p>}
+                  </div>
+                  <div>
+                    <Label>Fecha fin</Label>
+                    <Controller
+                      control={formVac.control}
+                      name="fechaFin"
+                      render={({ field }) => (
+                        <Input type="date" className="mt-1" value={field.value ? String(field.value).slice(0, 10) : ''} onChange={e => field.onChange(e.target.value)} />
+                      )}
+                    />
+                    {formVac.formState.errors.fechaFin && <p className="text-xs text-red-500 mt-1">{formVac.formState.errors.fechaFin.message}</p>}
+                  </div>
+                </div>
+                {diasHabilesCalc > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 text-sm text-blue-800 font-medium">
+                    Días hábiles del período: <span className="text-lg font-bold">{diasHabilesCalc}</span>
+                  </div>
+                )}
+                <div>
+                  <Label>Tipo de feriado</Label>
+                  <Controller
+                    control={formVac.control}
+                    name="tipo"
+                    render={({ field }) => (
+                      <select {...field} className="w-full border rounded-md px-3 py-2 text-sm mt-1">
+                        <option value="NORMAL">Feriado Legal (Art. 67)</option>
+                        <option value="PROGRESIVO">Feriado Progresivo (Art. 68)</option>
+                        <option value="COLECTIVO">Feriado Colectivo (Art. 76)</option>
+                      </select>
+                    )}
+                  />
+                </div>
+                <div>
+                  <Label>Observación (opcional)</Label>
+                  <Input {...formVac.register('observacion')} className="mt-1" placeholder="Ej: acuerdo con trabajador, feriado fraccionado…" />
+                </div>
+                {createVac.error && <p className="text-xs text-red-500">{createVac.error.message}</p>}
+                <DialogFooter>
+                  <Button type="submit" disabled={createVac.isPending || diasHabilesCalc === 0}>
+                    {createVac.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Registrar Feriado
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

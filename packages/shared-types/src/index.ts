@@ -194,6 +194,38 @@ export interface ApiError {
   details?: Record<string, string[]>;
 }
 
+export type TipoVacacion = 'NORMAL' | 'PROGRESIVO' | 'COLECTIVO';
+export type EstadoVacacion = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA';
+
+export interface Vacacion {
+  id: string;
+  empresaId: string;
+  trabajadorId: string;
+  fechaInicio: string;
+  fechaFin: string;
+  diasHabiles: number;
+  saldoPrevio: string;
+  saldoPosterior: string;
+  tipo: TipoVacacion;
+  estado: EstadoVacacion;
+  observacion?: string;
+  trabajador?: Trabajador;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VacacionSaldo {
+  trabajadorId: string;
+  trabajadorNombre: string;
+  trabajadorRut: string;
+  fechaIngreso: string;
+  aniosServicio: number;
+  diasGanados: number;
+  diasUsados: number;
+  saldo: number;
+  diasProgresivos: number;
+}
+
 export type TipoAFP = 'CAPITAL' | 'CUPRUM' | 'HABITAT' | 'PLANVITAL' | 'PROVIDA' | 'MODELO' | 'UNO';
 export type TipoTrabajador = 'DEPENDIENTE' | 'SUELDO_EMPRESARIAL';
 export type TipoGratificacion = 'ART_50' | 'ART_50_LIBRE' | 'ART_47' | 'NINGUNA';

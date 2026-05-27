@@ -217,6 +217,14 @@ export const liquidacionInputSchema = z.object({
   imm: z.number().positive('IMM del período requerida'),
 });
 
+export const vacacionSchema = z.object({
+  trabajadorId: z.string().min(1, 'Trabajador requerido'),
+  fechaInicio: z.coerce.date(),
+  fechaFin: z.coerce.date(),
+  tipo: z.enum(['NORMAL', 'PROGRESIVO', 'COLECTIVO']).default('NORMAL'),
+  observacion: z.string().optional(),
+}).refine(d => d.fechaFin >= d.fechaInicio, { message: 'Fecha fin debe ser igual o posterior a fecha inicio', path: ['fechaFin'] });
+
 export const activoFijoSchema = z.object({
   nombre: z.string().min(2, 'Nombre requerido'),
   categoria: z.enum(['MAQUINARIA', 'VEHICULO', 'MUEBLES', 'EQUIPOS_COMPUTACION', 'CONSTRUCCION', 'TERRENO', 'OTRO']).default('OTRO'),
@@ -240,3 +248,4 @@ export type TrabajadorInput = z.infer<typeof trabajadorSchema>;
 export type LiquidacionInput = z.infer<typeof liquidacionInputSchema>;
 export type ActivoFijoInput = z.infer<typeof activoFijoSchema>;
 export type FiniquitoInput = z.infer<typeof finiquitoInputSchema>;
+export type VacacionInput = z.infer<typeof vacacionSchema>;

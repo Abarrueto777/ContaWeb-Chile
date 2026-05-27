@@ -1,4 +1,4 @@
-# ContaWeb Chile — Contexto del proyecto
+`# ContaWeb Chile — Contexto del proyecto
 
 Sistema contable web para contadores chilenos que atienden clientes pequeños.
 Versión web moderna del flujo de trabajo de ContaPlus Chile.

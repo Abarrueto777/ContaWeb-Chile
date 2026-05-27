@@ -691,6 +691,183 @@ export function generarFiniquito(empresa: EmpresaDoc, trabajador: TrabajadorDoc,
 </html>`;
 }
 
+// ── Comprobante de Feriado (Art. 67 CT) ──────────────────────────────────────
+
+export interface ComprobanteFeriadoDoc {
+  fechaInicio: Date | string;
+  fechaFin: Date | string;
+  diasHabiles: number;
+  saldoPrevio: number;
+  saldoPosterior: number;
+  tipo: string;
+  observacion?: string | null;
+}
+
+const TIPO_VAC_LABEL: Record<string, string> = {
+  NORMAL: 'Feriado Legal (Art. 67 CT)',
+  PROGRESIVO: 'Feriado Progresivo (Art. 68 CT)',
+  COLECTIVO: 'Feriado Colectivo (Art. 76 CT)',
+};
+
+export function generarComprobanteFeriado(
+  empresa: EmpresaDoc,
+  trabajador: TrabajadorDoc,
+  doc: ComprobanteFeriadoDoc,
+  saldoGanado: number,
+): string {
+  const fi = typeof doc.fechaInicio === 'string' ? new Date(doc.fechaInicio) : doc.fechaInicio;
+  const ff = typeof doc.fechaFin === 'string' ? new Date(doc.fechaFin) : doc.fechaFin;
+  const hoy = new Date();
+  const tipoLabel = TIPO_VAC_LABEL[doc.tipo] ?? doc.tipo;
+  const ciudadEmpresa = empresa.direccion?.split(',').pop()?.trim() ?? 'Santiago';
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comprobante de Feriado — ${trabajador.nombre}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; background: #fff; padding: 18mm 20mm 14mm; }
+
+  .cf-header { display: flex; justify-content: space-between; align-items: stretch; border: 1.5px solid #1a1a2e; margin-bottom: 0; }
+  .cf-empresa-col { padding: 10px 14px; flex: 1; border-right: 1.5px solid #1a1a2e; }
+  .cf-empresa-nombre { font-size: 12.5pt; font-weight: bold; color: #1a1a2e; margin-bottom: 3px; }
+  .cf-empresa-sub { font-size: 8.5pt; color: #555; line-height: 1.5; }
+  .cf-titulo-col {
+    background: #1a1a2e; color: #fff; padding: 10px 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 180px; text-align: center;
+  }
+  .cf-titulo-doc { font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; margin-bottom: 4px; }
+  .cf-titulo-main { font-size: 11pt; font-weight: bold; }
+  .cf-fecha-doc { font-size: 8pt; opacity: 0.7; margin-top: 4px; }
+
+  .cf-title-bar { border-left: 1.5px solid #1a1a2e; border-right: 1.5px solid #1a1a2e; border-bottom: 1.5px solid #1a1a2e; text-align: center; padding: 8px 0 6px; margin-bottom: 14px; }
+  .cf-title-bar h1 { font-size: 13pt; text-transform: uppercase; letter-spacing: 2px; color: #1a1a2e; }
+
+  .cf-seccion { display: flex; align-items: center; gap: 8px; font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; color: #fff; background: #2c3e6b; padding: 4px 10px; margin: 12px 0 8px; }
+
+  .cf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 16px; margin-bottom: 12px; }
+  .cf-cell { border: 1px solid #c8d0e8; border-radius: 3px; padding: 4px 10px; }
+  .cf-cell .cf-lbl { font-size: 7pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; color: #888; margin-bottom: 1px; }
+  .cf-cell .cf-val { font-size: 10.5pt; }
+
+  .cf-periodo-box { border: 1.5px solid #2c3e6b; border-radius: 4px; padding: 12px 16px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
+  .cf-periodo-item .cf-p-lbl { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; color: #666; margin-bottom: 3px; }
+  .cf-periodo-item .cf-p-val { font-size: 12pt; font-weight: bold; color: #1a1a2e; }
+  .cf-periodo-item .cf-p-sub { font-size: 8pt; color: #888; margin-top: 1px; }
+
+  .cf-saldo-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  .cf-saldo-table thead tr { background: #2c3e6b; color: #fff; }
+  .cf-saldo-table thead th { padding: 5px 10px; font-size: 8.5pt; text-align: left; font-weight: bold; text-transform: uppercase; }
+  .cf-saldo-table thead th.right { text-align: right; }
+  .cf-saldo-table tbody td { padding: 5px 10px; font-size: 10pt; border-bottom: 1px solid #eee; }
+  .cf-saldo-table tbody td.right { text-align: right; font-family: monospace; }
+  .cf-saldo-table tfoot td { background: #1a1a2e; color: #fff; font-weight: bold; padding: 6px 10px; font-size: 10.5pt; }
+  .cf-saldo-table tfoot td.right { text-align: right; font-family: monospace; }
+
+  .cf-tipo-badge { display: inline-block; background: #e8ecf5; border: 1px solid #c8d0e8; border-radius: 3px; padding: 3px 10px; font-size: 9pt; color: #2c3e6b; font-weight: bold; margin-bottom: 12px; }
+
+  .cf-declaracion { border: 1px solid #c8d0e8; border-radius: 4px; padding: 12px 16px; margin-bottom: 18px; background: #fafbfe; font-size: 10.5pt; line-height: 1.65; text-align: justify; }
+
+  .cf-firmas { display: flex; justify-content: space-around; gap: 28px; margin-bottom: 16px; }
+  .cf-firma-box { flex: 1; border: 1px solid #bbb; border-radius: 4px; padding: 14px 16px 10px; text-align: center; }
+  .cf-firma-espacio { height: 52px; }
+  .cf-firma-nombre { border-top: 1.5px solid #333; padding-top: 5px; font-weight: bold; font-size: 10.5pt; }
+  .cf-firma-rut { font-size: 8.5pt; color: #555; margin-top: 3px; }
+  .cf-firma-rol { font-size: 8.5pt; color: #333; margin-top: 2px; font-weight: bold; text-transform: uppercase; }
+
+  @media print { body { padding: 10mm 15mm; } }
+</style>
+</head>
+<body>
+
+  <div class="cf-header">
+    <div class="cf-empresa-col">
+      <div class="cf-empresa-nombre">${empresa.razonSocial}</div>
+      <div class="cf-empresa-sub">RUT: ${empresa.rut} &nbsp;·&nbsp; Giro: ${empresa.giro}${empresa.direccion ? '<br/>' + empresa.direccion : ''}</div>
+    </div>
+    <div class="cf-titulo-col">
+      <div class="cf-titulo-doc">Documento Laboral</div>
+      <div class="cf-titulo-main">COMPROBANTE</div>
+      <div class="cf-fecha-doc">Emitido: ${fecha(hoy)}</div>
+    </div>
+  </div>
+  <div class="cf-title-bar">
+    <h1>Comprobante de Feriado — Art. 67 CT</h1>
+  </div>
+
+  <div class="cf-seccion">Datos del Trabajador</div>
+  <div class="cf-grid">
+    <div class="cf-cell"><div class="cf-lbl">Nombre</div><div class="cf-val">${trabajador.nombre}</div></div>
+    <div class="cf-cell"><div class="cf-lbl">RUT</div><div class="cf-val">${trabajador.rut}</div></div>
+    <div class="cf-cell"><div class="cf-lbl">Cargo</div><div class="cf-val">${trabajador.cargo ?? '—'}</div></div>
+    <div class="cf-cell"><div class="cf-lbl">Fecha de ingreso</div><div class="cf-val">${fecha(typeof trabajador.fechaIngreso === 'string' ? new Date(trabajador.fechaIngreso) : trabajador.fechaIngreso)}</div></div>
+  </div>
+
+  <div class="cf-seccion">Período de Feriado</div>
+  <div class="cf-tipo-badge">${tipoLabel}</div>
+  <div class="cf-periodo-box">
+    <div class="cf-periodo-item">
+      <div class="cf-p-lbl">Desde</div>
+      <div class="cf-p-val">${fecha(fi)}</div>
+      <div class="cf-p-sub">(Inicio)</div>
+    </div>
+    <div class="cf-periodo-item">
+      <div class="cf-p-lbl">Hasta</div>
+      <div class="cf-p-val">${fecha(ff)}</div>
+      <div class="cf-p-sub">(Término)</div>
+    </div>
+    <div class="cf-periodo-item">
+      <div class="cf-p-lbl">Días hábiles</div>
+      <div class="cf-p-val">${doc.diasHabiles}</div>
+      <div class="cf-p-sub">(Lunes a viernes)</div>
+    </div>
+  </div>
+  ${doc.observacion ? `<p style="font-size:9.5pt;color:#555;margin-bottom:12px;"><strong>Observación:</strong> ${doc.observacion}</p>` : ''}
+
+  <div class="cf-seccion">Saldo de Vacaciones</div>
+  <table class="cf-saldo-table">
+    <thead>
+      <tr>
+        <th>Concepto</th>
+        <th class="right">Días</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Días ganados acumulados (al momento del feriado)</td><td class="right">${saldoGanado}</td></tr>
+      <tr><td>Saldo disponible antes de este feriado</td><td class="right">${doc.saldoPrevio}</td></tr>
+      <tr><td>Días utilizados en este período</td><td class="right" style="color:#b00;">− ${doc.diasHabiles}</td></tr>
+    </tbody>
+    <tfoot>
+      <tr><td>Saldo restante después de este feriado</td><td class="right">${doc.saldoPosterior}</td></tr>
+    </tfoot>
+  </table>
+
+  <div class="cf-declaracion">
+    En ${ciudadEmpresa}, a ${fecha(hoy)}, el Empleador <strong>${empresa.razonSocial}</strong> y el/la Trabajador/a <strong>${trabajador.nombre}</strong> (RUT ${trabajador.rut}) suscriben el presente comprobante, dejando constancia del otorgamiento y recepción conforme del feriado legal comprendido entre el ${fecha(fi)} y el ${fecha(ff)}, correspondiente a <strong>${doc.diasHabiles} días hábiles</strong>, de conformidad al Artículo 67° y siguientes del Código del Trabajo.
+  </div>
+
+  <div class="cf-firmas">
+    <div class="cf-firma-box">
+      <div class="cf-firma-espacio"></div>
+      <div class="cf-firma-nombre">${empresa.representanteLegal ?? empresa.razonSocial}</div>
+      <div class="cf-firma-rut">RUT: ${empresa.rutRepresentante ?? empresa.rut}</div>
+      <div class="cf-firma-rol">${empresa.razonSocial} · Por el Empleador</div>
+    </div>
+    <div class="cf-firma-box">
+      <div class="cf-firma-espacio"></div>
+      <div class="cf-firma-nombre">${trabajador.nombre}</div>
+      <div class="cf-firma-rut">RUT: ${trabajador.rut}</div>
+      <div class="cf-firma-rol">Trabajador/a — Recibo Conforme</div>
+    </div>
+  </div>
+
+</body>
+</html>`;
+}
+
 // ── Liquidación de Sueldo (Art. 54 bis CT) ───────────────────────────────────
 
 export function generarLiquidacionPdf(
