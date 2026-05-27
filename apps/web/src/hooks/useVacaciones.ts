@@ -23,7 +23,14 @@ export function useVacacionSaldos(empresaId: string) {
 export function useCreateVacacion(empresaId: string) {
   const qc = useQueryClient();
   return useMutation<ApiResponse<Vacacion>, Error, VacacionInput>({
-    mutationFn: (data) => api.post<ApiResponse<Vacacion>>(`/api/empresas/${empresaId}/vacaciones`, data).then(r => r.data),
+    mutationFn: async (data) => {
+      try {
+        return await api.post<ApiResponse<Vacacion>>(`/api/empresas/${empresaId}/vacaciones`, data).then(r => r.data);
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { error?: string } } }).response?.data?.error;
+        throw new Error(msg ?? 'Error al registrar feriado');
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vacaciones', empresaId] });
       qc.invalidateQueries({ queryKey: ['vacaciones-saldos', empresaId] });

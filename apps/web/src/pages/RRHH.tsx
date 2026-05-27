@@ -1323,11 +1323,16 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                     {formVac.formState.errors.fechaFin && <p className="text-xs text-red-500 mt-1">{formVac.formState.errors.fechaFin.message}</p>}
                   </div>
                 </div>
-                {diasHabilesCalc > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 text-sm text-blue-800 font-medium">
-                    Días hábiles del período: <span className="text-lg font-bold">{diasHabilesCalc}</span>
-                  </div>
-                )}
+                {diasHabilesCalc > 0 && (() => {
+                  const saldoTrab = (saldosData?.data ?? []).find(s => s.trabajadorId === watchTrabId)?.saldo ?? 0;
+                  const insuficiente = diasHabilesCalc > saldoTrab;
+                  return (
+                    <div className={`border rounded-md px-3 py-2 text-sm font-medium ${insuficiente ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                      Días hábiles del período: <span className="text-lg font-bold">{diasHabilesCalc}</span>
+                      {insuficiente && <span className="block text-xs mt-0.5">⚠️ Saldo insuficiente — el trabajador tiene <strong>{saldoTrab}</strong> días disponibles</span>}
+                    </div>
+                  );
+                })()}
                 <div>
                   <Label>Período anual compensado</Label>
                   <Controller
