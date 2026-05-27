@@ -221,6 +221,7 @@ export const vacacionSchema = z.object({
   trabajadorId: z.string().min(1, 'Trabajador requerido'),
   fechaInicio: z.coerce.date(),
   fechaFin: z.coerce.date(),
+  periodoAnual: z.string().min(1, 'Período requerido'),
   tipo: z.enum(['NORMAL', 'PROGRESIVO', 'COLECTIVO']).default('NORMAL'),
   observacion: z.string().optional(),
 }).refine(d => d.fechaFin >= d.fechaInicio, { message: 'Fecha fin debe ser igual o posterior a fecha inicio', path: ['fechaFin'] });

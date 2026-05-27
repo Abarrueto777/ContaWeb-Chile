@@ -700,6 +700,7 @@ export interface ComprobanteFeriadoDoc {
   saldoPrevio: number;
   saldoPosterior: number;
   tipo: string;
+  periodoAnual?: string | null;
   observacion?: string | null;
 }
 
@@ -769,6 +770,10 @@ export function generarComprobanteFeriado(
 
   .cf-tipo-badge { display: inline-block; background: #e8ecf5; border: 1px solid #c8d0e8; border-radius: 3px; padding: 3px 10px; font-size: 9pt; color: #2c3e6b; font-weight: bold; margin-bottom: 12px; }
 
+  .cf-anual-badge { display: flex; align-items: center; justify-content: space-between; background: #2c3e6b; color: #fff; border-radius: 4px; padding: 9px 16px; margin-bottom: 10px; }
+  .cf-anual-label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.6px; opacity: 0.75; }
+  .cf-anual-val { font-size: 15pt; font-weight: bold; letter-spacing: 1.5px; }
+
   .cf-declaracion { border: 1px solid #c8d0e8; border-radius: 4px; padding: 12px 16px; margin-bottom: 18px; background: #fafbfe; font-size: 10.5pt; line-height: 1.65; text-align: justify; }
 
   .cf-firmas { display: flex; justify-content: space-around; gap: 28px; margin-bottom: 16px; }
@@ -807,6 +812,7 @@ export function generarComprobanteFeriado(
   </div>
 
   <div class="cf-seccion">Período de Feriado</div>
+  ${doc.periodoAnual ? `<div class="cf-anual-badge"><span class="cf-anual-label">Período Anual Compensado</span><span class="cf-anual-val">${doc.periodoAnual}</span></div>` : ''}
   <div class="cf-tipo-badge">${tipoLabel}</div>
   <div class="cf-periodo-box">
     <div class="cf-periodo-item">
@@ -846,7 +852,7 @@ export function generarComprobanteFeriado(
   </table>
 
   <div class="cf-declaracion">
-    En ${ciudadEmpresa}, a ${fecha(hoy)}, el Empleador <strong>${empresa.razonSocial}</strong> y el/la Trabajador/a <strong>${trabajador.nombre}</strong> (RUT ${trabajador.rut}) suscriben el presente comprobante, dejando constancia del otorgamiento y recepción conforme del feriado legal comprendido entre el ${fecha(fi)} y el ${fecha(ff)}, correspondiente a <strong>${doc.diasHabiles} días hábiles</strong>, de conformidad al Artículo 67° y siguientes del Código del Trabajo.
+    En ${ciudadEmpresa}, a ${fecha(hoy)}, el Empleador <strong>${empresa.razonSocial}</strong> y el/la Trabajador/a <strong>${trabajador.nombre}</strong> (RUT ${trabajador.rut}) suscriben el presente comprobante, dejando constancia del otorgamiento y recepción conforme del feriado legal comprendido entre el ${fecha(fi)} y el ${fecha(ff)}, correspondiente a <strong>${doc.diasHabiles} días hábiles</strong>${doc.periodoAnual ? `, imputable al período anual <strong>${doc.periodoAnual}</strong>` : ''}, de conformidad al Artículo 67° y siguientes del Código del Trabajo.
   </div>
 
   <div class="cf-firmas">

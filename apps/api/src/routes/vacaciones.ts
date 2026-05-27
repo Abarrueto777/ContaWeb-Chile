@@ -56,7 +56,7 @@ router.post('/', async (req, res) => {
     const parsed = vacacionSchema.safeParse(req.body);
     if (!parsed.success) return void res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten().fieldErrors });
 
-    const { trabajadorId, fechaInicio, fechaFin, tipo, observacion } = parsed.data;
+    const { trabajadorId, fechaInicio, fechaFin, periodoAnual, tipo, observacion } = parsed.data;
 
     const diasHabiles = diasHabilesEntre(fechaInicio, fechaFin);
     if (diasHabiles === 0) return void res.status(400).json({ error: 'El período no contiene días hábiles' });
@@ -70,7 +70,7 @@ router.post('/', async (req, res) => {
     const saldoPosterior = saldo - diasHabiles;
 
     const vacacion = await prisma.vacacion.create({
-      data: { empresaId, trabajadorId, fechaInicio, fechaFin, diasHabiles, saldoPrevio, saldoPosterior, tipo: tipo as 'NORMAL' | 'PROGRESIVO' | 'COLECTIVO', observacion: observacion ?? null, estado: 'APROBADA' },
+      data: { empresaId, trabajadorId, fechaInicio, fechaFin, diasHabiles, saldoPrevio, saldoPosterior, periodoAnual: periodoAnual ?? null, tipo: tipo as 'NORMAL' | 'PROGRESIVO' | 'COLECTIVO', observacion: observacion ?? null, estado: 'APROBADA' },
       include: { trabajador: { select: { nombre: true, rut: true } } },
     });
 
@@ -123,7 +123,8 @@ router.get('/:id/comprobante', async (req, res) => {
       fechaInicio: vac.fechaInicio, fechaFin: vac.fechaFin,
       diasHabiles: vac.diasHabiles, saldoPrevio: Number(vac.saldoPrevio),
       saldoPosterior: Number(vac.saldoPosterior), tipo: vac.tipo,
-      observacion: vac.observacion,
+      ...(vac.periodoAnual != null ? { periodoAnual: vac.periodoAnual } : {}),
+      ...(vac.observacion != null ? { observacion: vac.observacion } : {}),
     };
     const saldoGanado = diasGanadosHastaHoy(t.fechaIngreso);
 

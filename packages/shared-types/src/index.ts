@@ -206,6 +206,7 @@ export interface Vacacion {
   diasHabiles: number;
   saldoPrevio: string;
   saldoPosterior: string;
+  periodoAnual?: string;
   tipo: TipoVacacion;
   estado: EstadoVacacion;
   observacion?: string;

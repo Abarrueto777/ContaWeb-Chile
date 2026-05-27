@@ -102,12 +102,24 @@ export default function RRHH() {
   });
   const watchFechaInicio = formVac.watch('fechaInicio');
   const watchFechaFin = formVac.watch('fechaFin');
+  const watchTrabId = formVac.watch('trabajadorId');
   const diasHabilesCalc = diasHabilesEntre(
     watchFechaInicio ? String(watchFechaInicio).slice(0, 10) : '',
     watchFechaFin ? String(watchFechaFin).slice(0, 10) : '',
   );
 
   const todosLosTrabajadores = trabData?.data ?? [];
+
+  const periodosDisponibles = (() => {
+    if (!watchTrabId) return [];
+    const trab = todosLosTrabajadores.find(t => t.id === watchTrabId);
+    if (!trab) return [];
+    const anioIngreso = new Date(trab.fechaIngreso.slice(0, 10) + 'T12:00:00').getFullYear();
+    const anioActual = new Date().getFullYear();
+    const opciones: string[] = [];
+    for (let y = anioIngreso; y <= anioActual; y++) opciones.push(String(y));
+    return opciones.reverse();
+  })();
   const trabajadores = todosLosTrabajadores.filter((t) =>
     filtroActivo === 'todos' ? true : filtroActivo === 'activos' ? t.activo : !t.activo
   );
@@ -1180,6 +1192,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                           </td>
                           <td className="px-4 py-2">
                             <div>{new Date(v.fechaInicio.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')} – {new Date(v.fechaFin.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')}</div>
+                            {v.periodoAnual && <Badge variant="secondary" className="text-xs mt-0.5">Año {v.periodoAnual}</Badge>}
                           </td>
                           <td className="px-4 py-2 text-right font-medium">{v.diasHabiles}</td>
                           <td className="px-4 py-2 hidden md:table-cell">
@@ -1261,6 +1274,22 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                     Días hábiles del período: <span className="text-lg font-bold">{diasHabilesCalc}</span>
                   </div>
                 )}
+                <div>
+                  <Label>Período anual compensado</Label>
+                  <Controller
+                    control={formVac.control}
+                    name="periodoAnual"
+                    render={({ field }) => (
+                      <select {...field} value={field.value ?? ''} className="w-full border rounded-md px-3 py-2 text-sm mt-1">
+                        <option value="">Seleccionar año…</option>
+                        {periodosDisponibles.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    )}
+                  />
+                  {formVac.formState.errors.periodoAnual && <p className="text-xs text-red-500 mt-1">{formVac.formState.errors.periodoAnual.message}</p>}
+                </div>
                 <div>
                   <Label>Tipo de feriado</Label>
                   <Controller

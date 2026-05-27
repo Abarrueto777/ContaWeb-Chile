@@ -521,6 +521,7 @@ model Vacacion {
   diasHabiles    Int
   saldoPrevio    Decimal        @db.Decimal(8, 2)
   saldoPosterior Decimal        @db.Decimal(8, 2)
+  periodoAnual   String?
   tipo           TipoVacacion   @default(NORMAL)
   estado         EstadoVacacion @default(APROBADA)
   observacion    String?
