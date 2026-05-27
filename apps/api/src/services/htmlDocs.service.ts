@@ -702,6 +702,8 @@ export interface ComprobanteFeriadoDoc {
   tipo: string;
   periodoAnual?: string | null;
   observacion?: string | null;
+  diasDerechoEnPeriodo?: number;
+  diasUsadosEnPeriodo?: number;
 }
 
 const TIPO_VAC_LABEL: Record<string, string> = {
@@ -844,7 +846,18 @@ export function generarComprobanteFeriado(
     <tbody>
       <tr><td>Días ganados acumulados (al momento del feriado)</td><td class="right">${saldoGanado}</td></tr>
       <tr><td>Saldo disponible antes de este feriado</td><td class="right">${doc.saldoPrevio}</td></tr>
-      <tr><td>Días utilizados en este período</td><td class="right" style="color:#b00;">− ${doc.diasHabiles}</td></tr>
+      <tr><td>Días utilizados en este feriado</td><td class="right" style="color:#b00;">− ${doc.diasHabiles}</td></tr>
+      ${doc.diasDerechoEnPeriodo != null ? (() => {
+        const usados = doc.diasUsadosEnPeriodo ?? 0;
+        const derecho = doc.diasDerechoEnPeriodo;
+        const restantes = derecho - usados;
+        const agotado = restantes <= 0;
+        const color = agotado ? '#b00' : '#1a7a1a';
+        const estadoTexto = agotado
+          ? `<strong>Período agotado</strong> (${usados}/${derecho} días utilizados)`
+          : `${usados} de ${derecho} días utilizados — quedan <strong>${restantes}</strong>`;
+        return `<tr><td>Estado en ${doc.periodoAnual ?? 'el período'}</td><td class="right" style="color:${color};font-size:9.5pt;">${estadoTexto}</td></tr>`;
+      })() : ''}
     </tbody>
     <tfoot>
       <tr><td>Saldo restante después de este feriado</td><td class="right">${doc.saldoPosterior}</td></tr>

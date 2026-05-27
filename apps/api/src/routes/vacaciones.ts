@@ -105,6 +105,23 @@ router.get('/:id/comprobante', async (req, res) => {
     if (!vac || !empresa) return void res.status(404).json({ error: 'No encontrado' });
     const t = vac.trabajador;
 
+    // Calcular estado del período anual
+    let diasDerechoEnPeriodo: number | undefined;
+    let diasUsadosEnPeriodo: number | undefined;
+    if (vac.periodoAnual) {
+      const m = vac.periodoAnual.match(/^Año (\d+)/);
+      if (m) {
+        const n = parseInt(m[1]!);
+        const prog = n < 10 ? 0 : Math.floor((n - 10) / 3) + 1;
+        diasDerechoEnPeriodo = 15 + prog;
+        const agg = await prisma.vacacion.aggregate({
+          where: { trabajadorId: vac.trabajadorId, periodoAnual: vac.periodoAnual },
+          _sum: { diasHabiles: true },
+        });
+        diasUsadosEnPeriodo = agg._sum.diasHabiles ?? 0;
+      }
+    }
+
     const empresaDoc: EmpresaDoc = {
       razonSocial: empresa.razonSocial, rut: empresa.rut, giro: empresa.giro,
       direccion: empresa.direccion,
@@ -125,6 +142,7 @@ router.get('/:id/comprobante', async (req, res) => {
       saldoPosterior: Number(vac.saldoPosterior), tipo: vac.tipo,
       ...(vac.periodoAnual != null ? { periodoAnual: vac.periodoAnual } : {}),
       ...(vac.observacion != null ? { observacion: vac.observacion } : {}),
+      ...(diasDerechoEnPeriodo != null ? { diasDerechoEnPeriodo, diasUsadosEnPeriodo: diasUsadosEnPeriodo ?? 0 } : {}),
     };
     const saldoGanado = diasGanadosHastaHoy(t.fechaIngreso);
 

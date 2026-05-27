@@ -111,13 +111,14 @@ export default function RRHH() {
   const todosLosTrabajadores = trabData?.data ?? [];
 
   const periodosDisponibles = (() => {
-    if (!watchTrabId) return [] as { value: string; label: string }[];
+    if (!watchTrabId) return [] as { value: string; label: string; agotado: boolean }[];
     const trab = todosLosTrabajadores.find(t => t.id === watchTrabId);
-    if (!trab) return [] as { value: string; label: string }[];
+    if (!trab) return [] as { value: string; label: string; agotado: boolean }[];
     const ingreso = new Date(trab.fechaIngreso.slice(0, 10) + 'T12:00:00');
     const hoy = new Date();
     const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const opciones: { value: string; label: string }[] = [];
+    const vacTrab = (vacData?.data ?? []).filter(v => v.trabajadorId === watchTrabId);
+    const opciones: { value: string; label: string; agotado: boolean }[] = [];
     let n = 1;
     while (true) {
       const ini = new Date(ingreso);
@@ -126,11 +127,38 @@ export default function RRHH() {
       const fin = new Date(ingreso);
       fin.setFullYear(ingreso.getFullYear() + n);
       const value = `Año ${n} · ${fmt(ini)} – ${fmt(fin)}`;
-      opciones.push({ value, label: value });
+      const prog = n < 10 ? 0 : Math.floor((n - 10) / 3) + 1;
+      const derecho = 15 + prog;
+      const usados = vacTrab.filter(v => v.periodoAnual === value).reduce((s, v) => s + v.diasHabiles, 0);
+      const disponibles = Math.max(0, derecho - usados);
+      const agotado = usados >= derecho;
+      const estado = agotado
+        ? `  ⛔ agotado (${usados}/${derecho})`
+        : usados > 0
+          ? `  · ${disponibles} disp. de ${derecho}`
+          : `  · ${derecho} disponibles`;
+      opciones.push({ value, label: `${value}${estado}`, agotado });
       n++;
     }
     return opciones.reverse();
   })();
+
+  // Estado acumulado por (trabajadorId, periodoAnual) para el historial
+  const periodoStatusMap = (() => {
+    const map = new Map<string, { usados: number; derecho: number }>();
+    for (const v of vacData?.data ?? []) {
+      if (!v.periodoAnual) continue;
+      const key = `${v.trabajadorId}|||${v.periodoAnual}`;
+      const m = v.periodoAnual.match(/^Año (\d+)/);
+      const n = m ? parseInt(m[1]!) : 1;
+      const prog = n < 10 ? 0 : Math.floor((n - 10) / 3) + 1;
+      const derecho = 15 + prog;
+      const prev = map.get(key);
+      map.set(key, { usados: (prev?.usados ?? 0) + v.diasHabiles, derecho });
+    }
+    return map;
+  })();
+
   const trabajadores = todosLosTrabajadores.filter((t) =>
     filtroActivo === 'todos' ? true : filtroActivo === 'activos' ? t.activo : !t.activo
   );
@@ -1203,7 +1231,22 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                           </td>
                           <td className="px-4 py-2">
                             <div>{new Date(v.fechaInicio.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')} – {new Date(v.fechaFin.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')}</div>
-                            {v.periodoAnual && <Badge variant="secondary" className="text-xs mt-0.5">Año {v.periodoAnual}</Badge>}
+                            {v.periodoAnual && (
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <Badge variant="secondary" className="text-xs">{v.periodoAnual.split('·')[0]?.trim()}</Badge>
+                                {(() => {
+                                  const s = periodoStatusMap.get(`${v.trabajadorId}|||${v.periodoAnual}`);
+                                  if (!s) return null;
+                                  const restantes = Math.max(0, s.derecho - s.usados);
+                                  const agotado = s.usados >= s.derecho;
+                                  return (
+                                    <span className={`text-xs font-medium ${agotado ? 'text-red-600' : 'text-green-700'}`}>
+                                      {agotado ? `Agotado (${s.usados}/${s.derecho})` : `${restantes} días disponibles`}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-2 text-right font-medium">{v.diasHabiles}</td>
                           <td className="px-4 py-2 hidden md:table-cell">
