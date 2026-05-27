@@ -23,7 +23,10 @@ export function useUpdateTrabajador(empresaId: string, trabajadorId: string) {
   const qc = useQueryClient();
   return useMutation<ApiResponse<Trabajador>, Error, TrabajadorInput>({
     mutationFn: (data) => api.put<ApiResponse<Trabajador>>(`/api/empresas/${empresaId}/trabajadores/${trabajadorId}`, data).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['trabajadores', empresaId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trabajadores', empresaId] });
+      qc.invalidateQueries({ queryKey: ['vacaciones-saldos', empresaId] });
+    },
   });
 }
 
