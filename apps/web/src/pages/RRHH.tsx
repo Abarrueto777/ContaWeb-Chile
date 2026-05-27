@@ -111,13 +111,24 @@ export default function RRHH() {
   const todosLosTrabajadores = trabData?.data ?? [];
 
   const periodosDisponibles = (() => {
-    if (!watchTrabId) return [];
+    if (!watchTrabId) return [] as { value: string; label: string }[];
     const trab = todosLosTrabajadores.find(t => t.id === watchTrabId);
-    if (!trab) return [];
-    const anioIngreso = new Date(trab.fechaIngreso.slice(0, 10) + 'T12:00:00').getFullYear();
-    const anioActual = new Date().getFullYear();
-    const opciones: string[] = [];
-    for (let y = anioIngreso; y <= anioActual; y++) opciones.push(String(y));
+    if (!trab) return [] as { value: string; label: string }[];
+    const ingreso = new Date(trab.fechaIngreso.slice(0, 10) + 'T12:00:00');
+    const hoy = new Date();
+    const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const opciones: { value: string; label: string }[] = [];
+    let n = 1;
+    while (true) {
+      const ini = new Date(ingreso);
+      ini.setFullYear(ingreso.getFullYear() + (n - 1));
+      if (ini > hoy) break;
+      const fin = new Date(ingreso);
+      fin.setFullYear(ingreso.getFullYear() + n);
+      const value = `Año ${n} · ${fmt(ini)} – ${fmt(fin)}`;
+      opciones.push({ value, label: value });
+      n++;
+    }
     return opciones.reverse();
   })();
   const trabajadores = todosLosTrabajadores.filter((t) =>
@@ -1281,9 +1292,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                     name="periodoAnual"
                     render={({ field }) => (
                       <select {...field} value={field.value ?? ''} className="w-full border rounded-md px-3 py-2 text-sm mt-1">
-                        <option value="">Seleccionar año…</option>
-                        {periodosDisponibles.map(y => (
-                          <option key={y} value={y}>{y}</option>
+                        <option value="">Seleccionar período…</option>
+                        {periodosDisponibles.map(p => (
+                          <option key={p.value} value={p.value}>{p.label}</option>
                         ))}
                       </select>
                     )}
