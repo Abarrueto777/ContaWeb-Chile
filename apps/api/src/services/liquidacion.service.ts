@@ -96,6 +96,8 @@ export interface LiquidacionCalculada {
   movilizacion: number;
   colacion: number;
   anticipo: number;
+  diasSinGoce: number;
+  montoSinGoce: number;
   liquido: number;
   costoEmpleador: number;
 }
@@ -113,11 +115,13 @@ export function calcularLiquidacion(
     imm: number;
     uf: number;
     config?: ConfigCalculo;
+    diasSinGoce?: number;
   },
 ): LiquidacionCalculada {
   const { horasExtra, horasDescuento, otrosDescuentos, bono, diasTrabajados, anticipo, utm, imm, uf } = params;
   const cfg = params.config ?? {};
   const factor = diasTrabajados / 30;
+  const diasSG = params.diasSinGoce ?? 0;
 
   const sueldoBase = Number(trabajador.sueldoBase);
   const sueldoDevengado = Math.round(sueldoBase * factor);
@@ -190,8 +194,11 @@ export function calcularLiquidacion(
   const movilizacion = Math.round(movilizacionBase * factor);
   const colacion = Math.round(colacionBase * factor);
 
+  // Permiso sin goce
+  const montoSinGoce = Math.round(diasSG * (sueldoBase / 30));
+
   // Líquido
-  const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo + montoHorasDescuento + otrosDescuentos;
+  const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo + montoHorasDescuento + otrosDescuentos + montoSinGoce;
   const liquido = sueldoDevengado + montoHorasExtra + bono + gratificacion + movilizacion + colacion - totalDescuentos;
 
   // Costo empleador
@@ -218,6 +225,8 @@ export function calcularLiquidacion(
     movilizacion,
     colacion,
     anticipo,
+    diasSinGoce: diasSG,
+    montoSinGoce,
     liquido: Math.max(0, liquido),
     costoEmpleador,
   };

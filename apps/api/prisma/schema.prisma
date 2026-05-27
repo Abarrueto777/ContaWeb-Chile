@@ -129,6 +129,15 @@ enum EstadoVacacion {
   RECHAZADA
 }
 
+enum TipoPermiso {
+  MATRIMONIO
+  UNION_CIVIL
+  FALLECIMIENTO
+  SIN_GOCE
+  ADMINISTRATIVO
+  OTRO
+}
+
 model Usuario {
   id        String     @id @default(cuid())
   email     String     @unique
@@ -173,6 +182,7 @@ model Empresa {
   finiquitos         Finiquito[]
   configEmpresa      ConfigEmpresa[]
   vacaciones         Vacacion[]
+  permisos           Permiso[]
 
   @@map("empresas")
 }
@@ -398,6 +408,7 @@ model Trabajador {
   liquidaciones     Liquidacion[]
   finiquitos        Finiquito[]
   vacaciones        Vacacion[]
+  permisos          Permiso[]
 
   @@unique([empresaId, rut])
   @@map("trabajadores")
@@ -453,6 +464,8 @@ model Liquidacion {
   pagada         Boolean    @default(false)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+  diasSinGoce    Int        @default(0)
+  montoSinGoce   Decimal    @default(0) @db.Decimal(19, 4)
   empresa        Empresa    @relation(fields: [empresaId], references: [id])
   trabajador     Trabajador @relation(fields: [trabajadorId], references: [id])
 
@@ -531,4 +544,23 @@ model Vacacion {
   trabajador     Trabajador     @relation(fields: [trabajadorId], references: [id])
 
   @@map("vacaciones")
+}
+
+model Permiso {
+  id           String      @id @default(cuid())
+  empresaId    String
+  trabajadorId String
+  tipo         TipoPermiso
+  fechaInicio  DateTime
+  fechaFin     DateTime
+  diasHabiles  Int
+  conGoce      Boolean     @default(true)
+  parentesco   String?
+  observacion  String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  empresa      Empresa     @relation(fields: [empresaId], references: [id])
+  trabajador   Trabajador  @relation(fields: [trabajadorId], references: [id])
+
+  @@map("permisos")
 }

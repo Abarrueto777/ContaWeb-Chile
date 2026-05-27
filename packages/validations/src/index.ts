@@ -226,6 +226,18 @@ export const vacacionSchema = z.object({
   observacion: z.string().optional(),
 }).refine(d => d.fechaFin >= d.fechaInicio, { message: 'Fecha fin debe ser igual o posterior a fecha inicio', path: ['fechaFin'] });
 
+export const permisoSchema = z.object({
+  trabajadorId: z.string().min(1, 'Trabajador requerido'),
+  tipo: z.enum(['MATRIMONIO', 'UNION_CIVIL', 'FALLECIMIENTO', 'SIN_GOCE', 'ADMINISTRATIVO', 'OTRO']),
+  fechaInicio: z.coerce.date(),
+  fechaFin: z.coerce.date(),
+  conGoce: z.boolean().default(true),
+  parentesco: z.string().optional(),
+  observacion: z.string().optional(),
+}).refine(d => d.fechaFin >= d.fechaInicio, { message: 'Fecha fin debe ser igual o posterior a fecha inicio', path: ['fechaFin'] });
+
+export type PermisoInput = z.infer<typeof permisoSchema>;
+
 export const activoFijoSchema = z.object({
   nombre: z.string().min(2, 'Nombre requerido'),
   categoria: z.enum(['MAQUINARIA', 'VEHICULO', 'MUEBLES', 'EQUIPOS_COMPUTACION', 'CONSTRUCCION', 'TERRENO', 'OTRO']).default('OTRO'),

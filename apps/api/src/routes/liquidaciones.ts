@@ -3,6 +3,7 @@ import iconv from 'iconv-lite';
 import { prisma } from '../lib/prisma';
 import { liquidacionInputSchema } from '@contaweb/validations';
 import { calcularLiquidacion } from '../services/liquidacion.service';
+import { diasSinGoceEnMes } from '../services/permisos.service';
 import { getConfig } from '../services/config.service';
 import { createError } from '../middlewares/errorHandler';
 import { generarLiquidacionPdf, type EmpresaDoc, type TrabajadorDoc } from '../services/htmlDocs.service';
@@ -494,7 +495,8 @@ router.post('/calcular', async (req, res) => {
       ...(valorUF?.sisEmpleador    !== undefined && { sis_empleador_previred:     Number(valorUF.sisEmpleador) }),
       ...(valorUF?.topeImponibleUf !== undefined && { tope_imponible_uf_previred: Number(valorUF.topeImponibleUf) }),
     };
-    const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
+    const diasSinGoce = await diasSinGoceEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma);
+    const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce });
     res.json({ data: resultado });
   } catch {
     res.status(500).json({ error: 'Error al calcular liquidación' });
@@ -536,7 +538,8 @@ router.post('/', async (req, res) => {
       ...(valorUF?.sisEmpleador    !== undefined && { sis_empleador_previred:     Number(valorUF.sisEmpleador) }),
       ...(valorUF?.topeImponibleUf !== undefined && { tope_imponible_uf_previred: Number(valorUF.topeImponibleUf) }),
     };
-    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config });
+    const diasSinGoce = await diasSinGoceEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma);
+    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce });
     const liquidacion = await prisma.liquidacion.create({
       data: { empresaId, trabajadorId: parsed.data.trabajadorId, anio: parsed.data.anio, mes: parsed.data.mes, ...calc },
       include: { trabajador: true },
@@ -606,6 +609,8 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       anticipo: Number(liq.anticipo),
       montoHorasDescuento,
       otrosDescuentos: Number(liq.otrosDescuentos),
+      diasSinGoce: Number((liq as typeof liq & { diasSinGoce?: number | null }).diasSinGoce ?? 0),
+      montoSinGoce: Number((liq as typeof liq & { montoSinGoce?: number | null }).montoSinGoce ?? 0),
       liquido: Number(liq.liquido),
       costoEmpleador: Number(liq.costoEmpleador),
     };

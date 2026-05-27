@@ -345,10 +345,30 @@ export interface Liquidacion {
   movilizacion: string;
   colacion: string;
   anticipo: string;
+  diasSinGoce: number;
+  montoSinGoce: string;
   liquido: string;
   costoEmpleador: string;
   pagada: boolean;
   trabajador?: Trabajador;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TipoPermiso = 'MATRIMONIO' | 'UNION_CIVIL' | 'FALLECIMIENTO' | 'SIN_GOCE' | 'ADMINISTRATIVO' | 'OTRO';
+
+export interface Permiso {
+  id: string;
+  empresaId: string;
+  trabajadorId: string;
+  tipo: TipoPermiso;
+  fechaInicio: string;
+  fechaFin: string;
+  diasHabiles: number;
+  conGoce: boolean;
+  parentesco?: string;
+  observacion?: string;
+  trabajador?: { nombre: string; rut: string };
   createdAt: string;
   updatedAt: string;
 }

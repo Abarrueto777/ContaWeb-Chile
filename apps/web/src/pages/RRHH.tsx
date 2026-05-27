@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList } from 'lucide-react';
 import api from '@/lib/api';
 import { REGIONES_DT, COMUNAS_DT } from '@/lib/dt-geo';
-import { trabajadorSchema, finiquitoInputSchema, vacacionSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput, type VacacionInput } from '@contaweb/validations';
-import type { Trabajador, Liquidacion, VacacionSaldo } from '@contaweb/shared-types';
+import { trabajadorSchema, finiquitoInputSchema, vacacionSchema, permisoSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput, type VacacionInput, type PermisoInput } from '@contaweb/validations';
+import type { Trabajador, Liquidacion, VacacionSaldo, Permiso } from '@contaweb/shared-types';
 import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador, useReactivarTrabajador } from '@/hooks/useTrabajadores';
 import { useLiquidaciones, useCreateLiquidacion, useUpdateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion } from '@/hooks/useLiquidaciones';
 import { useVacaciones, useVacacionSaldos, useCreateVacacion, useDeleteVacacion } from '@/hooks/useVacaciones';
+import { usePermisos, useCreatePermiso, useDeletePermiso } from '@/hooks/usePermisos';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,7 +47,31 @@ function clp(n: string | number) {
   return Number(n).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
 
-type Vista = 'trabajadores' | 'liquidaciones' | 'libro' | 'vacaciones';
+type Vista = 'trabajadores' | 'liquidaciones' | 'libro' | 'vacaciones' | 'permisos';
+
+const TIPO_PERMISO_LABELS: Record<string, string> = {
+  MATRIMONIO: 'Matrimonio (Art. 207 bis CT — 5 días)',
+  UNION_CIVIL: 'Unión Civil (Ley 20.830 — 5 días)',
+  FALLECIMIENTO: 'Fallecimiento (Art. 66 CT — 3 días)',
+  SIN_GOCE: 'Sin Goce de Sueldo',
+  ADMINISTRATIVO: 'Permiso Administrativo',
+  OTRO: 'Otro',
+};
+
+const DIAS_LEGALES_PERMISO: Partial<Record<string, number>> = {
+  MATRIMONIO: 5,
+  UNION_CIVIL: 5,
+  FALLECIMIENTO: 3,
+};
+
+const CON_GOCE_PERMISO: Record<string, boolean> = {
+  MATRIMONIO: true,
+  UNION_CIVIL: true,
+  FALLECIMIENTO: true,
+  SIN_GOCE: false,
+  ADMINISTRATIVO: true,
+  OTRO: true,
+};
 
 function diasHabilesEntre(inicio: string, fin: string): number {
   if (!inicio || !fin) return 0;
@@ -79,6 +104,8 @@ export default function RRHH() {
   const [procesando, setProcesando] = useState<Set<string>>(new Set());
   const [openVacacion, setOpenVacacion] = useState(false);
   const [filtroVacTrab, setFiltroVacTrab] = useState<string>('todos');
+  const [openPermiso, setOpenPermiso] = useState(false);
+  const [filtroPermTrab, setFiltroPermTrab] = useState<string>('todos');
 
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data: trabData, isLoading: loadingTrab } = useTrabajadores(empresa?.id ?? '');
@@ -95,6 +122,9 @@ export default function RRHH() {
   const { data: saldosData, isLoading: loadingSaldos } = useVacacionSaldos(empresa?.id ?? '');
   const createVac = useCreateVacacion(empresa?.id ?? '');
   const deleteVac = useDeleteVacacion(empresa?.id ?? '');
+  const { data: permData } = usePermisos(empresa?.id ?? '');
+  const createPerm = useCreatePermiso(empresa?.id ?? '');
+  const deletePerm = useDeletePermiso(empresa?.id ?? '');
 
   const formVac = useForm<VacacionInput>({
     resolver: zodResolver(vacacionSchema),
@@ -106,6 +136,19 @@ export default function RRHH() {
   const diasHabilesCalc = diasHabilesEntre(
     watchFechaInicio ? String(watchFechaInicio).slice(0, 10) : '',
     watchFechaFin ? String(watchFechaFin).slice(0, 10) : '',
+  );
+
+  const formPerm = useForm<PermisoInput>({
+    resolver: zodResolver(permisoSchema),
+    defaultValues: { tipo: 'MATRIMONIO', conGoce: true },
+  });
+  const watchPermFechaInicio = formPerm.watch('fechaInicio');
+  const watchPermFechaFin = formPerm.watch('fechaFin');
+  const watchPermTipo = formPerm.watch('tipo');
+  const watchPermConGoce = formPerm.watch('conGoce');
+  const diasHabilesPermCalc = diasHabilesEntre(
+    watchPermFechaInicio ? String(watchPermFechaInicio).slice(0, 10) : '',
+    watchPermFechaFin ? String(watchPermFechaFin).slice(0, 10) : '',
   );
 
   const todosLosTrabajadores = trabData?.data ?? [];
@@ -197,6 +240,19 @@ export default function RRHH() {
     const res = await api.get(`/api/empresas/${empresa.id}/vacaciones/${vacId}/comprobante`, { responseType: 'text' });
     const blob = new Blob([res.data as string], { type: 'text/html; charset=utf-8' });
     window.open(URL.createObjectURL(blob), '_blank');
+  }
+
+  async function abrirComprobantePermiso(permId: string) {
+    if (!empresa) return;
+    const res = await api.get(`/api/empresas/${empresa.id}/permisos/${permId}/comprobante`, { responseType: 'text' });
+    const blob = new Blob([res.data as string], { type: 'text/html; charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  }
+
+  async function onSubmitPermiso(d: PermisoInput) {
+    createPerm.mutate(d, {
+      onSuccess: () => { formPerm.reset({ tipo: 'MATRIMONIO', conGoce: true }); createPerm.reset(); setOpenPermiso(false); },
+    });
   }
 
   async function abrirContrato(t: Trabajador) {
@@ -596,6 +652,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
           </Button>
           <Button variant={vista === 'vacaciones' ? 'default' : 'outline'} size="sm" onClick={() => setVista('vacaciones')}>
             <Umbrella className="mr-1.5 h-3.5 w-3.5" />Vacaciones
+          </Button>
+          <Button variant={vista === 'permisos' ? 'default' : 'outline'} size="sm" onClick={() => setVista('permisos')}>
+            <ClipboardList className="mr-1.5 h-3.5 w-3.5" />Permisos
           </Button>
         </div>
       </div>
@@ -1134,6 +1193,209 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
               </div>
             </div>
           )}
+        </>
+      )}
+
+      {/* VISTA PERMISOS */}
+      {vista === 'permisos' && (
+        <>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base font-semibold">Permisos Especiales</h2>
+              <p className="text-xs text-muted-foreground">Art. 66, 207 bis CT — Ley 20.830</p>
+            </div>
+            <Button size="sm" onClick={() => setOpenPermiso(true)}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />Registrar Permiso
+            </Button>
+          </div>
+
+          <Card className="mb-4">
+            <CardContent className="p-0">
+              <div className="px-4 py-2 border-b bg-muted/40 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Historial de Permisos</span>
+                {filtroPermTrab !== 'todos' && (
+                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setFiltroPermTrab('todos')}>
+                    Ver todos ×
+                  </Button>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/20 text-xs text-muted-foreground">
+                      <th className="px-4 py-2 text-left font-medium">Trabajador</th>
+                      <th className="px-4 py-2 text-left font-medium">Tipo</th>
+                      <th className="px-4 py-2 text-left font-medium hidden md:table-cell">Fechas</th>
+                      <th className="px-4 py-2 text-right font-medium">Días háb.</th>
+                      <th className="px-4 py-2 text-center font-medium">Goce</th>
+                      <th className="px-4 py-2 text-right font-medium">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(permData?.data ?? [])
+                      .filter((p: Permiso) => filtroPermTrab === 'todos' || p.trabajadorId === filtroPermTrab)
+                      .map((p: Permiso) => (
+                        <tr
+                          key={p.id}
+                          className="border-b hover:bg-muted/10 cursor-pointer"
+                          onClick={() => setFiltroPermTrab(filtroPermTrab === p.trabajadorId ? 'todos' : p.trabajadorId)}
+                        >
+                          <td className="px-4 py-2">
+                            <div className="font-medium">{p.trabajador?.nombre ?? '—'}</div>
+                            <div className="text-xs text-muted-foreground">{p.trabajador?.rut ?? ''}</div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <Badge variant="secondary" className="text-xs whitespace-nowrap">{TIPO_PERMISO_LABELS[p.tipo] ?? p.tipo}</Badge>
+                            {p.parentesco && <div className="text-xs text-muted-foreground mt-0.5">Parentesco: {p.parentesco}</div>}
+                          </td>
+                          <td className="px-4 py-2 hidden md:table-cell text-muted-foreground">
+                            {new Date(p.fechaInicio.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')} – {new Date(p.fechaFin.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')}
+                          </td>
+                          <td className="px-4 py-2 text-right font-medium">{p.diasHabiles}</td>
+                          <td className="px-4 py-2 text-center">
+                            <Badge variant={p.conGoce ? 'default' : 'destructive'} className="text-xs">{p.conGoce ? 'Con goce' : 'Sin goce'}</Badge>
+                          </td>
+                          <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => abrirComprobantePermiso(p.id)}>
+                                <FileText className="h-3 w-3 mr-1" />Comprobante
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => { if (confirm('¿Eliminar este permiso?')) deletePerm.mutate(p.id); }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    {(permData?.data ?? []).filter((p: Permiso) => filtroPermTrab === 'todos' || p.trabajadorId === filtroPermTrab).length === 0 && (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Sin permisos registrados</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Dialog open={openPermiso} onOpenChange={(o) => { setOpenPermiso(o); if (!o) { formPerm.reset({ tipo: 'MATRIMONIO', conGoce: true }); createPerm.reset(); } }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Registrar Permiso Especial</DialogTitle>
+                <DialogDescription>Art. 66, 207 bis CT y Ley 20.830 — Registro formal de permiso.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={formPerm.handleSubmit(onSubmitPermiso)} className="space-y-4 pt-2">
+                <div>
+                  <Label>Trabajador</Label>
+                  <Controller
+                    control={formPerm.control}
+                    name="trabajadorId"
+                    render={({ field }) => (
+                      <select {...field} className="w-full border rounded-md px-3 py-2 text-sm mt-1">
+                        <option value="">Seleccionar trabajador…</option>
+                        {todosLosTrabajadores.filter(t => t.activo).map(t => (
+                          <option key={t.id} value={t.id}>{t.nombre} — {t.rut}</option>
+                        ))}
+                      </select>
+                    )}
+                  />
+                  {formPerm.formState.errors.trabajadorId && <p className="text-xs text-red-500 mt-1">{formPerm.formState.errors.trabajadorId.message}</p>}
+                </div>
+                <div>
+                  <Label>Tipo de permiso</Label>
+                  <Controller
+                    control={formPerm.control}
+                    name="tipo"
+                    render={({ field }) => (
+                      <select
+                        {...field}
+                        className="w-full border rounded-md px-3 py-2 text-sm mt-1"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          const val = e.target.value;
+                          formPerm.setValue('conGoce', CON_GOCE_PERMISO[val] ?? true);
+                        }}
+                      >
+                        {Object.entries(TIPO_PERMISO_LABELS).map(([v, l]) => (
+                          <option key={v} value={v}>{l}</option>
+                        ))}
+                      </select>
+                    )}
+                  />
+                </div>
+                {DIAS_LEGALES_PERMISO[watchPermTipo] && (
+                  <div className="border rounded-md px-3 py-2 text-xs bg-blue-50 border-blue-200 text-blue-800">
+                    La ley otorga <strong>{DIAS_LEGALES_PERMISO[watchPermTipo]}</strong> días hábiles con goce para este tipo de permiso.
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Fecha inicio</Label>
+                    <Controller
+                      control={formPerm.control}
+                      name="fechaInicio"
+                      render={({ field }) => (
+                        <Input type="date" className="mt-1" value={field.value ? String(field.value).slice(0, 10) : ''} onChange={e => field.onChange(e.target.value)} />
+                      )}
+                    />
+                    {formPerm.formState.errors.fechaInicio && <p className="text-xs text-red-500 mt-1">Requerida</p>}
+                  </div>
+                  <div>
+                    <Label>Fecha fin</Label>
+                    <Controller
+                      control={formPerm.control}
+                      name="fechaFin"
+                      render={({ field }) => (
+                        <Input type="date" className="mt-1" value={field.value ? String(field.value).slice(0, 10) : ''} onChange={e => field.onChange(e.target.value)} />
+                      )}
+                    />
+                    {formPerm.formState.errors.fechaFin && <p className="text-xs text-red-500 mt-1">{formPerm.formState.errors.fechaFin.message}</p>}
+                  </div>
+                </div>
+                {diasHabilesPermCalc > 0 && (
+                  <div className="border rounded-md px-3 py-2 text-sm font-medium bg-blue-50 border-blue-200 text-blue-800">
+                    Días hábiles del período: <span className="text-lg font-bold">{diasHabilesPermCalc}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Controller
+                    control={formPerm.control}
+                    name="conGoce"
+                    render={({ field }) => (
+                      <input
+                        type="checkbox"
+                        id="conGoce"
+                        checked={field.value}
+                        onChange={e => field.onChange(e.target.checked)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                    )}
+                  />
+                  <Label htmlFor="conGoce" className="cursor-pointer">Con goce de sueldo</Label>
+                </div>
+                {!watchPermConGoce && (
+                  <div className="border rounded-md px-3 py-2 text-xs bg-orange-50 border-orange-200 text-orange-800">
+                    Atención: este permiso descontará días del sueldo del mes correspondiente.
+                  </div>
+                )}
+                {watchPermTipo === 'FALLECIMIENTO' && (
+                  <div>
+                    <Label>Parentesco</Label>
+                    <Input {...formPerm.register('parentesco')} className="mt-1" placeholder="Ej: cónyuge, hijo, padre…" />
+                  </div>
+                )}
+                <div>
+                  <Label>Observación (opcional)</Label>
+                  <Input {...formPerm.register('observacion')} className="mt-1" placeholder="Observaciones adicionales…" />
+                </div>
+                {createPerm.error && <p className="text-xs text-red-500">{createPerm.error.message}</p>}
+                <DialogFooter>
+                  <Button type="submit" disabled={createPerm.isPending || diasHabilesPermCalc === 0}>
+                    {createPerm.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Registrar Permiso
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </>
       )}
 

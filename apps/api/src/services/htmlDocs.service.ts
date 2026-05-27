@@ -133,6 +133,8 @@ export interface LiquidacionDoc {
   anticipo: number;
   montoHorasDescuento: number;
   otrosDescuentos: number;
+  diasSinGoce?: number;
+  montoSinGoce?: number;
   liquido: number;
   costoEmpleador: number;
 }
@@ -887,6 +889,169 @@ export function generarComprobanteFeriado(
 </html>`;
 }
 
+// ── Comprobante de Permiso Especial ──────────────────────────────────────────
+
+export interface ComprobantePermisoDoc {
+  tipo: string;
+  fechaInicio: Date | string;
+  fechaFin: Date | string;
+  diasHabiles: number;
+  conGoce: boolean;
+  parentesco?: string;
+  observacion?: string;
+}
+
+const TIPO_PERMISO_LABEL: Record<string, string> = {
+  MATRIMONIO: 'Permiso por Matrimonio Civil (Art. 207 bis CT)',
+  UNION_CIVIL: 'Permiso por Unión Civil (Ley 20.830 + Art. 207 bis CT)',
+  FALLECIMIENTO: 'Permiso por Fallecimiento (Art. 66 CT)',
+  SIN_GOCE: 'Permiso sin Goce de Sueldo',
+  ADMINISTRATIVO: 'Permiso Administrativo',
+  OTRO: 'Permiso Especial',
+};
+
+export function generarComprobantePermiso(
+  empresa: EmpresaDoc,
+  trabajador: TrabajadorDoc,
+  doc: ComprobantePermisoDoc,
+): string {
+  const fi = typeof doc.fechaInicio === 'string' ? new Date(doc.fechaInicio) : doc.fechaInicio;
+  const ff = typeof doc.fechaFin === 'string' ? new Date(doc.fechaFin) : doc.fechaFin;
+  const hoy = new Date();
+  const tipoLabel = TIPO_PERMISO_LABEL[doc.tipo] ?? doc.tipo;
+  const ciudadEmpresa = empresa.direccion?.split(',').pop()?.trim() ?? 'Santiago';
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comprobante de Permiso — ${trabajador.nombre}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; background: #fff; padding: 18mm 20mm 14mm; }
+
+  .cf-header { display: flex; justify-content: space-between; align-items: stretch; border: 1.5px solid #1a1a2e; margin-bottom: 0; }
+  .cf-empresa-col { padding: 10px 14px; flex: 1; border-right: 1.5px solid #1a1a2e; }
+  .cf-empresa-nombre { font-size: 12.5pt; font-weight: bold; color: #1a1a2e; margin-bottom: 3px; }
+  .cf-empresa-sub { font-size: 8.5pt; color: #555; line-height: 1.5; }
+  .cf-titulo-col {
+    background: #1a1a2e; color: #fff; padding: 10px 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 180px; text-align: center;
+  }
+  .cf-titulo-doc { font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; margin-bottom: 4px; }
+  .cf-titulo-main { font-size: 11pt; font-weight: bold; }
+  .cf-fecha-doc { font-size: 8pt; opacity: 0.7; margin-top: 4px; }
+
+  .cf-title-bar { border-left: 1.5px solid #1a1a2e; border-right: 1.5px solid #1a1a2e; border-bottom: 1.5px solid #1a1a2e; text-align: center; padding: 8px 0 6px; margin-bottom: 14px; }
+  .cf-title-bar h1 { font-size: 13pt; text-transform: uppercase; letter-spacing: 2px; color: #1a1a2e; }
+
+  .cf-seccion { display: flex; align-items: center; gap: 8px; font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; color: #fff; background: #2c3e6b; padding: 4px 10px; margin: 12px 0 8px; }
+
+  .cf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 16px; margin-bottom: 12px; }
+  .cf-cell { border: 1px solid #c8d0e8; border-radius: 3px; padding: 4px 10px; }
+  .cf-cell .cf-lbl { font-size: 7pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; color: #888; margin-bottom: 1px; }
+  .cf-cell .cf-val { font-size: 10.5pt; }
+
+  .cf-tipo-badge { display: inline-block; background: #e8ecf5; border: 1px solid #c8d0e8; border-radius: 3px; padding: 3px 10px; font-size: 9pt; color: #2c3e6b; font-weight: bold; margin-bottom: 12px; }
+
+  .cf-periodo-box { border: 1.5px solid #2c3e6b; border-radius: 4px; padding: 12px 16px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
+  .cf-periodo-item .cf-p-lbl { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; color: #666; margin-bottom: 3px; }
+  .cf-periodo-item .cf-p-val { font-size: 12pt; font-weight: bold; color: #1a1a2e; }
+  .cf-periodo-item .cf-p-sub { font-size: 8pt; color: #888; margin-top: 1px; }
+
+  .cf-goce-badge { display: inline-block; border-radius: 3px; padding: 3px 10px; font-size: 9pt; font-weight: bold; margin-bottom: 8px; }
+  .cf-goce-si { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
+  .cf-goce-no { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+
+  .cf-advertencia { border: 1.5px solid #f97316; border-radius: 4px; padding: 8px 14px; margin-bottom: 12px; background: #fff7ed; color: #9a3412; font-size: 10pt; line-height: 1.5; }
+
+  .cf-declaracion { border: 1px solid #c8d0e8; border-radius: 4px; padding: 12px 16px; margin-bottom: 18px; background: #fafbfe; font-size: 10.5pt; line-height: 1.65; text-align: justify; }
+
+  .cf-firmas { display: flex; justify-content: space-around; gap: 28px; margin-bottom: 16px; }
+  .cf-firma-box { flex: 1; border: 1px solid #bbb; border-radius: 4px; padding: 14px 16px 10px; text-align: center; }
+  .cf-firma-espacio { height: 52px; }
+  .cf-firma-nombre { border-top: 1.5px solid #333; padding-top: 5px; font-weight: bold; font-size: 10.5pt; }
+  .cf-firma-rut { font-size: 8.5pt; color: #555; margin-top: 3px; }
+  .cf-firma-rol { font-size: 8.5pt; color: #333; margin-top: 2px; font-weight: bold; text-transform: uppercase; }
+
+  @media print { body { padding: 10mm 15mm; } }
+</style>
+</head>
+<body>
+
+  <div class="cf-header">
+    <div class="cf-empresa-col">
+      <div class="cf-empresa-nombre">${empresa.razonSocial}</div>
+      <div class="cf-empresa-sub">RUT: ${empresa.rut} &nbsp;·&nbsp; Giro: ${empresa.giro}${empresa.direccion ? '<br/>' + empresa.direccion : ''}</div>
+    </div>
+    <div class="cf-titulo-col">
+      <div class="cf-titulo-doc">Documento Laboral</div>
+      <div class="cf-titulo-main">COMPROBANTE</div>
+      <div class="cf-fecha-doc">Emitido: ${fecha(hoy)}</div>
+    </div>
+  </div>
+  <div class="cf-title-bar">
+    <h1>Comprobante de Permiso</h1>
+  </div>
+
+  <div class="cf-seccion">Datos del Trabajador</div>
+  <div class="cf-grid">
+    <div class="cf-cell"><div class="cf-lbl">Nombre</div><div class="cf-val">${trabajador.nombre}</div></div>
+    <div class="cf-cell"><div class="cf-lbl">RUT</div><div class="cf-val">${trabajador.rut}</div></div>
+    <div class="cf-cell"><div class="cf-lbl">Cargo</div><div class="cf-val">${trabajador.cargo ?? '—'}</div></div>
+    <div class="cf-cell"><div class="cf-lbl">Fecha de ingreso</div><div class="cf-val">${fecha(typeof trabajador.fechaIngreso === 'string' ? new Date(trabajador.fechaIngreso) : trabajador.fechaIngreso)}</div></div>
+  </div>
+
+  <div class="cf-seccion">Detalle del Permiso</div>
+  <div class="cf-tipo-badge">${tipoLabel}</div>
+  <div class="cf-periodo-box">
+    <div class="cf-periodo-item">
+      <div class="cf-p-lbl">Desde</div>
+      <div class="cf-p-val">${fecha(fi)}</div>
+      <div class="cf-p-sub">(Inicio)</div>
+    </div>
+    <div class="cf-periodo-item">
+      <div class="cf-p-lbl">Hasta</div>
+      <div class="cf-p-val">${fecha(ff)}</div>
+      <div class="cf-p-sub">(Término)</div>
+    </div>
+    <div class="cf-periodo-item">
+      <div class="cf-p-lbl">Días hábiles</div>
+      <div class="cf-p-val">${doc.diasHabiles}</div>
+      <div class="cf-p-sub">(Lunes a viernes)</div>
+    </div>
+  </div>
+  <div>
+    <span class="cf-goce-badge ${doc.conGoce ? 'cf-goce-si' : 'cf-goce-no'}">Goce de sueldo: ${doc.conGoce ? 'SÍ' : 'NO'}</span>
+  </div>
+  ${doc.parentesco ? `<p style="font-size:9.5pt;color:#555;margin:8px 0 4px;"><strong>Parentesco:</strong> ${doc.parentesco}</p>` : ''}
+  ${doc.observacion ? `<p style="font-size:9.5pt;color:#555;margin:8px 0 12px;"><strong>Observación:</strong> ${doc.observacion}</p>` : ''}
+  ${!doc.conGoce ? `<div class="cf-advertencia"><strong>Atención:</strong> Este permiso NO incluye remuneración. El período sin goce de sueldo será descontado de la liquidación del mes correspondiente.</div>` : ''}
+
+  <div class="cf-declaracion">
+    En ${ciudadEmpresa}, a ${fecha(hoy)}, el Empleador <strong>${empresa.razonSocial}</strong> otorga al/la Trabajador/a <strong>${trabajador.nombre}</strong> (RUT ${trabajador.rut}) el permiso especial indicado, comprendido entre el ${fecha(fi)} y el ${fecha(ff)}, correspondiente a <strong>${doc.diasHabiles} días hábiles</strong>, ${doc.conGoce ? 'con goce íntegro de remuneraciones' : 'sin goce de remuneración'}, de conformidad a la normativa laboral vigente.
+  </div>
+
+  <div class="cf-firmas">
+    <div class="cf-firma-box">
+      <div class="cf-firma-espacio"></div>
+      <div class="cf-firma-nombre">${empresa.representanteLegal ?? empresa.razonSocial}</div>
+      <div class="cf-firma-rut">RUT: ${empresa.rutRepresentante ?? empresa.rut}</div>
+      <div class="cf-firma-rol">${empresa.razonSocial} · Por el Empleador</div>
+    </div>
+    <div class="cf-firma-box">
+      <div class="cf-firma-espacio"></div>
+      <div class="cf-firma-nombre">${trabajador.nombre}</div>
+      <div class="cf-firma-rut">RUT: ${trabajador.rut}</div>
+      <div class="cf-firma-rol">Trabajador/a — Recibo Conforme</div>
+    </div>
+  </div>
+
+</body>
+</html>`;
+}
+
 // ── Liquidación de Sueldo (Art. 54 bis CT) ───────────────────────────────────
 
 export function generarLiquidacionPdf(
@@ -899,7 +1064,7 @@ export function generarLiquidacionPdf(
   const totalNoImponible = liq.movilizacion + liq.colacion;
   const totalHaberes = totalImponible + totalNoImponible;
   const subtotalLegal = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico;
-  const subtotalOtros = liq.anticipo + liq.montoHorasDescuento + liq.otrosDescuentos;
+  const subtotalOtros = (liq.montoSinGoce ?? 0) + liq.anticipo + liq.montoHorasDescuento + liq.otrosDescuentos;
   const totalDescuentos = subtotalLegal + subtotalOtros;
 
   const imponiblesRows = [
@@ -922,6 +1087,7 @@ export function generarLiquidacionPdf(
   ].join('');
 
   const descOtrosRows = [
+    ...(liq.diasSinGoce && liq.diasSinGoce > 0 ? [`<tr><td class="liq-concepto">Permiso sin Goce de Sueldo (${liq.diasSinGoce} día${liq.diasSinGoce > 1 ? 's' : ''})</td><td class="liq-num">${clp(liq.montoSinGoce ?? 0)}</td></tr>`] : []),
     ...(liq.anticipo > 0 ? [`<tr><td class="liq-concepto">Anticipo de Remuneración</td><td class="liq-num">${clp(liq.anticipo)}</td></tr>`] : []),
     ...(liq.montoHorasDescuento > 0 ? [`<tr><td class="liq-concepto">Horas de Descuento / Atraso</td><td class="liq-num">${clp(liq.montoHorasDescuento)}</td></tr>`] : []),
     ...(liq.otrosDescuentos > 0 ? [`<tr><td class="liq-concepto">Otros Descuentos</td><td class="liq-num">${clp(liq.otrosDescuentos)}</td></tr>`] : []),
