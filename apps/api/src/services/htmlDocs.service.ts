@@ -119,6 +119,7 @@ export interface LiquidacionDoc {
   mes: number;
   sueldoBase: number;
   horasExtra: number;
+  cantHorasExtra: number;
   bono: number;
   gratificacion: number;
   imponible: number;
@@ -130,6 +131,8 @@ export interface LiquidacionDoc {
   movilizacion: number;
   colacion: number;
   anticipo: number;
+  montoHorasDescuento: number;
+  otrosDescuentos: number;
   liquido: number;
   costoEmpleador: number;
 }
@@ -481,37 +484,34 @@ export function generarLiquidacionPdf(
   const totalImponible = liq.imponible;
   const totalNoImponible = liq.movilizacion + liq.colacion;
   const totalHaberes = totalImponible + totalNoImponible;
-  const totalDescuentos = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico + liq.anticipo;
+  const subtotalLegal = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico;
+  const subtotalOtros = liq.anticipo + liq.montoHorasDescuento + liq.otrosDescuentos;
+  const totalDescuentos = subtotalLegal + subtotalOtros;
 
-  const haberes: { label: string; imponible: number; noImponible: number }[] = [
-    { label: 'Sueldo Base', imponible: liq.sueldoBase, noImponible: 0 },
-    ...(liq.horasExtra > 0 ? [{ label: 'Horas Extraordinarias (50%)', imponible: liq.horasExtra, noImponible: 0 }] : []),
-    ...(liq.bono > 0 ? [{ label: 'Bono', imponible: liq.bono, noImponible: 0 }] : []),
-    ...(liq.gratificacion > 0 ? [{ label: 'Gratificación Legal', imponible: liq.gratificacion, noImponible: 0 }] : []),
-    ...(liq.movilizacion > 0 ? [{ label: 'Asig. de Movilización', imponible: 0, noImponible: liq.movilizacion }] : []),
-    ...(liq.colacion > 0 ? [{ label: 'Asig. de Colación', imponible: 0, noImponible: liq.colacion }] : []),
-  ];
+  const imponiblesRows = [
+    `<tr><td class="liq-concepto">Sueldo Base</td><td class="liq-num">${clp(liq.sueldoBase)}</td></tr>`,
+    ...(liq.horasExtra > 0 ? [`<tr><td class="liq-concepto">Horas Extraordinarias${liq.cantHorasExtra > 0 ? ` (${liq.cantHorasExtra} hrs)` : ''}</td><td class="liq-num">${clp(liq.horasExtra)}</td></tr>`] : []),
+    ...(liq.bono > 0 ? [`<tr><td class="liq-concepto">Bono</td><td class="liq-num">${clp(liq.bono)}</td></tr>`] : []),
+    ...(liq.gratificacion > 0 ? [`<tr><td class="liq-concepto">Gratificación Legal</td><td class="liq-num">${clp(liq.gratificacion)}</td></tr>`] : []),
+  ].join('');
 
-  const descuentos: { label: string; monto: number }[] = [
-    { label: `Cotización AFP ${trabajador.afp}`, monto: liq.cotizAfp },
-    { label: `Cotización Salud ${trabajador.salud} (${(trabajador.pctSalud * 100).toFixed(1)}%)`, monto: liq.cotizSalud },
-    ...(liq.cotizCes > 0 ? [{ label: 'CES — Cotización Trabajador (0.6%)', monto: liq.cotizCes }] : []),
-    ...(liq.impuestoUnico > 0 ? [{ label: 'Impuesto Único 2ª Categoría', monto: liq.impuestoUnico }] : []),
-    ...(liq.anticipo > 0 ? [{ label: 'Anticipo de Remuneración', monto: liq.anticipo }] : []),
-  ];
+  const noImponiblesRows = [
+    ...(liq.movilizacion > 0 ? [`<tr><td class="liq-concepto">Asignación de Movilización</td><td class="liq-num">${clp(liq.movilizacion)}</td></tr>`] : []),
+    ...(liq.colacion > 0 ? [`<tr><td class="liq-concepto">Asignación de Colación</td><td class="liq-num">${clp(liq.colacion)}</td></tr>`] : []),
+  ].join('');
 
-  const haberesRows = haberes.map(h => `
-        <tr>
-          <td class="liq-concepto">${h.label}</td>
-          <td class="liq-num">${h.imponible > 0 ? clp(h.imponible) : ''}</td>
-          <td class="liq-num">${h.noImponible > 0 ? clp(h.noImponible) : ''}</td>
-        </tr>`).join('');
+  const descLegalRows = [
+    `<tr><td class="liq-concepto">Cotización AFP ${trabajador.afp}</td><td class="liq-num">${clp(liq.cotizAfp)}</td></tr>`,
+    `<tr><td class="liq-concepto">Cotización Salud ${trabajador.salud} (${(trabajador.pctSalud * 100).toFixed(1)}%)</td><td class="liq-num">${clp(liq.cotizSalud)}</td></tr>`,
+    ...(liq.cotizCes > 0 ? [`<tr><td class="liq-concepto">CES — Cotiz. Trabajador (0.6%)</td><td class="liq-num">${clp(liq.cotizCes)}</td></tr>`] : []),
+    ...(liq.impuestoUnico > 0 ? [`<tr><td class="liq-concepto">Impuesto Único 2ª Categoría</td><td class="liq-num">${clp(liq.impuestoUnico)}</td></tr>`] : []),
+  ].join('');
 
-  const descRows = descuentos.map(d => `
-        <tr>
-          <td class="liq-concepto">${d.label}</td>
-          <td class="liq-num">${clp(d.monto)}</td>
-        </tr>`).join('');
+  const descOtrosRows = [
+    ...(liq.anticipo > 0 ? [`<tr><td class="liq-concepto">Anticipo de Remuneración</td><td class="liq-num">${clp(liq.anticipo)}</td></tr>`] : []),
+    ...(liq.montoHorasDescuento > 0 ? [`<tr><td class="liq-concepto">Horas de Descuento / Atraso</td><td class="liq-num">${clp(liq.montoHorasDescuento)}</td></tr>`] : []),
+    ...(liq.otrosDescuentos > 0 ? [`<tr><td class="liq-concepto">Otros Descuentos</td><td class="liq-num">${clp(liq.otrosDescuentos)}</td></tr>`] : []),
+  ].join('');
 
   const copia = (titulo: string) => `
   <div class="liq-page">
@@ -548,27 +548,27 @@ export function generarLiquidacionPdf(
           <thead>
             <tr class="liq-th-row">
               <th class="liq-th liq-th-concepto">HABERES</th>
-              <th class="liq-th liq-th-num">Imponible</th>
-              <th class="liq-th liq-th-num">No Imponible</th>
+              <th class="liq-th liq-th-num">Monto</th>
             </tr>
           </thead>
           <tbody>
-            ${haberesRows}
-          </tbody>
-          <tfoot>
+            <tr class="liq-section-label"><td colspan="2">Haberes Imponibles</td></tr>
+            ${imponiblesRows}
             <tr class="liq-subtotal">
-              <td class="liq-concepto">Total Imponible</td>
+              <td class="liq-concepto">Subtotal Imponible</td>
               <td class="liq-num">${clp(totalImponible)}</td>
-              <td class="liq-num"></td>
             </tr>
+            <tr class="liq-section-label"><td colspan="2">Haberes No Imponibles</td></tr>
+            ${noImponiblesRows || '<tr><td class="liq-concepto liq-empty" colspan="2">— sin haberes no imponibles —</td></tr>'}
             <tr class="liq-subtotal">
-              <td class="liq-concepto">Total No Imponible</td>
-              <td class="liq-num"></td>
+              <td class="liq-concepto">Subtotal No Imponible</td>
               <td class="liq-num">${clp(totalNoImponible)}</td>
             </tr>
+          </tbody>
+          <tfoot>
             <tr class="liq-total">
               <td class="liq-concepto">TOTAL HABERES</td>
-              <td class="liq-num" colspan="2">${clp(totalHaberes)}</td>
+              <td class="liq-num">${clp(totalHaberes)}</td>
             </tr>
           </tfoot>
         </table>
@@ -584,7 +584,19 @@ export function generarLiquidacionPdf(
             </tr>
           </thead>
           <tbody>
-            ${descRows}
+            <tr class="liq-section-label"><td colspan="2">Descuentos Legales</td></tr>
+            ${descLegalRows}
+            <tr class="liq-subtotal">
+              <td class="liq-concepto">Subtotal Descuentos Legales</td>
+              <td class="liq-num">${clp(subtotalLegal)}</td>
+            </tr>
+            ${subtotalOtros > 0 ? `
+            <tr class="liq-section-label"><td colspan="2">Otros Descuentos</td></tr>
+            ${descOtrosRows}
+            <tr class="liq-subtotal">
+              <td class="liq-concepto">Subtotal Otros Descuentos</td>
+              <td class="liq-num">${clp(subtotalOtros)}</td>
+            </tr>` : ''}
           </tbody>
           <tfoot>
             <tr class="liq-total">
@@ -695,6 +707,8 @@ export function generarLiquidacionPdf(
   .liq-total .liq-concepto { font-weight: bold; font-size: 9.5pt; }
   .liq-total .liq-num { font-weight: bold; font-size: 9.5pt; }
   .liq-costo-emp { font-size: 8pt; color: #666; margin-top: 4px; text-align: right; }
+  .liq-section-label td { background: #e8ecf5; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; color: #2a3a6e; padding: 3px 8px; border-top: 1px solid #c0c8e0; }
+  .liq-empty { color: #aaa; font-style: italic; font-size: 8.5pt; text-align: center; }
 
   /* LÍQUIDO */
   .liq-liquido-box {

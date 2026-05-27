@@ -584,11 +584,15 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       tieneMovilizacion: t.tieneMovilizacion,
       tieneColacion: t.tieneColacion,
     };
+    const horasMes = (t.jornadaHoras * 52) / 12;
+    const valorHora = Number(t.sueldoBase) / horasMes;
+    const montoHorasDescuento = Math.round(Number(liq.horasDescuento) * valorHora);
     const liqDoc = {
       anio: liq.anio,
       mes: liq.mes,
       sueldoBase: Number(liq.sueldoBase),
       horasExtra: Number(liq.horasExtra),
+      cantHorasExtra: Number(liq.cantHorasExtra),
       bono: Number(liq.bono),
       gratificacion: Number(liq.gratificacion),
       imponible: Number(liq.imponible),
@@ -600,6 +604,8 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       movilizacion: Number(liq.movilizacion),
       colacion: Number(liq.colacion),
       anticipo: Number(liq.anticipo),
+      montoHorasDescuento,
+      otrosDescuentos: Number(liq.otrosDescuentos),
       liquido: Number(liq.liquido),
       costoEmpleador: Number(liq.costoEmpleador),
     };
