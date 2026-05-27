@@ -365,6 +365,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
     const comunaNorm = normalizarCodigoDT(t.comuna, COMUNAS_DT);
     formTrab.reset({
       rut: t.rut, nombre: t.nombre, cargo: t.cargo ?? '',
+      ...(t.apellidoPaterno ? { apellidoPaterno: t.apellidoPaterno } : {}),
+      ...(t.apellidoMaterno ? { apellidoMaterno: t.apellidoMaterno } : {}),
+      ...(t.sexo ? { sexo: t.sexo as TrabajadorInput['sexo'] } : {}),
       ...(t.email ? { email: t.email } : {}),
       ...(t.domicilio ? { domicilio: t.domicilio } : {}),
       ...(t.fechaNacimiento ? { fechaNacimiento: t.fechaNacimiento.slice(0, 10) as unknown as Date } : {}),
@@ -379,7 +382,8 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
       tieneMovilizacion: t.tieneMovilizacion, tieneColacion: t.tieneColacion,
       montoMovilizacion: t.montoMovilizacion ? Number(t.montoMovilizacion) : undefined,
       montoColacion: t.montoColacion ? Number(t.montoColacion) : undefined,
-      jornadaHoras: t.jornadaHoras, tipoContrato: t.tipoContrato, fechaIngreso: new Date(t.fechaIngreso),
+      jornadaHoras: t.jornadaHoras, tipoContrato: t.tipoContrato,
+      fechaIngreso: t.fechaIngreso.slice(0, 10) as unknown as Date,
     });
     setOpenTrabajador(true);
   }

@@ -239,6 +239,9 @@ export interface Trabajador {
   empresaId: string;
   rut: string;
   nombre: string;
+  apellidoPaterno?: string;
+  apellidoMaterno?: string;
+  sexo?: string;
   cargo?: string;
   email?: string;
   domicilio?: string;
