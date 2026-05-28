@@ -218,6 +218,15 @@ export default function RRHH() {
     defaultValues: { tipo: 'DEPENDIENTE', afp: 'HABITAT', salud: 'FONASA', pctSalud: 0.07, tieneCes: false, tipoGratificacion: 'ART_50', tieneMovilizacion: false, tieneColacion: false, trabajaFinSemana: false, jornadaHoras: 42, tipoContrato: 'INDEFINIDO' },
   });
 
+  const tipoContratoWatch = formTrab.watch('tipoContrato');
+  const fechaIngresoWatch = formTrab.watch('fechaIngreso');
+
+  function aplicarPlazoMeses(meses: number) {
+    const base = fechaIngresoWatch ? new Date(fechaIngresoWatch) : new Date();
+    base.setMonth(base.getMonth() + meses);
+    formTrab.setValue('fechaTerminoContrato', base.toISOString().slice(0, 10) as unknown as Date);
+  }
+
   const regionSeleccionada = formTrab.watch('region');
   const comunasFiltradas = regionSeleccionada
     ? COMUNAS_DT.filter(c => c.region === regionSeleccionada)
@@ -542,6 +551,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
       montoColacion: t.montoColacion ? Number(t.montoColacion) : undefined,
       jornadaHoras: t.jornadaHoras, tipoContrato: t.tipoContrato,
       fechaIngreso: t.fechaIngreso.slice(0, 10) as unknown as Date,
+      fechaTerminoContrato: t.fechaTerminoContrato ? t.fechaTerminoContrato.slice(0, 10) as unknown as Date : undefined,
     });
     setOpenTrabajador(true);
   }
@@ -802,6 +812,22 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                       </select>
                     </div>
                   </div>
+                  {(tipoContratoWatch === 'PLAZO_FIJO' || tipoContratoWatch === 'OBRA_FAENA') && (
+                    <div className="space-y-1.5">
+                      <Label>Fecha término contrato {tipoContratoWatch === 'PLAZO_FIJO' ? '(máx. 1 año desde ingreso)' : ''}</Label>
+                      {tipoContratoWatch === 'PLAZO_FIJO' && (
+                        <div className="flex gap-2 mb-1.5">
+                          {[1, 2, 3, 6].map((m) => (
+                            <button key={m} type="button" onClick={() => aplicarPlazoMeses(m)}
+                              className="px-2 py-1 text-xs rounded border border-input bg-muted hover:bg-accent transition-colors">
+                              {m} {m === 1 ? 'mes' : 'meses'}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <Input {...formTrab.register('fechaTerminoContrato')} type="date" />
+                    </div>
+                  )}
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5"><Label>Sueldo base *</Label><Input {...formTrab.register('sueldoBase', { valueAsNumber: true })} type="number" min="0" />{formTrab.formState.errors.sueldoBase && <p className="text-xs text-destructive">{formTrab.formState.errors.sueldoBase.message}</p>}</div>
                     <div className="space-y-1.5"><Label>Fecha ingreso *</Label><Input {...formTrab.register('fechaIngreso')} type="date" /></div>

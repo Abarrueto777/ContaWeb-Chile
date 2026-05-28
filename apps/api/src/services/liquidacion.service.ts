@@ -14,6 +14,7 @@ const AFP_TASAS_DEFAULT: Record<string, number> = {
 const TASA_SIS = 0.0143; // pagado por empleador
 const TASA_CES_TRABAJADOR = 0.006;
 const TASA_CES_EMPLEADOR = 0.024;
+const TASA_CES_EMPLEADOR_PLAZO = 0.030; // Ley 19.728: empleador paga 3% en plazo fijo/obra faena
 const TASA_ACCIDENTE = 0.0034;
 const TASA_SES = 0.0003;
 const TOPE_IMPONIBLE_UF = 81.6;
@@ -181,7 +182,9 @@ export function calcularLiquidacion(
   const montoIsapre = (trabajador as unknown as { montoIsapre?: string | null }).montoIsapre;
   const planIsapre = montoIsapre ? Math.round(Number(montoIsapre) * uf) : 0;
   const cotizSalud = planIsapre > cotizSaludMandatoria ? planIsapre : cotizSaludMandatoria;
-  const cotizCes = trabajador.tieneCes ? Math.round(imponible * TASA_CES_TRAB_V) : 0;
+  // Ley 19.728: en plazo fijo y obra/faena el trabajador NO aporta al seguro de cesantía
+  const esPlazoFijoOObra = trabajador.tipoContrato === 'PLAZO_FIJO' || trabajador.tipoContrato === 'OBRA_FAENA';
+  const cotizCes = trabajador.tieneCes && !esPlazoFijoOObra ? Math.round(imponible * TASA_CES_TRAB_V) : 0;
 
   // Impuesto único
   let impuestoUnico = 0;
@@ -209,7 +212,8 @@ export function calcularLiquidacion(
 
   // Costo empleador
   const sisEmpleador = Math.round(imponible * TASA_SIS_V);
-  const cesEmpleador = trabajador.tieneCes ? Math.round(imponible * TASA_CES_EMP_V) : 0;
+  const tasaCesEmp = esPlazoFijoOObra ? TASA_CES_EMPLEADOR_PLAZO : TASA_CES_EMP_V;
+  const cesEmpleador = trabajador.tieneCes ? Math.round(imponible * tasaCesEmp) : 0;
   const accidente = Math.round(imponible * TASA_ACC_V);
   const ses = Math.round(imponible * TASA_SES_V);
   const costoEmpleador = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + sisEmpleador + cesEmpleador + accidente + ses;

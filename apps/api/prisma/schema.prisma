@@ -400,8 +400,9 @@ model Trabajador {
   region            String?
   comuna            String?
   jornadaHoras      Int               @default(42)
-  tipoContrato      TipoContrato      @default(INDEFINIDO)
-  fechaIngreso      DateTime
+  tipoContrato           TipoContrato      @default(INDEFINIDO)
+  fechaTerminoContrato   DateTime?
+  fechaIngreso           DateTime
   activo            Boolean           @default(true)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt

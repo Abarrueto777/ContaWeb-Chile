@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
     const { empresaId } = req.params as { empresaId: string };
     const parsed = trabajadorSchema.safeParse(req.body);
     if (!parsed.success) return void res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten().fieldErrors });
-    const { montoMovilizacion, montoColacion, cargo, email, montoIsapre, domicilio, fechaNacimiento, estadoCivil, nacionalidad, region, comuna, ...rest } = parsed.data;
+    const { montoMovilizacion, montoColacion, cargo, email, montoIsapre, domicilio, fechaNacimiento, estadoCivil, nacionalidad, region, comuna, fechaTerminoContrato, ...rest } = parsed.data;
     const trabajador = await prisma.trabajador.create({
       data: {
         ...rest,
@@ -40,6 +40,7 @@ router.post('/', async (req, res) => {
         ...(nacionalidad !== undefined ? { nacionalidad } : {}),
         ...(region !== undefined ? { region } : {}),
         ...(comuna !== undefined ? { comuna } : {}),
+        ...(fechaTerminoContrato !== undefined ? { fechaTerminoContrato } : {}),
       } as Parameters<typeof prisma.trabajador.create>[0]['data'],
     });
     res.status(201).json({ data: trabajador });
@@ -52,7 +53,7 @@ router.put('/:trabajadorId', async (req, res) => {
   try {
     const parsed = trabajadorSchema.safeParse(req.body);
     if (!parsed.success) return void res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten().fieldErrors });
-    const { montoMovilizacion, montoColacion, cargo, email, montoIsapre, domicilio, fechaNacimiento, estadoCivil, nacionalidad, region, comuna, ...rest } = parsed.data;
+    const { montoMovilizacion, montoColacion, cargo, email, montoIsapre, domicilio, fechaNacimiento, estadoCivil, nacionalidad, region, comuna, fechaTerminoContrato, ...rest } = parsed.data;
     const trabajador = await prisma.trabajador.update({
       where: { id: req.params['trabajadorId'] },
       data: {
@@ -68,6 +69,7 @@ router.put('/:trabajadorId', async (req, res) => {
         nacionalidad: nacionalidad ?? null,
         region: region ?? null,
         comuna: comuna ?? null,
+        fechaTerminoContrato: fechaTerminoContrato ?? null,
       } as Parameters<typeof prisma.trabajador.update>[0]['data'],
     });
     res.json({ data: trabajador });

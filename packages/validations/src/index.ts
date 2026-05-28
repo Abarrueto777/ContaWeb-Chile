@@ -187,6 +187,10 @@ export const trabajadorSchema = z.object({
   montoColacion: z.number().min(0).optional(),
   jornadaHoras: z.number().int().min(1).max(45).default(42),
   tipoContrato: z.enum(['INDEFINIDO', 'PLAZO_FIJO', 'OBRA_FAENA']).default('INDEFINIDO'),
+  fechaTerminoContrato: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : v),
+    z.coerce.date().optional(),
+  ),
   fechaIngreso: z.coerce.date(),
 });
 

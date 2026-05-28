@@ -298,6 +298,7 @@ export interface Trabajador {
   montoColacion?: string;
   jornadaHoras: number;
   tipoContrato: TipoContrato;
+  fechaTerminoContrato?: string;
   fechaIngreso: string;
   activo: boolean;
   createdAt: string;
