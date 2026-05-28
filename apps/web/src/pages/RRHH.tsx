@@ -47,6 +47,17 @@ function clp(n: string | number) {
   return Number(n).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
 
+function alertaContrato(t: { tipoContrato: string; fechaTerminoContrato?: string }): { texto: string; clase: string } | null {
+  if (!t.fechaTerminoContrato || t.tipoContrato === 'INDEFINIDO') return null;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const termino = new Date(t.fechaTerminoContrato.split('T')[0] + 'T12:00:00');
+  const dias = Math.round((termino.getTime() - hoy.getTime()) / 86400000);
+  if (dias < 0) return { texto: 'Vencido', clase: 'bg-red-100 text-red-700 border-red-200' };
+  if (dias <= 30) return { texto: `Vence en ${dias}d`, clase: 'bg-amber-100 text-amber-700 border-amber-200' };
+  if (dias <= 60) return { texto: `Vence en ${dias}d`, clase: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
+  return null;
+}
+
 type Vista = 'trabajadores' | 'liquidaciones' | 'libro' | 'vacaciones' | 'permisos';
 
 const TIPO_PERMISO_LABELS: Record<string, string> = {
@@ -956,7 +967,11 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                 <tbody>
                   {trabajadores.map((t) => (
                     <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-5 py-4"><p className="font-medium">{t.nombre}</p><p className="text-xs text-muted-foreground">{t.rut}</p></td>
+                      <td className="px-5 py-4">
+                        <p className="font-medium">{t.nombre}</p>
+                        <p className="text-xs text-muted-foreground">{t.rut}</p>
+                        {(() => { const a = alertaContrato(t); return a ? <span className={`inline-block mt-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded border ${a.clase}`}>{a.texto}</span> : null; })()}
+                      </td>
                       <td className="px-5 py-4 text-muted-foreground hidden sm:table-cell">{t.cargo ?? '—'}</td>
                       <td className="px-5 py-4 text-right font-mono">{clp(t.sueldoBase)}</td>
                       <td className="px-5 py-4 text-muted-foreground hidden md:table-cell">{t.afp}</td>
