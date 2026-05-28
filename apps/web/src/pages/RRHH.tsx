@@ -220,12 +220,21 @@ export default function RRHH() {
 
   const tipoContratoWatch = formTrab.watch('tipoContrato');
   const fechaIngresoWatch = formTrab.watch('fechaIngreso');
+  const [plazoMesesSeleccionado, setPlazoMesesSeleccionado] = useState<number | null>(null);
 
   function aplicarPlazoMeses(meses: number) {
     const base = fechaIngresoWatch ? new Date(fechaIngresoWatch) : new Date();
     base.setMonth(base.getMonth() + meses);
     formTrab.setValue('fechaTerminoContrato', base.toISOString().slice(0, 10) as unknown as Date);
+    setPlazoMesesSeleccionado(meses);
   }
+
+  useEffect(() => {
+    if (!plazoMesesSeleccionado || !fechaIngresoWatch) return;
+    const base = new Date(fechaIngresoWatch);
+    base.setMonth(base.getMonth() + plazoMesesSeleccionado);
+    formTrab.setValue('fechaTerminoContrato', base.toISOString().slice(0, 10) as unknown as Date);
+  }, [fechaIngresoWatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const regionSeleccionada = formTrab.watch('region');
   const comunasFiltradas = regionSeleccionada
@@ -240,7 +249,7 @@ export default function RRHH() {
   function onSubmitTrab(d: TrabajadorInput) {
     const mutation = editando ? updateTrab : createTrab;
     mutation.mutate(d, {
-      onSuccess: () => { formTrab.reset(); mutation.reset(); setOpenTrabajador(false); setEditando(null); },
+      onSuccess: () => { formTrab.reset(); mutation.reset(); setOpenTrabajador(false); setEditando(null); setPlazoMesesSeleccionado(null); },
     });
   }
 
@@ -723,7 +732,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                 </button>
               ))}
             </div>
-            <Dialog open={openTrabajador} onOpenChange={(v) => { if (!v) { formTrab.reset(); createTrab.reset(); setEditando(null); } setOpenTrabajador(v); }}>
+            <Dialog open={openTrabajador} onOpenChange={(v) => { if (!v) { formTrab.reset(); createTrab.reset(); setEditando(null); setPlazoMesesSeleccionado(null); } setOpenTrabajador(v); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nuevo trabajador</Button></DialogTrigger>
               <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -825,7 +834,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                           ))}
                         </div>
                       )}
-                      <Input {...formTrab.register('fechaTerminoContrato')} type="date" />
+                      <Input {...formTrab.register('fechaTerminoContrato')} type="date" onChange={() => setPlazoMesesSeleccionado(null)} />
                     </div>
                   )}
                   <div className="grid sm:grid-cols-2 gap-4">
