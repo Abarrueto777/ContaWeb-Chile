@@ -222,18 +222,32 @@ export default function RRHH() {
   const fechaIngresoWatch = formTrab.watch('fechaIngreso');
   const [plazoMesesSeleccionado, setPlazoMesesSeleccionado] = useState<number | null>(null);
 
+  // Parsea "YYYY-MM-DD" en hora local para evitar drift de timezone UTC
+  function parseFechaLocal(fecha: string | Date): Date {
+    const str = (typeof fecha === 'string' ? fecha : fecha.toISOString()).split('T')[0] ?? '';
+    const parts = str.split('-').map(Number);
+    return new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1);
+  }
+
+  function formatFechaLocal(fecha: Date): string {
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   function aplicarPlazoMeses(meses: number) {
-    const base = fechaIngresoWatch ? new Date(fechaIngresoWatch) : new Date();
+    const base = fechaIngresoWatch ? parseFechaLocal(fechaIngresoWatch) : new Date();
     base.setMonth(base.getMonth() + meses);
-    formTrab.setValue('fechaTerminoContrato', base.toISOString().slice(0, 10) as unknown as Date);
+    formTrab.setValue('fechaTerminoContrato', formatFechaLocal(base) as unknown as Date);
     setPlazoMesesSeleccionado(meses);
   }
 
   useEffect(() => {
     if (!plazoMesesSeleccionado || !fechaIngresoWatch) return;
-    const base = new Date(fechaIngresoWatch);
+    const base = parseFechaLocal(fechaIngresoWatch);
     base.setMonth(base.getMonth() + plazoMesesSeleccionado);
-    formTrab.setValue('fechaTerminoContrato', base.toISOString().slice(0, 10) as unknown as Date);
+    formTrab.setValue('fechaTerminoContrato', formatFechaLocal(base) as unknown as Date);
   }, [fechaIngresoWatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const regionSeleccionada = formTrab.watch('region');
@@ -834,7 +848,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                           ))}
                         </div>
                       )}
-                      <Input {...formTrab.register('fechaTerminoContrato')} type="date" onChange={() => setPlazoMesesSeleccionado(null)} />
+                      <Input {...formTrab.register('fechaTerminoContrato', { onChange: () => setPlazoMesesSeleccionado(null) })} type="date" />
                     </div>
                   )}
                   <div className="grid sm:grid-cols-2 gap-4">
