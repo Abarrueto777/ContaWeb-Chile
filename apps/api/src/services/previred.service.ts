@@ -13,6 +13,8 @@ export interface PreviredIndicadores {
   uf: number | null;
   utm: number | null;
   imm: number | null;
+  _encontrado: string[];  // campos que el scraper realmente encontró
+  _advertencias: string[]; // qué no pudo parsear
 }
 
 function parsePct(raw: string): number {
@@ -23,104 +25,144 @@ function parseCurrency(raw: string): number {
   return parseFloat(raw.replace(/[$.]/g, '').replace(',', '.').trim());
 }
 
-function parseUfFromText(text: string): number | null {
-  const match = text.match(/\((\d+(?:[.,]\d+)?)\s*UF\)/i);
-  if (!match || !match[1]) return null;
-  return parseFloat(match[1].replace(',', '.'));
-}
-
-const AFP_MAP: Record<string, keyof Pick<PreviredIndicadores,
+const AFP_NAMES: Record<string, keyof Pick<PreviredIndicadores,
   'afpCapital' | 'afpCuprum' | 'afpHabitat' | 'afpPlanvital' | 'afpProvida' | 'afpModelo' | 'afpUno'
 >> = {
-  capital:  'afpCapital',
-  cuprum:   'afpCuprum',
-  habitat:  'afpHabitat',
-  planvital:'afpPlanvital',
-  provida:  'afpProvida',
-  modelo:   'afpModelo',
-  uno:      'afpUno',
+  capital:   'afpCapital',
+  cuprum:    'afpCuprum',
+  habitat:   'afpHabitat',
+  hábitat:   'afpHabitat',
+  planvital: 'afpPlanvital',
+  provida:   'afpProvida',
+  modelo:    'afpModelo',
+  uno:       'afpUno',
 };
 
 export async function scrapePreviredIndicadores(): Promise<PreviredIndicadores> {
-  const res = await fetch('https://www.previred.com/indicadores-previsionales/', {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ContaWeb/1.0)' },
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  if (!res.ok) throw new Error(`Previred respondió ${res.status}`);
-
-  const html = await res.text();
-  const $ = cheerio.load(html);
-
   const result: PreviredIndicadores = {
     afpCapital: 0.1144, afpCuprum: 0.1144, afpHabitat: 0.1127,
     afpPlanvital: 0.1127, afpProvida: 0.1145, afpModelo: 0.1077, afpUno: 0.1049,
     sisEmpleador: 0.0162, topeImponibleUf: 90.0,
     uf: null, utm: null, imm: null,
+    _encontrado: [], _advertencias: [],
   };
 
-  // AFP rates — buscar tabla con columna "AFP"
-  $('table').each((_, table) => {
-    const headers = $(table).find('th').map((_, th) => $(th).text().trim().toLowerCase()).get();
-    if (!headers.some(h => h === 'afp')) return;
+  let html: string;
+  try {
+    const res = await fetch('https://www.previred.com/indicadores-previsionales/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,*/*',
+        'Accept-Language': 'es-CL,es;q=0.9',
+      },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    html = await res.text();
+  } catch (e) {
+    result._advertencias.push(`No se pudo conectar a previred.com: ${e instanceof Error ? e.message : String(e)}`);
+    return result;
+  }
 
-    $(table).find('tbody tr').each((_, row) => {
+  const $ = cheerio.load(html);
+  const fullText = $.text();
+
+  // Si la página está en blanco o tiene muy poco texto, es JS-rendered
+  if (fullText.trim().length < 500) {
+    result._advertencias.push('Previred.com devuelve HTML vacío (requiere JavaScript). Ingresá las tasas manualmente.');
+    return result;
+  }
+
+  // ── 1. AFP rates — buscar en TODAS las tablas ─────────────────────────────
+  let afpEncontradas = 0;
+  $('table').each((_, table) => {
+    const headerText = $(table).find('th, td').map((_, el) => $(el).text().toLowerCase()).get().join(' ');
+    if (!headerText.includes('afp') && !headerText.includes('pension')) return;
+
+    $(table).find('tr').each((_, row) => {
       const cells = $(row).find('td');
-      const afpName = $(cells[0]).text().trim().toLowerCase();
+      if (cells.length < 2) return;
+      const nombre = $(cells[0]).text().trim().toLowerCase().replace(/\s+/g, '');
       const tasaRaw = $(cells[1]).text().trim();
-      const field = AFP_MAP[afpName];
-      if (field && tasaRaw) result[field] = parsePct(tasaRaw);
+      const pctMatch = tasaRaw.match(/([\d,]+)\s*%/);
+      if (!pctMatch) return;
+      const tasa = parsePct(pctMatch[0]);
+      if (tasa < 0.05 || tasa > 0.20) return; // rango razonable para AFP
+
+      for (const [key, field] of Object.entries(AFP_NAMES)) {
+        if (nombre.includes(key)) {
+          result[field] = tasa;
+          result._encontrado.push(`${field}=${(tasa*100).toFixed(2)}%`);
+          afpEncontradas++;
+          break;
+        }
+      }
     });
   });
 
-  // SIS — buscar sección con "SEGURO DE INVALIDEZ"
-  $('section').each((_, section) => {
-    const heading = $(section).find('h2').text().trim().toUpperCase();
-
-    if (heading.includes('INVALIDEZ')) {
-      $(section).find('p, li').each((_, el) => {
-        const text = $(el).text();
-        if (text.toLowerCase().includes('tasa sis')) {
-          const match = text.match(/([\d,]+)%/);
-          if (match && match[1]) result.sisEmpleador = parsePct(match[1] + '%');
-        }
-      });
+  // Fallback: buscar tasas AFP en texto libre con regex
+  if (afpEncontradas === 0) {
+    const afpRegex = /(capital|cuprum|h[aá]bitat|planvital|provida|modelo|uno)\s*[:\-–]?\s*([\d,]+)\s*%/gi;
+    let m: RegExpExecArray | null;
+    while ((m = afpRegex.exec(fullText)) !== null) {
+      const nombre = m[1]!.toLowerCase().replace('á','a');
+      const field = AFP_NAMES[nombre];
+      if (!field) continue;
+      const tasa = parsePct(m[2]! + '%');
+      if (tasa < 0.05 || tasa > 0.20) continue;
+      result[field] = tasa;
+      result._encontrado.push(`${field}=${(tasa*100).toFixed(2)}% (texto)`);
+      afpEncontradas++;
     }
+  }
 
-    if (heading.includes('TOPES') || heading.includes('TOPE')) {
-      $(section).find('li').each((_, li) => {
-        const text = $(li).text();
-        if (text.toLowerCase().includes('afp')) {
-          const uf = parseUfFromText(text);
-          if (uf) result.topeImponibleUf = uf;
-        }
-      });
-    }
+  if (afpEncontradas === 0) {
+    result._advertencias.push('No se encontraron tasas AFP en la página. Verificá previred.com manualmente.');
+  }
 
-    if (heading.includes('VALOR UF') || heading.includes('UF')) {
-      const firstStrong = $(section).find('strong').first().text();
-      if (firstStrong) {
-        const val = parseCurrency(firstStrong);
-        if (val > 100) result.uf = val;
-      }
+  // ── 2. SIS empleador ─────────────────────────────────────────────────────
+  const sisMatch = fullText.match(/sis[^%\n]*?([\d,]+)\s*%/i);
+  if (sisMatch && sisMatch[1]) {
+    const sis = parsePct(sisMatch[1] + '%');
+    if (sis > 0.001 && sis < 0.05) {
+      result.sisEmpleador = sis;
+      result._encontrado.push(`sisEmpleador=${(sis*100).toFixed(4)}%`);
     }
+  }
 
-    if (heading === 'VALOR' || heading.includes('UTM')) {
-      const firstTd = $(section).find('td').first().text();
-      if (firstTd) {
-        const val = parseCurrency(firstTd);
-        if (val > 1000) result.utm = val;
-      }
+  // ── 3. Tope imponible en UF ────────────────────────────────────────────────
+  const topeMatch = fullText.match(/tope[^(]*\(([\d.,]+)\s*[Uu][Ff]\)/i);
+  if (topeMatch && topeMatch[1]) {
+    const tope = parseFloat(topeMatch[1].replace(',', '.'));
+    if (tope > 50 && tope < 200) {
+      result.topeImponibleUf = tope;
+      result._encontrado.push(`topeImponibleUf=${tope}`);
     }
+  }
 
-    if (heading.includes('RENTAS MÍNIMAS') || heading.includes('MINIMAS')) {
-      const firstLi = $(section).find('li').first().find('strong').text();
-      if (firstLi) {
-        const val = parseCurrency(firstLi);
-        if (val > 100000) result.imm = val;
-      }
+  // ── 4. UTM ─────────────────────────────────────────────────────────────────
+  const utmMatch = fullText.match(/utm[^$\n]*\$?\s*([\d.]+(?:,\d+)?)/i);
+  if (utmMatch && utmMatch[1]) {
+    const utm = parseCurrency(utmMatch[1]);
+    if (utm > 50000 && utm < 200000) {
+      result.utm = utm;
+      result._encontrado.push(`utm=${utm}`);
     }
-  });
+  }
+
+  // ── 5. IMM ─────────────────────────────────────────────────────────────────
+  const immMatch = fullText.match(/ingreso m[ií]nimo[^$\n]*\$?\s*([\d.]+(?:,\d+)?)/i);
+  if (immMatch && immMatch[1]) {
+    const imm = parseCurrency(immMatch[1]);
+    if (imm > 300000 && imm < 1500000) {
+      result.imm = imm;
+      result._encontrado.push(`imm=${imm}`);
+    }
+  }
+
+  if (result._encontrado.length === 0) {
+    result._advertencias.push('El scraper no pudo extraer ningún dato de previred.com. Ingresá las tasas manualmente.');
+  }
 
   return result;
 }

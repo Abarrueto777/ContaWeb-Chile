@@ -607,7 +607,7 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       tasaAfp,
       planIsapreUF: t.montoIsapre ? Number(t.montoIsapre) : undefined,
     };
-    const horasMes = t.jornadaHoras * 30 / 7;
+    const horasMes = t.jornadaHoras * 52 / 12;
     const valorHora = Number(t.sueldoBase) / horasMes;
     const montoHorasDescuento = Math.round(Number(liq.horasDescuento) * valorHora);
     const liqDoc = {
@@ -756,7 +756,7 @@ router.post('/:liquidacionId/enviar-email', async (req, res) => {
       razonSocial: empresa.razonSocial, rut: empresa.rut,
       giro: empresa.giro, direccion: empresa.direccion,
     };
-    const horasMes = t.jornadaHoras * 30 / 7;
+    const horasMes = t.jornadaHoras * 52 / 12;
     const montoHorasDescuento = Math.round(Number(liq.horasDescuento) * (Number(t.sueldoBase) / horasMes));
     const liqDoc = {
       anio: liq.anio, mes: liq.mes, diasTrabajados: Number(liq.diasTrabajados ?? 30),

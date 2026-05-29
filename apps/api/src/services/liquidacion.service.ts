@@ -137,8 +137,8 @@ export function calcularLiquidacion(
   const sueldoBase = Number(trabajador.sueldoBase);
   const sueldoDevengado = Math.round(sueldoBase * factor);
 
-  // Valor hora según fórmula legal chilena: sueldo / (jornada_semanal × 30/7)
-  const horasMes = Number(trabajador.jornadaHoras) * 30 / 7;
+  // Valor hora según Art. 55 CT: sueldo / (jornada_semanal × 52/12)
+  const horasMes = Number(trabajador.jornadaHoras) * 52 / 12;
   const valorHora = sueldoBase / horasMes;
   const montoHorasExtra = Math.round(horasExtra * valorHora * 1.5);
   // Horas extras en feriado: recargo 100% (valor hora × 2.0)

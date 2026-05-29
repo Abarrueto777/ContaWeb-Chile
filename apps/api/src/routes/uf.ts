@@ -107,6 +107,18 @@ router.post('/sync-previred', async (_req, res, next) => {
     const anio = now.getFullYear();
     const mes  = now.getMonth() + 1;
     const indicadores = await scrapePreviredIndicadores();
+
+    // Solo guarda si el scraper encontró algo real (no solo defaults)
+    const scraperEncontro = indicadores._encontrado.length > 0;
+    if (!scraperEncontro) {
+      // Devuelve advertencias sin guardar datos incorrectos
+      return void res.status(422).json({
+        error: indicadores._advertencias.join(' '),
+        _advertencias: indicadores._advertencias,
+        _encontrado: [],
+      });
+    }
+
     const valor = await prisma.valorUFUTM.upsert({
       where: { anio_mes: { anio, mes } },
       create: {
@@ -141,7 +153,11 @@ router.post('/sync-previred', async (_req, res, next) => {
         ...(indicadores.imm && { imm: indicadores.imm }),
       },
     });
-    res.json({ data: { ...valor, _scraped: indicadores } });
+    res.json({
+      data: { ...valor, _scraped: indicadores },
+      _encontrado: indicadores._encontrado,
+      _advertencias: indicadores._advertencias,
+    });
   } catch (err) {
     next(err);
   }

@@ -170,6 +170,7 @@ export default function Configuracion() {
     try {
       const res = await syncPrevired.mutateAsync();
       const d = res.data;
+      const encontrado = (res as unknown as { _encontrado?: string[] })._encontrado ?? [];
       setUFValue('afpCapital',   Number(d.afpCapital));
       setUFValue('afpCuprum',    Number(d.afpCuprum));
       setUFValue('afpHabitat',   Number(d.afpHabitat));
@@ -181,9 +182,20 @@ export default function Configuracion() {
       if (d.utm) setUFValue('utm', Number(d.utm));
       if (d.imm) setUFValue('imm', Number(d.imm));
       const ts = d.previredSyncAt ? new Date(d.previredSyncAt).toLocaleString('es-CL') : '';
-      setPreviredMsg(`Sincronizado ${ts}`);
-    } catch {
-      setPreviredMsg('Error al conectar con previred.com');
+      if (encontrado.length > 0) {
+        setPreviredMsg(`✓ Sincronizado ${ts} — encontrado: ${encontrado.join(', ')}`);
+      } else {
+        setPreviredMsg(`✓ Sincronizado ${ts}`);
+      }
+    } catch (e: unknown) {
+      const errData = (e as { response?: { data?: { error?: string; _advertencias?: string[] } } })?.response?.data;
+      if (errData?._advertencias?.length) {
+        setPreviredMsg(`⚠ ${errData._advertencias.join(' ')}`);
+      } else if (errData?.error) {
+        setPreviredMsg(`⚠ ${errData.error}`);
+      } else {
+        setPreviredMsg('⚠ No se pudo conectar con previred.com. Ingresá las tasas manualmente y guardá.');
+      }
     }
   }
 

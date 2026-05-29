@@ -72,13 +72,25 @@ function fetchMindicador(): Promise<{ uf: number; utm: number; imm: number }> {
   });
 }
 
+// UF = último día del mes (norma liquidaciones). UTM e IMM desde /api general.
+async function fetchIndicadoresMes(anio: number, mes: number): Promise<{ uf: number; utm: number; imm: number }> {
+  const lastDay = new Date(anio, mes, 0).getDate();
+  const [ufResult, generalResult] = await Promise.allSettled([
+    fetchUFDia(lastDay, mes, anio),
+    fetchMindicador(),
+  ]);
+  const uf  = ufResult.status === 'fulfilled' ? (ufResult.value ?? 0) : 0;
+  const gen = generalResult.status === 'fulfilled' ? generalResult.value : { uf: 0, utm: 0, imm: 0 };
+  return { uf: uf || gen.uf, utm: gen.utm, imm: gen.imm };
+}
+
 export async function syncValoresMes(anio: number, mes: number) {
   const existente = await prisma.valorUFUTM.findUnique({
     where: { anio_mes: { anio, mes } },
   });
-  if (existente) return existente;
+  if (existente?.uf && Number(existente.uf) > 0) return existente;
 
-  const { uf, utm, imm } = await fetchMindicador();
+  const { uf, utm, imm } = await fetchIndicadoresMes(anio, mes);
   if (!uf) throw new Error('No se pudo obtener UF de mindicador.cl');
 
   return prisma.valorUFUTM.upsert({
@@ -89,7 +101,7 @@ export async function syncValoresMes(anio: number, mes: number) {
 }
 
 export async function forzarSyncValoresMes(anio: number, mes: number) {
-  const { uf, utm, imm } = await fetchMindicador();
+  const { uf, utm, imm } = await fetchIndicadoresMes(anio, mes);
   if (!uf) throw new Error('No se pudo obtener UF de mindicador.cl');
 
   return prisma.valorUFUTM.upsert({
