@@ -12,9 +12,17 @@ export function errorHandler(
   _next: NextFunction
 ): void {
   const status = err.status ?? 500;
+  const isProd = process.env['NODE_ENV'] === 'production';
+
+  // En producción nunca exponer mensajes de errores internos
+  const message = status >= 500 && isProd
+    ? 'Error interno del servidor'
+    : err.message || 'Error interno del servidor';
+
   res.status(status).json({
-    error: err.message || 'Error interno del servidor',
+    error: message,
     ...(err.details ? { details: err.details } : {}),
+    ...(!isProd && status >= 500 && err.stack ? { stack: err.stack } : {}),
   });
 }
 

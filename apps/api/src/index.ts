@@ -21,6 +21,9 @@ if (!process.env['JWT_SECRET'] || process.env['JWT_SECRET'].length < 32) {
 const app = express();
 const PORT = process.env['API_PORT'] ?? 3001;
 
+// Necesario para que rate-limit y req.ip funcionen bien detrás de Railway/nginx
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(cors({
   origin: process.env['CORS_ORIGIN']

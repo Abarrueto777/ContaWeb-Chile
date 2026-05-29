@@ -27,7 +27,7 @@ router.post('/registro', requireAuth, validate(registroSchema), async (req, res,
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, rol: usuario.rol },
       process.env.JWT_SECRET!,
-      { expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as unknown as Exclude<jwt.SignOptions['expiresIn'], undefined> }
+      { expiresIn: (process.env['JWT_EXPIRES_IN'] ?? (process.env['NODE_ENV'] === 'production' ? '8h' : '7d')) as unknown as Exclude<jwt.SignOptions['expiresIn'], undefined> }
     );
 
     res.status(201).json({ data: { token, usuario } });
@@ -49,7 +49,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, rol: usuario.rol },
       process.env.JWT_SECRET!,
-      { expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as unknown as Exclude<jwt.SignOptions['expiresIn'], undefined> }
+      { expiresIn: (process.env['JWT_EXPIRES_IN'] ?? (process.env['NODE_ENV'] === 'production' ? '8h' : '7d')) as unknown as Exclude<jwt.SignOptions['expiresIn'], undefined> }
     );
 
     const { password: _, ...usuarioPublico } = usuario;

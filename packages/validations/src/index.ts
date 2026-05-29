@@ -29,15 +29,20 @@ export const rutSchema = z
   .max(12, 'RUT demasiado largo')
   .refine(validarRut, 'RUT chileno inválido');
 
+const passwordSchema = z.string()
+  .min(8, 'Mínimo 8 caracteres')
+  .regex(/[A-Z]/, 'Debe contener al menos una mayúscula')
+  .regex(/[0-9]/, 'Debe contener al menos un número');
+
 export const loginSchema = z.object({
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password: z.string().min(1, 'Contraseña requerida'),
 });
 
 export const registroSchema = z.object({
   email: z.string().email('Email inválido'),
   nombre: z.string().min(2, 'Nombre demasiado corto'),
-  password: z.string().min(8, 'Mínimo 8 caracteres'),
+  password: passwordSchema,
   rol: z.enum(['ADMIN', 'CONTADOR', 'VISOR']).optional().default('CONTADOR'),
 });
 
