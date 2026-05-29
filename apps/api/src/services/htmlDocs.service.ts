@@ -136,6 +136,7 @@ export interface LiquidacionDoc {
   conectividad?: number;
   asigFamiliar?: number;
   anticipo: number;
+  uf?: number | undefined;
   montoHorasDescuento: number;
   otrosDescuentos: number;
   diasSinGoce?: number;
@@ -1132,6 +1133,7 @@ export function generarLiquidacionPdf(
       <div class="liq-field"><span class="liq-label">AFP</span><span class="liq-val">${trabajador.afp}</span></div>
       <div class="liq-field"><span class="liq-label">Salud</span><span class="liq-val">${trabajador.salud}</span></div>
       <div class="liq-field"><span class="liq-label">Contrato</span><span class="liq-val">${trabajador.tipoContrato}</span></div>
+      ${liq.uf ? `<div class="liq-field"><span class="liq-label">UF del período</span><span class="liq-val">$${liq.uf.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>` : ''}
     </div>
 
     <!-- CUERPO: HABERES + DESCUENTOS -->

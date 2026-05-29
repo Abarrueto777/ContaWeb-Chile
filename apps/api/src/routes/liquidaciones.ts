@@ -257,7 +257,9 @@ router.get('/lre', async (req, res, next) => {
     const rows = liquidaciones.map((liq) => {
       const t = liq.trabajador;
       const imponible = Math.round(Number(liq.imponible));
-      const noImponible = Math.round(Number(liq.movilizacion)) + Math.round(Number(liq.colacion));
+      const noImponible = Math.round(Number(liq.movilizacion)) + Math.round(Number(liq.colacion))
+        + Math.round(Number((liq as typeof liq & { conectividad?: unknown }).conectividad ?? 0))
+        + Math.round(Number((liq as typeof liq & { asigFamiliar?: unknown }).asigFamiliar ?? 0));
       const cotizAfp = Math.round(Number(liq.cotizAfp));
       const cotizSalud = Math.round(Number(liq.cotizSalud));
       const cotizCes = Math.round(Number(liq.cotizCes));
@@ -360,11 +362,11 @@ router.get('/lre', async (req, res, next) => {
         /* 2303 */ '0',
         /* 2304 */ '0',
         /* 2305 */ '0',
-        /* 2311 */ '0',
+        /* 2311 */ Math.round(Number((liq as typeof liq & { asigFamiliar?: unknown }).asigFamiliar ?? 0)),
         /* 2306 */ '0',
         /* 2307 */ '0',
         /* 2308 */ '0',
-        /* 2309 */ '0',
+        /* 2309 */ Math.round(Number((liq as typeof liq & { conectividad?: unknown }).conectividad ?? 0)),
         /* 2347 */ '0',
         /* 2310 */ '0',
         /* 2312 */ '0',
@@ -569,6 +571,10 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       prisma.empresa.findUnique({ where: { id: empresaId } }),
     ]);
     if (!liq || !empresa) return void res.status(404).json({ error: 'No encontrado' });
+    const valorUF = await prisma.valorUFUTM.findFirst({
+      where: { anio: liq.anio, mes: liq.mes },
+      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
+    });
 
     const t = liq.trabajador;
     const empresaDoc: EmpresaDoc = {
@@ -620,6 +626,7 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       conectividad: Number((liq as typeof liq & { conectividad?: unknown }).conectividad ?? 0),
       asigFamiliar: Number((liq as typeof liq & { asigFamiliar?: unknown }).asigFamiliar ?? 0),
       anticipo: Number(liq.anticipo),
+      uf: valorUF ? Number(valorUF.uf) : undefined,
       montoHorasDescuento,
       otrosDescuentos: Number(liq.otrosDescuentos),
       diasSinGoce: Number((liq as typeof liq & { diasSinGoce?: number | null }).diasSinGoce ?? 0),
