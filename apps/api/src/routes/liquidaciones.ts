@@ -722,4 +722,78 @@ router.delete('/:liquidacionId', async (req, res) => {
   }
 });
 
+router.post('/:liquidacionId/enviar-email', async (req, res) => {
+  try {
+    const { empresaId, liquidacionId } = req.params as { empresaId: string; liquidacionId: string };
+    const apiKey = process.env['RESEND_API_KEY'];
+    if (!apiKey) return void res.status(503).json({ error: 'Envío de correo no configurado (RESEND_API_KEY vacío)' });
+
+    const [liq, empresa] = await Promise.all([
+      prisma.liquidacion.findFirst({ where: { id: liquidacionId, empresaId }, include: { trabajador: true } }),
+      prisma.empresa.findUnique({ where: { id: empresaId } }),
+    ]);
+    if (!liq || !empresa) return void res.status(404).json({ error: 'No encontrado' });
+    const emailDest = (req.body as { email?: string }).email || (liq.trabajador as typeof liq.trabajador & { email?: string | null }).email;
+    if (!emailDest) return void res.status(400).json({ error: 'El trabajador no tiene correo registrado' });
+
+    const [valorUF, ufPeriodo] = await Promise.all([
+      prisma.valorUFUTM.findFirst({ where: { anio: liq.anio, mes: liq.mes }, orderBy: [{ anio: 'desc' }, { mes: 'desc' }] }),
+      getUFLiquidacion(liq.anio, liq.mes),
+    ]);
+    const t = liq.trabajador;
+    const imponibleNum = Number(liq.imponible);
+    const tasaAfp = imponibleNum > 0 ? Math.round(Number(liq.cotizAfp) / imponibleNum * 10000) / 100 : undefined;
+    const trabDoc: TrabajadorDoc = {
+      nombre: t.nombre, rut: t.rut, cargo: t.cargo,
+      sueldoBase: Number(t.sueldoBase), fechaIngreso: t.fechaIngreso,
+      jornadaHoras: t.jornadaHoras, tipoContrato: t.tipoContrato,
+      afp: t.afp, salud: t.salud, pctSalud: Number(t.pctSalud),
+      tipoGratificacion: t.tipoGratificacion, tieneCes: t.tieneCes,
+      tieneMovilizacion: t.tieneMovilizacion, tieneColacion: t.tieneColacion,
+      tasaAfp, planIsapreUF: t.montoIsapre ? Number(t.montoIsapre) : undefined,
+    };
+    const empresaDoc: EmpresaDoc = {
+      razonSocial: empresa.razonSocial, rut: empresa.rut,
+      giro: empresa.giro, direccion: empresa.direccion,
+    };
+    const horasMes = t.jornadaHoras * 30 / 7;
+    const montoHorasDescuento = Math.round(Number(liq.horasDescuento) * (Number(t.sueldoBase) / horasMes));
+    const liqDoc = {
+      anio: liq.anio, mes: liq.mes, diasTrabajados: Number(liq.diasTrabajados ?? 30),
+      sueldoBase: Number(liq.sueldoBase), horasExtra: Number(liq.horasExtra),
+      cantHorasExtra: Number(liq.cantHorasExtra),
+      horasExtraFeriado: Number((liq as typeof liq & { horasExtraFeriado?: number | null }).horasExtraFeriado ?? 0),
+      cantHorasExtraFeriado: Number((liq as typeof liq & { cantHorasExtraFeriado?: number | null }).cantHorasExtraFeriado ?? 0),
+      bono: Number(liq.bono), gratificacion: Number(liq.gratificacion),
+      imponible: Number(liq.imponible), cotizAfp: Number(liq.cotizAfp),
+      cotizSis: Number(liq.cotizSis), cotizSalud: Number(liq.cotizSalud),
+      cotizCes: Number(liq.cotizCes), impuestoUnico: Number(liq.impuestoUnico),
+      movilizacion: Number(liq.movilizacion), colacion: Number(liq.colacion),
+      conectividad: Number((liq as typeof liq & { conectividad?: unknown }).conectividad ?? 0),
+      asigFamiliar: Number((liq as typeof liq & { asigFamiliar?: unknown }).asigFamiliar ?? 0),
+      anticipo: Number(liq.anticipo), uf: ufPeriodo,
+      horasDescuento: Number(liq.horasDescuento), montoHorasDescuento,
+      otrosDescuentos: Number(liq.otrosDescuentos),
+      diasSinGoce: Number((liq as typeof liq & { diasSinGoce?: number | null }).diasSinGoce ?? 0),
+      montoSinGoce: Number((liq as typeof liq & { montoSinGoce?: number | null }).montoSinGoce ?? 0),
+      liquido: Number(liq.liquido), costoEmpleador: Number(liq.costoEmpleador),
+    };
+    const html = generarLiquidacionPdf(empresaDoc, trabDoc, liqDoc);
+
+    const { Resend } = await import('resend');
+    const resend = new Resend(apiKey);
+    const mesLabel = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][liq.mes - 1] ?? String(liq.mes);
+    await resend.emails.send({
+      from: `${empresa.razonSocial} <noreply@contaweb.cl>`,
+      to: emailDest,
+      subject: `Liquidación de Remuneraciones ${mesLabel} ${liq.anio} — ${empresa.razonSocial}`,
+      html,
+    });
+    res.json({ message: `Liquidación enviada a ${emailDest}` });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Error desconocido';
+    res.status(500).json({ error: `Error al enviar correo: ${msg}` });
+  }
+});
+
 export default router;

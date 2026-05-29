@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList, AlertTriangle } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList, AlertTriangle, Mail } from 'lucide-react';
 import api from '@/lib/api';
 import { REGIONES_DT, COMUNAS_DT } from '@/lib/dt-geo';
 import { trabajadorSchema, finiquitoInputSchema, vacacionSchema, permisoSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput, type VacacionInput, type PermisoInput } from '@contaweb/validations';
@@ -315,7 +315,25 @@ export default function RRHH() {
     if (!empresa) return;
     const res = await api.get(`/api/empresas/${empresa.id}/liquidaciones/${l.id}/pdf`, { responseType: 'text' });
     const blob = new Blob([res.data as string], { type: 'text/html; charset=utf-8' });
-    window.open(URL.createObjectURL(blob), '_blank');
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }
+
+  async function enviarEmailLiquidacion(l: Liquidacion, t: Trabajador) {
+    if (!empresa) return;
+    const emailTrab = (t as typeof t & { email?: string | null }).email;
+    const emailDest = emailTrab || window.prompt(`Correo de ${t.nombre}:`, '') || '';
+    if (!emailDest.trim()) return;
+    setEnviandoEmail(prev => new Set(prev).add(l.id));
+    try {
+      await api.post(`/api/empresas/${empresa.id}/liquidaciones/${l.id}/enviar-email`, { email: emailDest });
+      alert(`Liquidación enviada a ${emailDest}`);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al enviar';
+      alert(msg);
+    } finally {
+      setEnviandoEmail(prev => { const s = new Set(prev); s.delete(l.id); return s; });
+    }
   }
 
   async function onSubmitFiniquito(d: FiniquitoInput) {
@@ -594,6 +612,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
   }
 
   const [sinGoceDesync, setSinGoceDesync] = useState<Set<string>>(new Set());
+  const [enviandoEmail, setEnviandoEmail] = useState<Set<string>>(new Set());
 
   // reset movimientos cuando cambia el período
   useEffect(() => { setMovs({}); setDirty(new Set()); setSinGoceDesync(new Set()); }, [anio, mes]);
@@ -1086,12 +1105,12 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Días</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Anticipo $</th>
                     <th className="px-1.5 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Otros Desc. $</th>
-                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden xl:table-cell whitespace-nowrap">Mov.</th>
-                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden xl:table-cell whitespace-nowrap">Col.</th>
-                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell whitespace-nowrap">Imponible</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden 2xl:table-cell whitespace-nowrap">Mov.</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden 2xl:table-cell whitespace-nowrap">Col.</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden xl:table-cell whitespace-nowrap">Imponible</th>
                     <th className="text-right px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Líquido</th>
-                    <th className="px-2 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden sm:table-cell">Estado</th>
-                    <th className="w-28 px-1.5 py-2.5" />
+                    <th className="px-2 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">Estado</th>
+                    <th className="sticky right-0 bg-muted/50 px-1.5 py-2.5 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 w-[100px]" />
                   </tr></thead>
                   <tbody>
                     {todosLosTrabajadores.filter(t => t.activo).map(t => {
@@ -1159,24 +1178,24 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                               onChange={e => updateMov(t.id, 'otrosDescuentos', Number(e.target.value))}
                               className="w-20 h-7 text-xs text-right px-1 text-destructive" />
                           </td>
-                          <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground hidden xl:table-cell">
+                          <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground hidden 2xl:table-cell">
                             {t.tieneMovilizacion ? clp(Math.round(Number(t.montoMovilizacion ?? 0) * ((movs[t.id]?.diasTrabajados ?? 30) / 30))) : <span className="opacity-40">—</span>}
                           </td>
-                          <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground hidden xl:table-cell">
+                          <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground hidden 2xl:table-cell">
                             {t.tieneColacion ? clp(Math.round(Number(t.montoColacion ?? 0) * ((movs[t.id]?.diasTrabajados ?? 30) / 30))) : <span className="opacity-40">—</span>}
                           </td>
-                          <td className="px-3 py-2 text-right font-mono text-sm hidden lg:table-cell">
+                          <td className="px-3 py-2 text-right font-mono text-sm hidden xl:table-cell">
                             {liq ? clp(liq.imponible) : <span className="text-muted-foreground">—</span>}
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-sm font-semibold">
                             {liq ? clp(liq.liquido) : <span className="text-muted-foreground">—</span>}
                           </td>
-                          <td className="px-2 py-2 hidden sm:table-cell">
+                          <td className="px-2 py-2 hidden lg:table-cell">
                             {liq
                               ? <Badge variant={liq.pagada ? 'default' : 'secondary'} className="text-xs">{liq.pagada ? 'Pagada' : 'Calculada'}</Badge>
                               : <span className="text-xs text-muted-foreground">—</span>}
                           </td>
-                          <td className="px-1.5 py-1.5">
+                          <td className="sticky right-0 bg-card px-1 py-1.5 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant={isDirty ? 'default' : 'outline'} className="h-7 px-2"
                                 onClick={() => calcularUno(t.id, liq)} disabled={isProc} title="Calcular">
@@ -1190,8 +1209,13 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                                   </Button>
                                 )}
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary"
-                                  onClick={() => abrirPdfLiquidacion(liq)} title="Ver liquidación">
+                                  onClick={() => abrirPdfLiquidacion(liq)} title="Ver e Imprimir liquidación">
                                   <Printer className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-blue-600"
+                                  onClick={() => enviarEmailLiquidacion(liq, t)} title="Enviar por correo"
+                                  disabled={enviandoEmail.has(liq.id)}>
+                                  {enviandoEmail.has(liq.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
                                 </Button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                   onClick={() => deleteLiq.mutate(liq.id)} title="Eliminar">

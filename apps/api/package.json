@@ -24,6 +24,7 @@
     "iconv-lite": "^0.7.2",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^4.2.1",
+    "resend": "^6.12.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {

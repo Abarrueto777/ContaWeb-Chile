@@ -1359,10 +1359,18 @@ export function generarLiquidacionPdf(
   .dfn-firma-sub { font-size: 7.5pt; color: #555; margin-top: 1px; }
 
   .liq-separator { border: none; border-top: 2px dashed #999; margin: 10px 0; }
-  @media print { .liq-page { padding: 6mm 10mm; } .liq-separator { page-break-before: always; border: none; } }
+  @media print { .liq-page { padding: 6mm 10mm; } .liq-separator { page-break-before: always; border: none; } .dfn-print-bar { display: none; } }
+  .dfn-print-bar { position: fixed; top: 0; left: 0; right: 0; background: #1a1a2e; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 8px 20px; z-index: 100; font-size: 10pt; }
+  .dfn-print-bar button { background: #fff; color: #1a1a2e; border: none; padding: 6px 18px; font-size: 10pt; font-weight: bold; border-radius: 4px; cursor: pointer; }
+  .dfn-print-bar button:hover { background: #e8e8e8; }
+  body { padding-top: 42px; }
 </style>
 </head>
 <body>
+<div class="dfn-print-bar">
+  <span>Liquidación ${mesLabel.toUpperCase()} ${liq.anio} — ${trabajador.nombre}</span>
+  <button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+</div>
 ${copia('COPIA EMPLEADOR')}
 <hr class="liq-separator" />
 ${copia('COPIA TRABAJADOR')}
