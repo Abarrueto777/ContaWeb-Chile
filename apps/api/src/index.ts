@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cron from 'node-cron';
+import path from 'path';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middlewares/errorHandler';
 import authRoutes from './routes/auth';
@@ -52,11 +53,25 @@ const apiLimiter = rateLimit({
 
 app.use('/api/auth/login', loginLimiter);
 app.use('/api', apiLimiter);
+
+// Health check — usado por Railway para verificar que el servicio levantó
+app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/empresas', empresasRoutes);
 app.use('/api/uf', ufRoutes);
 
 app.use(errorHandler);
+
+// Servir el frontend React en producción (misma instancia que la API)
+if (process.env['NODE_ENV'] === 'production') {
+  const webDist = path.join(__dirname, '../../web/dist');
+  app.use(express.static(webDist));
+  // SPA fallback — rutas client-side devuelven index.html
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(webDist, 'index.html'));
+  });
+}
 
 async function syncPreviredMesActual() {
   const now = new Date();

@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+// En producción (mismo dominio), baseURL vacío usa URLs relativas (/api/...)
+// En desarrollo, apunta al servidor local
 const api = axios.create({
-  baseURL: import.meta.env['VITE_API_URL'] ?? 'http://localhost:3001',
+  baseURL: import.meta.env['VITE_API_URL'] ?? (import.meta.env.PROD ? '' : 'http://localhost:3001'),
 });
 
 api.interceptors.request.use((config) => {
