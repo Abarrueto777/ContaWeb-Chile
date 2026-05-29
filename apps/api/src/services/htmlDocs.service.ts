@@ -1077,8 +1077,8 @@ export function generarLiquidacionPdf(
   const totalImponible = liq.imponible;
   const totalNoImponible = liq.movilizacion + liq.colacion + (liq.conectividad ?? 0) + (liq.asigFamiliar ?? 0);
   const totalHaberes = totalImponible + totalNoImponible;
-  const subtotalLegal = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico;
-  const subtotalOtros = liq.anticipo + liq.otrosDescuentos;
+  const subtotalLegal = liq.cotizAfp + liq.cotizSalud + liq.cotizCes;  // AFP + Salud + CES (sin IU)
+  const subtotalOtros = liq.impuestoUnico + liq.anticipo + liq.otrosDescuentos; // IU + Anticipo + Otros
   const totalDescuentos = subtotalLegal + subtotalOtros;
 
   const diasEfectivos = liq.diasTrabajados - (liq.diasSinGoce ?? 0);
