@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cron from 'node-cron';
 import path from 'path';
+import { execSync } from 'child_process';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middlewares/errorHandler';
 import authRoutes from './routes/auth';
@@ -104,6 +105,17 @@ async function syncPreviredMesActual() {
     },
   });
   return indicadores;
+}
+
+// Correr migraciones antes de arrancar (solo en producción)
+if (process.env['NODE_ENV'] === 'production') {
+  try {
+    console.log('Corriendo migraciones...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit', cwd: __dirname + '/..' });
+    console.log('✓ Migraciones aplicadas');
+  } catch (err) {
+    console.error('⚠ Error en migraciones (continuando):', err);
+  }
 }
 
 app.listen(PORT, () => {
