@@ -20,30 +20,26 @@ function fetchUFDia(dia: number, mes: number, anio: number): Promise<number | nu
 }
 
 export async function getUFLiquidacion(anio: number, mes: number): Promise<number> {
-  // 1 — Registro mensual en DB (debe ser el último día del mes si el sync fue correcto)
+  // La UF se publica con anticipación por la CMF — siempre intentar el último día del mes
+  const lastDay = new Date(anio, mes, 0).getDate();
+  const uf = await fetchUFDia(lastDay, mes, anio);
+  if (uf) {
+    // Actualizar DB con el valor correcto
+    await prisma.valorUFUTM.upsert({
+      where: { anio_mes: { anio, mes } },
+      create: { anio, mes, uf, utm: 0, imm: 0 },
+      update: { uf },
+    }).catch(() => null);
+    return uf;
+  }
+
+  // Fallback: DB
   const row = await prisma.valorUFUTM.findFirst({
     where: { anio, mes },
-    orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
   });
   if (row?.uf && Number(row.uf) > 0) return Number(row.uf);
 
-  // 2 — Para meses ya terminados: fetch desde mindicador.cl (último día del mes)
-  const lastDay = new Date(anio, mes, 0).getDate();
-  const hoy = new Date();
-  if (new Date(anio, mes - 1, lastDay) <= hoy) {
-    const uf = await fetchUFDia(lastDay, mes, anio);
-    if (uf) {
-      // Guardar en DB para evitar llamadas futuras
-      await prisma.valorUFUTM.upsert({
-        where: { anio_mes: { anio, mes } },
-        create: { anio, mes, uf, utm: 0, imm: 0 },
-        update: { uf },
-      }).catch(() => null);
-      return uf;
-    }
-  }
-
-  // 3 — Fallback al más reciente disponible
+  // Fallback final: más reciente disponible
   const latest = await prisma.valorUFUTM.findFirst({
     where: { uf: { gt: 0 } },
     orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
