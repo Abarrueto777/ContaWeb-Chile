@@ -1,3 +1,8 @@
+[variables]
+# DATABASE_URL ficticio para que prisma generate compile sin error.
+# Railway reemplaza esto con el valor real en runtime.
+DATABASE_URL = "postgresql://dummy:dummy@localhost:5432/dummy"
+
 [phases.build]
 cmds = [
   "pnpm --filter @contaweb/shared-types build",
