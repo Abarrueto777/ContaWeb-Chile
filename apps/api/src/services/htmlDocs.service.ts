@@ -112,6 +112,8 @@ export interface TrabajadorDoc {
   nacionalidad?: string | null;
   region?: string | null;
   comuna?: string | null;
+  tasaAfp?: number | undefined;
+  planIsapreUF?: number | undefined;
 }
 
 export interface LiquidacionDoc {
@@ -1114,125 +1116,200 @@ export function generarLiquidacionPdf(
     ...(liq.otrosDescuentos > 0 ? [`<tr><td class="liq-concepto">Otros Descuentos</td><td class="liq-num">${clp(liq.otrosDescuentos)}</td></tr>`] : []),
   ].join('');
 
+  const ufStr = liq.uf ? liq.uf.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+  const tasaAfpStr = trabajador.tasaAfp != null ? String(trabajador.tasaAfp) : '—';
+  const planUFStr = trabajador.planIsapreUF != null ? String(trabajador.planIsapreUF) : '—';
+  const fi = typeof trabajador.fechaIngreso === 'string'
+    ? trabajador.fechaIngreso.slice(0, 10)
+    : trabajador.fechaIngreso instanceof Date
+      ? trabajador.fechaIngreso.toISOString().slice(0, 10)
+      : '—';
+
   const copia = (titulo: string) => `
   <div class="liq-page">
-    <!-- ENCABEZADO -->
-    <div class="liq-header">
-      <div class="liq-empresa">
-        <div class="liq-empresa-nombre">${empresa.razonSocial}</div>
-        <div class="liq-empresa-datos">RUT: ${empresa.rut}</div>
-        ${empresa.giro ? `<div class="liq-empresa-datos">Giro: ${empresa.giro}</div>` : ''}
-        ${empresa.direccion ? `<div class="liq-empresa-datos">${empresa.direccion}</div>` : ''}
+    <!-- ENCABEZADO EMPRESA -->
+    <div class="dfn-top">
+      <div class="dfn-top-left">
+        <div>${empresa.rut}</div>
+        ${empresa.direccion ? `<div>${empresa.direccion}</div>` : ''}
       </div>
-      <div class="liq-titulo-bloque">
-        <div class="liq-titulo">LIQUIDACIÓN DE REMUNERACIONES</div>
-        <div class="liq-periodo">${mesLabel.toUpperCase()} ${liq.anio}</div>
-        <div class="liq-copia-label">${titulo}</div>
-      </div>
+      <div class="dfn-top-right">${empresa.razonSocial}</div>
     </div>
+    <div class="dfn-titulo-row">
+      <span class="dfn-titulo">LIQUIDACION DE REMUNERACIONES</span>
+      <span class="dfn-periodo">${mesLabel.toUpperCase()}</span>
+      <span class="dfn-periodo">${liq.anio}</span>
+      <span class="dfn-copia">${titulo}</span>
+    </div>
+    <hr class="dfn-hr" />
 
     <!-- DATOS TRABAJADOR -->
-    <div class="liq-worker-grid">
-      <div class="liq-field"><span class="liq-label">Trabajador/a</span><span class="liq-val">${trabajador.nombre}</span></div>
-      <div class="liq-field"><span class="liq-label">RUT</span><span class="liq-val">${trabajador.rut}</span></div>
-      <div class="liq-field"><span class="liq-label">Cargo</span><span class="liq-val">${trabajador.cargo ?? '—'}</span></div>
-      <div class="liq-field"><span class="liq-label">Días Trabajados</span><span class="liq-val">${diasEfectivos}${(liq.diasSinGoce ?? 0) > 0 ? ` <span style="color:#e55;font-size:8.5pt">(${liq.diasSinGoce} sin goce)</span>` : ''}</span></div>
-      <div class="liq-field"><span class="liq-label">AFP</span><span class="liq-val">${trabajador.afp}</span></div>
-      <div class="liq-field"><span class="liq-label">Salud</span><span class="liq-val">${trabajador.salud}</span></div>
-      <div class="liq-field"><span class="liq-label">Contrato</span><span class="liq-val">${trabajador.tipoContrato}</span></div>
-      ${liq.uf ? `<div class="liq-field"><span class="liq-label">UF del período</span><span class="liq-val">$${liq.uf.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>` : ''}
-    </div>
+    <table class="dfn-worker">
+      <tr>
+        <td class="dfn-wlbl">NOMBRE:</td><td class="dfn-wval" colspan="3"><strong>${trabajador.nombre}</strong></td>
+      </tr>
+      <tr>
+        <td class="dfn-wlbl">R.U.T:</td><td class="dfn-wval">${trabajador.rut}</td>
+        <td class="dfn-wlbl">SUCURSAL:</td><td class="dfn-wval">${empresa.razonSocial}</td>
+      </tr>
+      <tr>
+        <td class="dfn-wlbl">CARGO:</td><td class="dfn-wval">${trabajador.cargo ?? '—'}</td>
+        <td class="dfn-wlbl">FECHA INGRESO:</td><td class="dfn-wval">${fi}</td>
+      </tr>
+      <tr>
+        <td class="dfn-wlbl">D/TRABAJADOS:</td><td class="dfn-wval">${diasEfectivos}${(liq.diasSinGoce ?? 0) > 0 ? ` (${liq.diasSinGoce} sin goce)` : ''}</td>
+        <td class="dfn-wlbl">${trabajador.salud}</td><td class="dfn-wval">${planUFStr}</td>
+      </tr>
+      <tr>
+        <td class="dfn-wlbl">S.BASE CONTRATO:</td><td class="dfn-wval">${trabajador.sueldoBase.toLocaleString('es-CL')}</td>
+        <td class="dfn-wlbl">AFP ${trabajador.afp}:</td><td class="dfn-wval">${tasaAfpStr}</td>
+      </tr>
+      <tr>
+        <td class="dfn-wlbl">VALOR UF:</td><td class="dfn-wval">${ufStr}</td>
+        <td></td><td></td>
+      </tr>
+    </table>
+    <hr class="dfn-hr" />
 
     <!-- CUERPO: HABERES + DESCUENTOS -->
-    <div class="liq-body">
-      <!-- HABERES -->
-      <div class="liq-section">
-        <table class="liq-table">
-          <thead>
-            <tr class="liq-th-row">
-              <th class="liq-th liq-th-concepto">HABERES</th>
-              <th class="liq-th liq-th-num">Monto</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="liq-section-label"><td colspan="2">Haberes Imponibles</td></tr>
-            ${imponiblesRows}
-            <tr class="liq-subtotal">
-              <td class="liq-concepto">Subtotal Imponible</td>
-              <td class="liq-num">${clp(totalImponible)}</td>
-            </tr>
-            <tr class="liq-section-label"><td colspan="2">Haberes No Imponibles</td></tr>
-            ${noImponiblesRows || '<tr><td class="liq-concepto liq-empty" colspan="2">— sin haberes no imponibles —</td></tr>'}
-            <tr class="liq-subtotal">
-              <td class="liq-concepto">Subtotal No Imponible</td>
-              <td class="liq-num">${clp(totalNoImponible)}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="liq-total">
-              <td class="liq-concepto">TOTAL HABERES</td>
-              <td class="liq-num">${clp(totalHaberes)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <!-- DESCUENTOS -->
-      <div class="liq-section">
-        <table class="liq-table">
-          <thead>
-            <tr class="liq-th-row">
-              <th class="liq-th liq-th-concepto">DESCUENTOS</th>
-              <th class="liq-th liq-th-num">Monto</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="liq-section-label"><td colspan="2">Descuentos Legales</td></tr>
-            ${descLegalRows}
-            <tr class="liq-subtotal">
-              <td class="liq-concepto">Subtotal Descuentos Legales</td>
-              <td class="liq-num">${clp(subtotalLegal)}</td>
-            </tr>
-            ${subtotalOtros > 0 ? `
-            <tr class="liq-section-label"><td colspan="2">Otros Descuentos</td></tr>
-            ${descOtrosRows}
-            <tr class="liq-subtotal">
-              <td class="liq-concepto">Subtotal Otros Descuentos</td>
-              <td class="liq-num">${clp(subtotalOtros)}</td>
-            </tr>` : ''}
-          </tbody>
-          <tfoot>
-            <tr class="liq-total">
-              <td class="liq-concepto">TOTAL DESCUENTOS</td>
-              <td class="liq-num">${clp(totalDescuentos)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-
-    <!-- LÍQUIDO -->
-    <div class="liq-liquido-box">
-      <div class="liq-liquido-label">LÍQUIDO A PAGAR</div>
-      <div class="liq-liquido-monto">${clp(liq.liquido)}</div>
-    </div>
-    <div class="liq-palabras">SON: ${numToWords(liq.liquido)} PESOS</div>
+    <table class="dfn-body">
+      <thead>
+        <tr>
+          <th class="dfn-th" colspan="2">DETALLE DE HABERES</th>
+          <th class="dfn-th" colspan="2">DETALLE DE DESCUENTOS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Sueldo Base -->
+        <tr>
+          <td class="dfn-lbl">SUELDO BASE.:</td>
+          <td class="dfn-num">${liq.sueldoBase.toLocaleString('es-CL')}</td>
+          <td class="dfn-lbl">T. FONDO PENSION</td>
+          <td class="dfn-num">${liq.cotizAfp.toLocaleString('es-CL')}</td>
+        </tr>
+        ${liq.montoHorasDescuento > 0 ? `<tr>
+          <td class="dfn-lbl dfn-desc">${liq.horasDescuento > 0 ? liq.horasDescuento.toFixed(2) : ''}  HORAS DESCUENTO:</td>
+          <td class="dfn-num dfn-desc">${liq.montoHorasDescuento.toLocaleString('es-CL')}</td>
+          <td class="dfn-lbl">APORTE SALUD</td>
+          <td class="dfn-num">${cotizSaludMandatoria.toLocaleString('es-CL')}</td>
+        </tr>` : `<tr>
+          <td colspan="2"></td>
+          <td class="dfn-lbl">APORTE SALUD</td>
+          <td class="dfn-num">${cotizSaludMandatoria.toLocaleString('es-CL')}</td>
+        </tr>`}
+        ${adicIsapre > 0 ? `<tr>
+          <td class="dfn-lbl">GRATIF. MENSUAL:</td>
+          <td class="dfn-num">${liq.gratificacion.toLocaleString('es-CL')}</td>
+          <td class="dfn-lbl">APORTE ADICIONAL DE SALUD</td>
+          <td class="dfn-num">${adicIsapre.toLocaleString('es-CL')}</td>
+        </tr>` : `<tr>
+          <td class="dfn-lbl">GRATIF. MENSUAL:</td>
+          <td class="dfn-num">${liq.gratificacion.toLocaleString('es-CL')}</td>
+          <td colspan="2"></td>
+        </tr>`}
+        ${liq.horasExtra > 0 ? `<tr>
+          <td class="dfn-lbl">HRS. EXTRA${liq.cantHorasExtra > 0 ? ` (${liq.cantHorasExtra} × 50%):` : ':'}</td>
+          <td class="dfn-num">${liq.horasExtra.toLocaleString('es-CL')}</td>
+          <td colspan="2"></td>
+        </tr>` : ''}
+        ${liq.horasExtraFeriado > 0 ? `<tr>
+          <td class="dfn-lbl">HRS. EXTRA FERIADO${liq.cantHorasExtraFeriado > 0 ? ` (${liq.cantHorasExtraFeriado} × 100%):` : ':'}</td>
+          <td class="dfn-num">${liq.horasExtraFeriado.toLocaleString('es-CL')}</td>
+          <td colspan="2"></td>
+        </tr>` : ''}
+        ${liq.bono > 0 ? `<tr>
+          <td class="dfn-lbl">BONO:</td>
+          <td class="dfn-num">${liq.bono.toLocaleString('es-CL')}</td>
+          <td colspan="2"></td>
+        </tr>` : ''}
+        <tr class="dfn-subtotal">
+          <td class="dfn-lbl">T. HAB. IMP. Y TRIBUT.</td>
+          <td class="dfn-num">${totalImponible.toLocaleString('es-CL')}</td>
+          <td class="dfn-lbl">AFC TRAB. 0.6</td>
+          <td class="dfn-num">${liq.cotizCes.toLocaleString('es-CL')}</td>
+        </tr>
+        <tr class="dfn-subtotal">
+          <td colspan="2"></td>
+          <td class="dfn-lbl"><strong>T. LEYES SOCIALES</strong></td>
+          <td class="dfn-num"><strong>${subtotalLegal.toLocaleString('es-CL')}</strong></td>
+        </tr>
+        <!-- No imponibles -->
+        ${liq.movilizacion > 0 ? `<tr>
+          <td class="dfn-lbl">T. MOVILIZACION</td>
+          <td class="dfn-num">${liq.movilizacion.toLocaleString('es-CL')}</td>
+          <td class="dfn-lbl">IMPUESTO UNICO</td>
+          <td class="dfn-num">${liq.impuestoUnico.toLocaleString('es-CL')}</td>
+        </tr>` : liq.impuestoUnico > 0 ? `<tr>
+          <td colspan="2"></td>
+          <td class="dfn-lbl">IMPUESTO UNICO</td>
+          <td class="dfn-num">${liq.impuestoUnico.toLocaleString('es-CL')}</td>
+        </tr>` : ''}
+        ${liq.colacion > 0 ? `<tr>
+          <td class="dfn-lbl">T. COLACION</td>
+          <td class="dfn-num">${liq.colacion.toLocaleString('es-CL')}</td>
+          <td class="dfn-lbl">ANTICIPO DE SUELDO</td>
+          <td class="dfn-num">${liq.anticipo > 0 ? liq.anticipo.toLocaleString('es-CL') : ''}</td>
+        </tr>` : liq.anticipo > 0 ? `<tr>
+          <td colspan="2"></td>
+          <td class="dfn-lbl">ANTICIPO DE SUELDO</td>
+          <td class="dfn-num">${liq.anticipo.toLocaleString('es-CL')}</td>
+        </tr>` : ''}
+        ${(liq.conectividad ?? 0) > 0 ? `<tr>
+          <td class="dfn-lbl">ASIG. CONECTIVIDAD</td>
+          <td class="dfn-num">${liq.conectividad!.toLocaleString('es-CL')}</td>
+          <td colspan="2"></td>
+        </tr>` : ''}
+        ${(liq.asigFamiliar ?? 0) > 0 ? `<tr>
+          <td class="dfn-lbl">ASIG. FAMILIAR</td>
+          <td class="dfn-num">${liq.asigFamiliar!.toLocaleString('es-CL')}</td>
+          <td colspan="2"></td>
+        </tr>` : ''}
+        ${liq.otrosDescuentos > 0 ? `<tr>
+          <td colspan="2"></td>
+          <td class="dfn-lbl">OTROS DESCUENTOS</td>
+          <td class="dfn-num">${liq.otrosDescuentos.toLocaleString('es-CL')}</td>
+        </tr>` : ''}
+        <tr class="dfn-subtotal">
+          <td class="dfn-lbl">T.HAB. N.IMP. Y N.TRIBUT.</td>
+          <td class="dfn-num">${totalNoImponible.toLocaleString('es-CL')}</td>
+          <td class="dfn-lbl"><strong>T. OTROS DESCUENTOS</strong></td>
+          <td class="dfn-num"><strong>${subtotalOtros.toLocaleString('es-CL')}</strong></td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr class="dfn-total-hab">
+          <td class="dfn-lbl">TOTAL HABERES</td>
+          <td class="dfn-num">${totalHaberes.toLocaleString('es-CL')}</td>
+          <td></td>
+          <td class="dfn-num">${totalDescuentos.toLocaleString('es-CL')}</td>
+        </tr>
+        <tr class="dfn-liquido-row">
+          <td colspan="2" class="dfn-lbl">LIQUIDO A PAGO: <strong>${liq.liquido.toLocaleString('es-CL')}</strong> &nbsp; ${numToWords(liq.liquido)}</td>
+          <td class="dfn-lbl">SOBREGIRO:</td>
+          <td class="dfn-num">0</td>
+        </tr>
+      </tfoot>
+    </table>
 
     <!-- RECIBO -->
-    <div class="liq-recibo">
-      <p class="liq-recibo-titulo">RECIBO — Art. 54 bis Código del Trabajo</p>
-      <p class="liq-recibo-texto">Yo, <strong>${trabajador.nombre}</strong>, RUT ${trabajador.rut}, declaro recibir conforme la suma de <strong>${clp(liq.liquido)}</strong> por concepto de remuneración correspondiente al mes de ${mesLabel} ${liq.anio}.</p>
-      <div class="liq-recibo-firmas">
-        <div class="liq-firma-bloque">
-          <div class="liq-firma-linea"></div>
-          <div class="liq-firma-nombre">${trabajador.nombre}</div>
-          <div class="liq-firma-sub">RUT: ${trabajador.rut} &nbsp;·&nbsp; Fecha: _______________</div>
-        </div>
-        <div class="liq-firma-bloque">
-          <div class="liq-firma-linea"></div>
-          <div class="liq-firma-nombre">${empresa.representanteLegal ?? empresa.razonSocial}</div>
-          <div class="liq-firma-sub">Por el Empleador</div>
-        </div>
+    <div class="dfn-recibo">
+      Certifico que he recibido de <strong>${empresa.razonSocial}</strong> la suma de <strong>$${liq.liquido.toLocaleString('es-CL')}</strong> &nbsp; ${numToWords(liq.liquido)}<br>
+      a mi entera satisfacción y no tengo cargo ni cobro alguno posterior que hacer, por ninguno de los conceptos comprendidos en esta liquidación.
+    </div>
+    <div class="dfn-footer">
+      <span>Forma de Pago: Abono en cuenta bancaria</span>
+      <span>Valor UF: ${ufStr}</span>
+    </div>
+    <div class="dfn-firmas">
+      <div class="dfn-firma">
+        <div class="dfn-firma-linea"></div>
+        <div>RECIBI CONFORME</div>
+        <div class="dfn-firma-sub">${trabajador.nombre}</div>
+      </div>
+      <div class="dfn-firma">
+        <div class="dfn-firma-linea"></div>
+        <div>${empresa.representanteLegal ?? empresa.razonSocial}</div>
+        <div class="dfn-firma-sub">Por el Empleador</div>
       </div>
     </div>
   </div>`;
@@ -1244,114 +1321,45 @@ export function generarLiquidacionPdf(
 <title>Liquidación ${mesLabel} ${liq.anio} — ${trabajador.nombre}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; background: #fff; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #000; background: #fff; }
+  .liq-page { padding: 12mm 14mm 8mm; max-width: 210mm; margin: 0 auto; }
 
-  .liq-page {
-    padding: 14mm 16mm 10mm;
-    max-width: 210mm;
-    margin: 0 auto;
-  }
-
-  /* ENCABEZADO */
-  .liq-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border: 1.5px solid #333;
-    padding: 8px 12px;
-    margin-bottom: 6px;
-    gap: 12px;
-  }
-  .liq-empresa-nombre { font-size: 12pt; font-weight: bold; margin-bottom: 2px; }
-  .liq-empresa-datos { font-size: 8.5pt; color: #444; line-height: 1.4; }
-  .liq-titulo-bloque { text-align: right; flex-shrink: 0; }
-  .liq-titulo { font-size: 11pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-  .liq-periodo { font-size: 10pt; font-weight: bold; color: #333; margin-top: 2px; }
-  .liq-copia-label { font-size: 8pt; color: #888; margin-top: 3px; border: 1px solid #ccc; padding: 1px 6px; display: inline-block; }
+  /* ENCABEZADO EMPRESA */
+  .dfn-top { display: flex; justify-content: space-between; font-size: 8.5pt; margin-bottom: 4px; }
+  .dfn-top-right { font-weight: bold; font-size: 9.5pt; }
+  .dfn-titulo-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .dfn-titulo { font-weight: bold; font-size: 11pt; text-transform: uppercase; }
+  .dfn-periodo { font-weight: bold; font-size: 11pt; }
+  .dfn-copia { font-size: 7.5pt; color: #555; border: 1px solid #aaa; padding: 1px 5px; margin-left: auto; }
+  .dfn-hr { border: none; border-top: 2px solid #000; margin: 4px 0; }
 
   /* DATOS TRABAJADOR */
-  .liq-worker-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    border: 1px solid #aaa;
-    border-bottom: none;
-    margin-bottom: 8px;
-  }
-  .liq-field {
-    display: flex;
-    flex-direction: column;
-    padding: 4px 8px;
-    border-right: 1px solid #aaa;
-    border-bottom: 1px solid #aaa;
-  }
-  .liq-field:nth-child(3n) { border-right: none; }
-  .liq-label { font-size: 7.5pt; color: #666; font-weight: bold; text-transform: uppercase; }
-  .liq-val { font-size: 9.5pt; }
+  .dfn-worker { width: 100%; border-collapse: collapse; margin-bottom: 4px; font-size: 8.5pt; }
+  .dfn-worker td { padding: 2px 6px; }
+  .dfn-wlbl { font-weight: bold; white-space: nowrap; }
+  .dfn-wval { width: 35%; }
 
   /* CUERPO */
-  .liq-body { display: flex; gap: 8px; margin-bottom: 8px; }
-  .liq-section { flex: 1; }
+  .dfn-body { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 8.5pt; }
+  .dfn-body th { background: #000; color: #fff; padding: 4px 8px; text-align: left; font-size: 9pt; }
+  .dfn-body td { padding: 2px 8px; vertical-align: top; border-bottom: 1px solid #eee; }
+  .dfn-lbl { width: 30%; }
+  .dfn-num { width: 20%; text-align: right; }
+  .dfn-desc { color: #c00; }
+  .dfn-subtotal td { border-top: 1px solid #999; border-bottom: 2px solid #000; font-weight: bold; background: #f5f5f5; }
+  .dfn-total-hab td { font-weight: bold; font-size: 9.5pt; border-top: 2px solid #000; background: #eee; padding: 4px 8px; }
+  .dfn-liquido-row td { font-size: 9.5pt; border-top: 1px solid #000; padding: 4px 8px; }
 
-  /* TABLAS */
-  .liq-table { width: 100%; border-collapse: collapse; }
-  .liq-th-row { background: #1a1a2e; color: #fff; }
-  .liq-th { padding: 5px 8px; font-size: 9pt; font-weight: bold; text-transform: uppercase; }
-  .liq-th-concepto { text-align: left; }
-  .liq-th-num { text-align: right; min-width: 80px; }
-  .liq-table tbody tr { border-bottom: 1px solid #e0e0e0; }
-  .liq-table tbody tr:nth-child(even) { background: #f7f7f7; }
-  .liq-concepto { padding: 4px 8px; font-size: 9.5pt; }
-  .liq-num { padding: 4px 8px; font-size: 9.5pt; text-align: right; font-family: monospace; }
-  .liq-subtotal { border-top: 1px solid #ccc; background: #f0f0f0; }
-  .liq-subtotal .liq-concepto { font-size: 9pt; font-weight: 600; color: #444; }
-  .liq-subtotal .liq-num { font-size: 9pt; }
-  .liq-total { background: #e8e8e8; border-top: 2px solid #555; }
-  .liq-total .liq-concepto { font-weight: bold; font-size: 9.5pt; }
-  .liq-total .liq-num { font-weight: bold; font-size: 9.5pt; }
-  .liq-costo-emp { font-size: 8pt; color: #666; margin-top: 4px; text-align: right; }
-  .liq-section-label td { background: #e8ecf5; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; color: #2a3a6e; padding: 3px 8px; border-top: 1px solid #c0c8e0; }
-  .liq-empty { color: #aaa; font-style: italic; font-size: 8.5pt; text-align: center; }
+  /* RECIBO / FOOTER */
+  .dfn-recibo { font-size: 8pt; line-height: 1.5; margin: 8px 0 4px; }
+  .dfn-footer { display: flex; justify-content: space-between; font-size: 8pt; margin: 4px 0 16px; }
+  .dfn-firmas { display: flex; justify-content: space-around; margin-top: 8px; }
+  .dfn-firma { text-align: center; min-width: 140px; font-size: 8.5pt; }
+  .dfn-firma-linea { border-top: 1px solid #000; margin-top: 30px; margin-bottom: 3px; }
+  .dfn-firma-sub { font-size: 7.5pt; color: #555; margin-top: 1px; }
 
-  /* LÍQUIDO */
-  .liq-liquido-box {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: 2px solid #1a1a2e;
-    background: #1a1a2e;
-    color: #fff;
-    padding: 6px 14px;
-    margin-bottom: 4px;
-  }
-  .liq-liquido-label { font-size: 11pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-  .liq-liquido-monto { font-size: 14pt; font-weight: bold; font-family: monospace; }
-  .liq-palabras { font-size: 8.5pt; font-weight: bold; text-transform: uppercase; border: 1px solid #aaa; padding: 3px 10px; margin-bottom: 10px; color: #333; }
-
-  /* RECIBO */
-  .liq-recibo { border: 1px dashed #aaa; padding: 8px 10px; }
-  .liq-recibo-titulo { font-size: 8.5pt; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #333; }
-  .liq-recibo-texto { font-size: 9pt; line-height: 1.4; margin-bottom: 12px; }
-  .liq-recibo-firmas { display: flex; justify-content: space-around; margin-top: 8px; }
-  .liq-firma-bloque { text-align: center; min-width: 160px; }
-  .liq-firma-linea { border-top: 1px solid #333; margin-top: 36px; margin-bottom: 3px; }
-  .liq-firma-nombre { font-size: 9pt; font-weight: bold; }
-  .liq-firma-sub { font-size: 7.5pt; color: #666; margin-top: 1px; }
-
-  /* SEPARADOR entre copias */
-  .liq-separator {
-    border: none;
-    border-top: 1px dashed #bbb;
-    margin: 10px 0;
-    text-align: center;
-    font-size: 8pt;
-    color: #aaa;
-    position: relative;
-  }
-
-  @media print {
-    .liq-page { padding: 8mm 12mm; }
-    .liq-separator { page-break-before: always; border: none; }
-  }
+  .liq-separator { border: none; border-top: 2px dashed #999; margin: 10px 0; }
+  @media print { .liq-page { padding: 6mm 10mm; } .liq-separator { page-break-before: always; border: none; } }
 </style>
 </head>
 <body>

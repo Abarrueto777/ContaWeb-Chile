@@ -5,6 +5,7 @@ import { liquidacionInputSchema } from '@contaweb/validations';
 import { calcularLiquidacion } from '../services/liquidacion.service';
 import { diasSinGoceEnMes } from '../services/permisos.service';
 import { getConfig } from '../services/config.service';
+import { getUFLiquidacion } from '../services/uf.service';
 import { createError } from '../middlewares/errorHandler';
 import { generarLiquidacionPdf, type EmpresaDoc, type TrabajadorDoc } from '../services/htmlDocs.service';
 
@@ -476,7 +477,7 @@ router.post('/calcular', async (req, res) => {
       }),
       getConfig(empresaId),
     ]);
-    const uf = Number(valorUF?.uf ?? 38000);
+    const uf = valorUF?.uf ? Number(valorUF.uf) : await getUFLiquidacion(parsed.data.anio, parsed.data.mes);
     const config = {
       sis_pct:              Number(configRaw['sis_pct']),
       ces_trabajador_pct:   Number(configRaw['ces_trabajador_pct']),
@@ -523,7 +524,7 @@ router.post('/', async (req, res) => {
       }),
       getConfig(empresaId),
     ]);
-    const uf = Number(valorUF?.uf ?? 38000);
+    const uf = valorUF?.uf ? Number(valorUF.uf) : await getUFLiquidacion(parsed.data.anio, parsed.data.mes);
     const config = {
       sis_pct:              Number(configRaw['sis_pct']),
       ces_trabajador_pct:   Number(configRaw['ces_trabajador_pct']),
@@ -571,10 +572,10 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       prisma.empresa.findUnique({ where: { id: empresaId } }),
     ]);
     if (!liq || !empresa) return void res.status(404).json({ error: 'No encontrado' });
-    const valorUF = await prisma.valorUFUTM.findFirst({
-      where: { anio: liq.anio, mes: liq.mes },
-      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
-    });
+    const [valorUF, ufPeriodo] = await Promise.all([
+      prisma.valorUFUTM.findFirst({ where: { anio: liq.anio, mes: liq.mes }, orderBy: [{ anio: 'desc' }, { mes: 'desc' }] }),
+      getUFLiquidacion(liq.anio, liq.mes),
+    ]);
 
     const t = liq.trabajador;
     const empresaDoc: EmpresaDoc = {
@@ -585,6 +586,9 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       representanteLegal: (empresa as typeof empresa & { representanteLegal?: string | null }).representanteLegal,
       rutRepresentante: (empresa as typeof empresa & { rutRepresentante?: string | null }).rutRepresentante,
     };
+    // Tasa AFP efectiva del período (cotizAfp / imponible)
+    const imponibleNum = Number(liq.imponible);
+    const tasaAfp = imponibleNum > 0 ? Math.round(Number(liq.cotizAfp) / imponibleNum * 10000) / 100 : undefined;
     const trabDoc: TrabajadorDoc = {
       nombre: t.nombre,
       rut: t.rut,
@@ -600,8 +604,10 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       tieneCes: t.tieneCes,
       tieneMovilizacion: t.tieneMovilizacion,
       tieneColacion: t.tieneColacion,
+      tasaAfp,
+      planIsapreUF: t.montoIsapre ? Number(t.montoIsapre) : undefined,
     };
-    const horasMes = (t.jornadaHoras * 52) / 12;
+    const horasMes = t.jornadaHoras * 30 / 7;
     const valorHora = Number(t.sueldoBase) / horasMes;
     const montoHorasDescuento = Math.round(Number(liq.horasDescuento) * valorHora);
     const liqDoc = {
@@ -626,7 +632,7 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       conectividad: Number((liq as typeof liq & { conectividad?: unknown }).conectividad ?? 0),
       asigFamiliar: Number((liq as typeof liq & { asigFamiliar?: unknown }).asigFamiliar ?? 0),
       anticipo: Number(liq.anticipo),
-      uf: valorUF ? Number(valorUF.uf) : undefined,
+      uf: ufPeriodo,
       horasDescuento: Number(liq.horasDescuento),
       montoHorasDescuento,
       otrosDescuentos: Number(liq.otrosDescuentos),
@@ -660,7 +666,7 @@ router.put('/:liquidacionId', async (req, res, next) => {
       }),
       getConfig(empresaId),
     ]);
-    const uf = Number(valorUF?.uf ?? 38000);
+    const uf = valorUF?.uf ? Number(valorUF.uf) : await getUFLiquidacion(parsed.data.anio, parsed.data.mes);
     const config = {
       sis_pct:              Number(configRaw['sis_pct']),
       ces_trabajador_pct:   Number(configRaw['ces_trabajador_pct']),

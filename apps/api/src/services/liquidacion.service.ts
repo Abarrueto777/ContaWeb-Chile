@@ -137,20 +137,21 @@ export function calcularLiquidacion(
   const sueldoBase = Number(trabajador.sueldoBase);
   const sueldoDevengado = Math.round(sueldoBase * factor);
 
-  // Horas extra y descuento
-  const horasMes = (Number(trabajador.jornadaHoras) * 52) / 12;
+  // Valor hora según fórmula legal chilena: sueldo / (jornada_semanal × 30/7)
+  const horasMes = Number(trabajador.jornadaHoras) * 30 / 7;
   const valorHora = sueldoBase / horasMes;
   const montoHorasExtra = Math.round(horasExtra * valorHora * 1.5);
-  // Horas extras en feriado: recargo 100% (valor hora × 2.0) — práctica de mercado, mínimo legal es 50%
+  // Horas extras en feriado: recargo 100% (valor hora × 2.0)
   const montoHorasExtraFeriado = Math.round(horasExtraFeriado * valorHora * 2.0);
   const montoHorasDescuento = Math.round(horasDescuento * valorHora);
 
-  // Gratificación
+  // Gratificación se calcula sobre el devengado real (sueldo − atrasos), factor ya aplicado en sueldoDevengado
+  const sueldoBaseGratif = Math.max(0, sueldoDevengado - montoHorasDescuento);
   const gratificacion = calcularGratificacion(
     trabajador.tipoGratificacion,
-    sueldoBase,
+    sueldoBaseGratif,
     imm,
-    diasTrabajados,
+    30, // factor ya está en sueldoBaseGratif
   );
 
   // Config-overridable rates — Previred del mes tiene prioridad sobre config empresa
