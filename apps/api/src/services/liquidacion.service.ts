@@ -68,6 +68,10 @@ export interface ConfigCalculo {
   tope_se_uf?: number;
   movilizacion_mensual?: number;
   colacion_mensual?: number;
+  conectividad_mensual?: number;
+  asig_fam_monto_a?: number;
+  asig_fam_monto_b?: number;
+  asig_fam_monto_c?: number;
   // Tasas AFP + indicadores previsionales desde ValorUFUTM del mes
   afp_capital?: number;
   afp_cuprum?: number;
@@ -98,6 +102,8 @@ export interface LiquidacionCalculada {
   impuestoUnico: number;
   movilizacion: number;
   colacion: number;
+  conectividad: number;
+  asigFamiliar: number;
   anticipo: number;
   diasSinGoce: number;
   montoSinGoce: number;
@@ -200,15 +206,33 @@ export function calcularLiquidacion(
   const colacionBase = trabajador.tieneColacion
     ? (Number(trabajador.montoColacion ?? 0) || (cfg.colacion_mensual ?? 0))
     : 0;
-  const movilizacion = Math.round(movilizacionBase * factor);
-  const colacion = Math.round(colacionBase * factor);
+  const conectividadBase = (trabajador as unknown as { tieneConectividad?: boolean }).tieneConectividad
+    ? (cfg.conectividad_mensual ?? 0)
+    : 0;
+  const movilizacion  = Math.round(movilizacionBase  * factor);
+  const colacion      = Math.round(colacionBase      * factor);
+  const conectividad  = Math.round(conectividadBase  * factor);
+
+  // Asignación familiar por tramos según imponible (Ley 19.728 / D.S. 150)
+  const cargasFam = (trabajador as unknown as { cargasFamiliares?: number }).cargasFamiliares ?? 0;
+  let asigFamiliar = 0;
+  if (cargasFam > 0) {
+    const montoA = cfg.asig_fam_monto_a ?? 17063;
+    const montoB = cfg.asig_fam_monto_b ?? 10423;
+    const montoC = cfg.asig_fam_monto_c ?? 3295;
+    let montoCarga = 0;
+    if      (imponible <= 352669) montoCarga = montoA;
+    else if (imponible <= 530360) montoCarga = montoB;
+    else if (imponible <= 1097020) montoCarga = montoC;
+    asigFamiliar = Math.round(montoCarga * cargasFam);
+  }
 
   // Sin goce: ya descontado en sueldoDevengado vía diasEfectivos; se guarda solo informativamente
   const montoSinGoce = Math.round(diasSG * (sueldoBase / 30));
 
   // Líquido
   const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo + montoHorasDescuento + otrosDescuentos;
-  const liquido = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion - totalDescuentos;
+  const liquido = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + conectividad + asigFamiliar - totalDescuentos;
 
   // Costo empleador
   const sisEmpleador = Math.round(imponible * TASA_SIS_V);
@@ -216,7 +240,7 @@ export function calcularLiquidacion(
   const cesEmpleador = trabajador.tieneCes ? Math.round(imponible * tasaCesEmp) : 0;
   const accidente = Math.round(imponible * TASA_ACC_V);
   const ses = Math.round(imponible * TASA_SES_V);
-  const costoEmpleador = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + sisEmpleador + cesEmpleador + accidente + ses;
+  const costoEmpleador = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + conectividad + asigFamiliar + sisEmpleador + cesEmpleador + accidente + ses;
 
   return {
     sueldoBase: sueldoDevengado,
@@ -236,6 +260,8 @@ export function calcularLiquidacion(
     impuestoUnico,
     movilizacion,
     colacion,
+    conectividad,
+    asigFamiliar,
     anticipo,
     diasSinGoce: diasSG,
     montoSinGoce,

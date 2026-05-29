@@ -226,7 +226,7 @@ export default function RRHH() {
 
   const formTrab = useForm<TrabajadorInput>({
     resolver: zodResolver(trabajadorSchema),
-    defaultValues: { tipo: 'DEPENDIENTE', afp: 'HABITAT', salud: 'FONASA', pctSalud: 0.07, tieneCes: false, tipoGratificacion: 'ART_50', tieneMovilizacion: false, tieneColacion: false, trabajaFinSemana: false, jornadaHoras: 42, tipoContrato: 'INDEFINIDO' },
+    defaultValues: { tipo: 'DEPENDIENTE', afp: 'HABITAT', salud: 'FONASA', pctSalud: 0.07, tieneCes: false, tipoGratificacion: 'ART_50', tieneMovilizacion: false, tieneColacion: false, tieneConectividad: false, cargasFamiliares: 0, trabajaFinSemana: false, jornadaHoras: 42, tipoContrato: 'INDEFINIDO' },
   });
 
   const tipoContratoWatch = formTrab.watch('tipoContrato');
@@ -580,7 +580,10 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
       afp: t.afp, salud: t.salud, pctSalud: Number(t.pctSalud),
       ...(t.montoIsapre ? { montoIsapre: Number(t.montoIsapre) } : {}),
       tieneCes: t.tieneCes, tipoGratificacion: t.tipoGratificacion,
-      tieneMovilizacion: t.tieneMovilizacion, tieneColacion: t.tieneColacion, trabajaFinSemana: t.trabajaFinSemana,
+      tieneMovilizacion: t.tieneMovilizacion, tieneColacion: t.tieneColacion,
+      tieneConectividad: (t as typeof t & { tieneConectividad?: boolean }).tieneConectividad ?? false,
+      cargasFamiliares: (t as typeof t & { cargasFamiliares?: number }).cargasFamiliares ?? 0,
+      trabajaFinSemana: t.trabajaFinSemana,
       montoMovilizacion: t.montoMovilizacion ? Number(t.montoMovilizacion) : undefined,
       montoColacion: t.montoColacion ? Number(t.montoColacion) : undefined,
       jornadaHoras: t.jornadaHoras, tipoContrato: t.tipoContrato,
@@ -901,7 +904,13 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                     <label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" {...formTrab.register('tieneCes')} className="h-4 w-4 accent-primary" /> CES (Seguro cesantía)</label>
                     <label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" {...formTrab.register('tieneMovilizacion')} className="h-4 w-4 accent-primary" /> Movilización</label>
                     <label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" {...formTrab.register('tieneColacion')} className="h-4 w-4 accent-primary" /> Colación</label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm" title="Teletrabajo — col. 2309 LRE, no imponible"><input type="checkbox" {...formTrab.register('tieneConectividad')} className="h-4 w-4 accent-primary" /> Asig. Conectividad</label>
                     <label className="flex items-center gap-2 cursor-pointer text-sm" title="Restaurantes, comercio, etc. — cuenta sábado y domingo como días hábiles"><input type="checkbox" {...formTrab.register('trabajaFinSemana')} className="h-4 w-4 accent-primary" /> Trabaja fines de semana</label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="whitespace-nowrap">Cargas familiares</Label>
+                    <Input {...formTrab.register('cargasFamiliares', { valueAsNumber: true })} type="number" min="0" max="20" className="w-20" />
+                    <span className="text-xs text-muted-foreground">hijos u otras cargas legales</span>
                   </div>
                   {createTrab.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createTrab.error.message}</p>}
                 </form>

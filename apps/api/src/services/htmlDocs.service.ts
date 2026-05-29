@@ -133,6 +133,8 @@ export interface LiquidacionDoc {
   impuestoUnico: number;
   movilizacion: number;
   colacion: number;
+  conectividad?: number;
+  asigFamiliar?: number;
   anticipo: number;
   montoHorasDescuento: number;
   otrosDescuentos: number;
@@ -1064,7 +1066,7 @@ export function generarLiquidacionPdf(
 ): string {
   const mesLabel = MESES_ES[liq.mes - 1] ?? String(liq.mes);
   const totalImponible = liq.imponible;
-  const totalNoImponible = liq.movilizacion + liq.colacion;
+  const totalNoImponible = liq.movilizacion + liq.colacion + (liq.conectividad ?? 0) + (liq.asigFamiliar ?? 0);
   const totalHaberes = totalImponible + totalNoImponible;
   const subtotalLegal = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico;
   const subtotalOtros = liq.anticipo + liq.montoHorasDescuento + liq.otrosDescuentos;
@@ -1087,6 +1089,8 @@ export function generarLiquidacionPdf(
   const noImponiblesRows = [
     ...(liq.movilizacion > 0 ? [`<tr><td class="liq-concepto">Asignación de Movilización</td><td class="liq-num">${clp(liq.movilizacion)}</td></tr>`] : []),
     ...(liq.colacion > 0 ? [`<tr><td class="liq-concepto">Asignación de Colación</td><td class="liq-num">${clp(liq.colacion)}</td></tr>`] : []),
+    ...((liq.conectividad ?? 0) > 0 ? [`<tr><td class="liq-concepto">Asig. Conectividad (no imp.)</td><td class="liq-num">${clp(liq.conectividad!)}</td></tr>`] : []),
+    ...((liq.asigFamiliar ?? 0) > 0 ? [`<tr><td class="liq-concepto">Asignación Familiar</td><td class="liq-num">${clp(liq.asigFamiliar!)}</td></tr>`] : []),
   ].join('');
 
   const descLegalRows = [

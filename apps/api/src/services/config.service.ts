@@ -13,8 +13,12 @@ export const CONFIG_DEFAULTS: Record<string, string> = {
   aporte_ses_pct:       '0.0003',
   sis_pct:              '0.0143',
   horas_semanales:      '42',
-  movilizacion_mensual: '0',
-  colacion_mensual:     '0',
+  movilizacion_mensual:  '0',
+  colacion_mensual:      '0',
+  conectividad_mensual:  '0',
+  asig_fam_monto_a:      '17063',
+  asig_fam_monto_b:      '10423',
+  asig_fam_monto_c:      '3295',
 };
 
 export async function getConfig(empresaId: string): Promise<Record<string, string>> {
