@@ -322,10 +322,15 @@ export default function RRHH() {
 
   async function abrirPdfLiquidacion(l: Liquidacion) {
     if (!empresa) return;
-    const res = await api.get(`/api/empresas/${empresa.id}/liquidaciones/${l.id}/pdf`, { responseType: 'text' });
-    const blob = new Blob([res.data as string], { type: 'text/html; charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+    try {
+      const res = await api.get(`/api/empresas/${empresa.id}/liquidaciones/${l.id}/pdf`, { responseType: 'text' });
+      const blob = new Blob([res.data as string], { type: 'text/html; charset=utf-8' });
+      const win = window.open(URL.createObjectURL(blob), '_blank');
+      if (!win) alert('El navegador bloqueó el popup. Permitir popups para este sitio y volver a intentar.');
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al generar el comprobante';
+      alert(msg);
+    }
   }
 
   async function enviarEmailLiquidacion(l: Liquidacion, t: Trabajador) {

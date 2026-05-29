@@ -572,10 +572,11 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       prisma.empresa.findUnique({ where: { id: empresaId } }),
     ]);
     if (!liq || !empresa) return void res.status(404).json({ error: 'No encontrado' });
-    const [valorUF, ufPeriodo] = await Promise.all([
-      prisma.valorUFUTM.findFirst({ where: { anio: liq.anio, mes: liq.mes }, orderBy: [{ anio: 'desc' }, { mes: 'desc' }] }),
-      getUFLiquidacion(liq.anio, liq.mes),
-    ]);
+    const valorUF = await prisma.valorUFUTM.findFirst({
+      where: { anio: liq.anio, mes: liq.mes },
+      orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
+    });
+    const ufPeriodo = valorUF?.uf ? Number(valorUF.uf) : 40000;
 
     const t = liq.trabajador;
     const empresaDoc: EmpresaDoc = {
