@@ -627,6 +627,7 @@ router.get('/:liquidacionId/pdf', async (req, res) => {
       asigFamiliar: Number((liq as typeof liq & { asigFamiliar?: unknown }).asigFamiliar ?? 0),
       anticipo: Number(liq.anticipo),
       uf: valorUF ? Number(valorUF.uf) : undefined,
+      horasDescuento: Number(liq.horasDescuento),
       montoHorasDescuento,
       otrosDescuentos: Number(liq.otrosDescuentos),
       diasSinGoce: Number((liq as typeof liq & { diasSinGoce?: number | null }).diasSinGoce ?? 0),

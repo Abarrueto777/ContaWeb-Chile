@@ -165,7 +165,8 @@ export function calcularLiquidacion(
     ? (cfg.tope_se_uf ?? TOPE_SE_UF)
     : (cfg.tope_imponible_uf_previred ?? cfg.tope_cotiz_uf ?? TOPE_IMPONIBLE_UF);
   const topePesos = Math.round(topeUF * uf);
-  const imponibleBruto = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion;
+  // Atrasos reducen el imponible (base para cotizaciones previsionales)
+  const imponibleBruto = Math.max(0, sueldoDevengado - montoHorasDescuento) + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion;
   const imponible = Math.min(imponibleBruto, topePesos);
 
   // Tasas AFP: usa indicadores del mes si vienen en config, sino los defaults
@@ -230,9 +231,9 @@ export function calcularLiquidacion(
   // Sin goce: ya descontado en sueldoDevengado vía diasEfectivos; se guarda solo informativamente
   const montoSinGoce = Math.round(diasSG * (sueldoBase / 30));
 
-  // Líquido
-  const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo + montoHorasDescuento + otrosDescuentos;
-  const liquido = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + conectividad + asigFamiliar - totalDescuentos;
+  // Líquido — atrasos ya están restados del imponible, no se duplican en totalDescuentos
+  const totalDescuentos = cotizAfp + cotizSalud + cotizCes + impuestoUnico + anticipo + otrosDescuentos;
+  const liquido = (sueldoDevengado - montoHorasDescuento) + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + conectividad + asigFamiliar - totalDescuentos;
 
   // Costo empleador
   const sisEmpleador = Math.round(imponible * TASA_SIS_V);
@@ -240,7 +241,7 @@ export function calcularLiquidacion(
   const cesEmpleador = trabajador.tieneCes ? Math.round(imponible * tasaCesEmp) : 0;
   const accidente = Math.round(imponible * TASA_ACC_V);
   const ses = Math.round(imponible * TASA_SES_V);
-  const costoEmpleador = sueldoDevengado + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + conectividad + asigFamiliar + sisEmpleador + cesEmpleador + accidente + ses;
+  const costoEmpleador = (sueldoDevengado - montoHorasDescuento) + montoHorasExtra + montoHorasExtraFeriado + bono + gratificacion + movilizacion + colacion + conectividad + asigFamiliar + sisEmpleador + cesEmpleador + accidente + ses;
 
   return {
     sueldoBase: sueldoDevengado,

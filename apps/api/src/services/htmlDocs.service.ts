@@ -137,6 +137,7 @@ export interface LiquidacionDoc {
   asigFamiliar?: number;
   anticipo: number;
   uf?: number | undefined;
+  horasDescuento: number;
   montoHorasDescuento: number;
   otrosDescuentos: number;
   diasSinGoce?: number;
@@ -1066,44 +1067,50 @@ export function generarLiquidacionPdf(
   liq: LiquidacionDoc,
 ): string {
   const mesLabel = MESES_ES[liq.mes - 1] ?? String(liq.mes);
+
+  // Adic. ISAPRE: diferencia entre lo que paga por el plan y la cotización mandatoria (7%)
+  const cotizSaludMandatoria = Math.round(liq.imponible * trabajador.pctSalud);
+  const adicIsapre = liq.cotizSalud > cotizSaludMandatoria ? liq.cotizSalud - cotizSaludMandatoria : 0;
+
   const totalImponible = liq.imponible;
   const totalNoImponible = liq.movilizacion + liq.colacion + (liq.conectividad ?? 0) + (liq.asigFamiliar ?? 0);
   const totalHaberes = totalImponible + totalNoImponible;
   const subtotalLegal = liq.cotizAfp + liq.cotizSalud + liq.cotizCes + liq.impuestoUnico;
-  const subtotalOtros = liq.anticipo + liq.montoHorasDescuento + liq.otrosDescuentos;
+  const subtotalOtros = liq.anticipo + liq.otrosDescuentos;
   const totalDescuentos = subtotalLegal + subtotalOtros;
 
   const diasEfectivos = liq.diasTrabajados - (liq.diasSinGoce ?? 0);
-  const labelDias = `(${diasEfectivos} de ${liq.diasTrabajados} días)`;
+  const labelDias = diasEfectivos < 30 ? ` (${diasEfectivos} días)` : '';
   const notaSinGoce = (liq.diasSinGoce ?? 0) > 0
     ? `<tr><td class="liq-concepto" style="color:#888;font-size:8.5pt;padding-left:16px;">↳ ${liq.diasSinGoce} día${(liq.diasSinGoce ?? 0) > 1 ? 's' : ''} permiso sin goce de sueldo</td><td></td></tr>`
     : '';
 
   const imponiblesRows = [
-    `<tr><td class="liq-concepto">Sueldo Base ${labelDias}</td><td class="liq-num">${clp(liq.sueldoBase)}</td></tr>${notaSinGoce}`,
+    `<tr><td class="liq-concepto">Sueldo Base${labelDias}</td><td class="liq-num">${clp(liq.sueldoBase)}</td></tr>${notaSinGoce}`,
+    ...(liq.montoHorasDescuento > 0 ? [`<tr><td class="liq-concepto" style="color:#c0392b;">Desc. Atrasos${liq.horasDescuento > 0 ? ` (${liq.horasDescuento} hs)` : ''}</td><td class="liq-num" style="color:#c0392b;">-${clp(liq.montoHorasDescuento)}</td></tr>`] : []),
+    ...(liq.gratificacion > 0 ? [`<tr><td class="liq-concepto">Gratif. Art.50${trabajador.tipoGratificacion === 'ART_50_LIBRE' ? ' S/T' : ''}</td><td class="liq-num">${clp(liq.gratificacion)}</td></tr>`] : []),
     ...(liq.horasExtra > 0 ? [`<tr><td class="liq-concepto">Horas Extraordinarias${liq.cantHorasExtra > 0 ? ` (${liq.cantHorasExtra} hrs · 50%)` : ''}</td><td class="liq-num">${clp(liq.horasExtra)}</td></tr>`] : []),
     ...(liq.horasExtraFeriado > 0 ? [`<tr><td class="liq-concepto">Horas Extraordinarias Feriado${liq.cantHorasExtraFeriado > 0 ? ` (${liq.cantHorasExtraFeriado} hrs · 100%)` : ''}</td><td class="liq-num">${clp(liq.horasExtraFeriado)}</td></tr>`] : []),
     ...(liq.bono > 0 ? [`<tr><td class="liq-concepto">Bono</td><td class="liq-num">${clp(liq.bono)}</td></tr>`] : []),
-    ...(liq.gratificacion > 0 ? [`<tr><td class="liq-concepto">Gratificación Legal</td><td class="liq-num">${clp(liq.gratificacion)}</td></tr>`] : []),
   ].join('');
 
   const noImponiblesRows = [
-    ...(liq.movilizacion > 0 ? [`<tr><td class="liq-concepto">Asignación de Movilización</td><td class="liq-num">${clp(liq.movilizacion)}</td></tr>`] : []),
-    ...(liq.colacion > 0 ? [`<tr><td class="liq-concepto">Asignación de Colación</td><td class="liq-num">${clp(liq.colacion)}</td></tr>`] : []),
+    ...(liq.movilizacion > 0 ? [`<tr><td class="liq-concepto">Movilización (no imp.)</td><td class="liq-num">${clp(liq.movilizacion)}</td></tr>`] : []),
+    ...(liq.colacion > 0 ? [`<tr><td class="liq-concepto">Colación (no imp.)</td><td class="liq-num">${clp(liq.colacion)}</td></tr>`] : []),
     ...((liq.conectividad ?? 0) > 0 ? [`<tr><td class="liq-concepto">Asig. Conectividad (no imp.)</td><td class="liq-num">${clp(liq.conectividad!)}</td></tr>`] : []),
     ...((liq.asigFamiliar ?? 0) > 0 ? [`<tr><td class="liq-concepto">Asignación Familiar</td><td class="liq-num">${clp(liq.asigFamiliar!)}</td></tr>`] : []),
   ].join('');
 
   const descLegalRows = [
-    `<tr><td class="liq-concepto">Cotización AFP ${trabajador.afp}</td><td class="liq-num">${clp(liq.cotizAfp)}</td></tr>`,
-    `<tr><td class="liq-concepto">Cotización Salud ${trabajador.salud} (${(trabajador.pctSalud * 100).toFixed(1)}%)</td><td class="liq-num">${clp(liq.cotizSalud)}</td></tr>`,
-    ...(liq.cotizCes > 0 ? [`<tr><td class="liq-concepto">CES — Cotiz. Trabajador (0.6%)</td><td class="liq-num">${clp(liq.cotizCes)}</td></tr>`] : []),
-    ...(liq.impuestoUnico > 0 ? [`<tr><td class="liq-concepto">Impuesto Único 2ª Categoría</td><td class="liq-num">${clp(liq.impuestoUnico)}</td></tr>`] : []),
+    `<tr><td class="liq-concepto">AFP ${trabajador.afp}</td><td class="liq-num">${clp(liq.cotizAfp)}</td></tr>`,
+    `<tr><td class="liq-concepto">Salud ${trabajador.salud} (${(trabajador.pctSalud * 100).toFixed(0)}%)</td><td class="liq-num">${clp(cotizSaludMandatoria)}</td></tr>`,
+    ...(adicIsapre > 0 ? [`<tr><td class="liq-concepto">Adic. ISAPRE</td><td class="liq-num">${clp(adicIsapre)}</td></tr>`] : []),
+    ...(liq.cotizCes > 0 ? [`<tr><td class="liq-concepto">Seg. Cesantía (0.6%)</td><td class="liq-num">${clp(liq.cotizCes)}</td></tr>`] : []),
+    ...(liq.impuestoUnico > 0 ? [`<tr><td class="liq-concepto">Imp. Único 2da Cat.</td><td class="liq-num">${clp(liq.impuestoUnico)}</td></tr>`] : []),
   ].join('');
 
   const descOtrosRows = [
-    ...(liq.anticipo > 0 ? [`<tr><td class="liq-concepto">Anticipo de Remuneración</td><td class="liq-num">${clp(liq.anticipo)}</td></tr>`] : []),
-    ...(liq.montoHorasDescuento > 0 ? [`<tr><td class="liq-concepto">Horas de Descuento / Atraso</td><td class="liq-num">${clp(liq.montoHorasDescuento)}</td></tr>`] : []),
+    ...(liq.anticipo > 0 ? [`<tr><td class="liq-concepto">Anticipo de Sueldo</td><td class="liq-num">${clp(liq.anticipo)}</td></tr>`] : []),
     ...(liq.otrosDescuentos > 0 ? [`<tr><td class="liq-concepto">Otros Descuentos</td><td class="liq-num">${clp(liq.otrosDescuentos)}</td></tr>`] : []),
   ].join('');
 
