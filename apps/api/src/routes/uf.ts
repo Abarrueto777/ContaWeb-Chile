@@ -1,11 +1,18 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middlewares/auth';
+import { createError } from '../middlewares/errorHandler';
 import { syncValoresMes, forzarSyncValoresMes } from '../services/uf.service';
 import { scrapePreviredIndicadores } from '../services/previred.service';
 
 const router = Router();
 router.use(requireAuth);
+
+// Escritura de indicadores: solo ADMIN
+function requireAdmin(req: Parameters<typeof requireAuth>[0], _res: Parameters<typeof requireAuth>[1], next: Parameters<typeof requireAuth>[2]) {
+  if (req.user?.rol !== 'ADMIN') return next(createError('Se requiere rol ADMIN', 403));
+  next();
+}
 
 router.get('/', async (_req, res, next) => {
   try {
@@ -33,7 +40,7 @@ router.get('/:anio/:mes', async (req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', requireAdmin, async (req, res, next) => {
   try {
     const {
       anio, mes, uf, utm, imm,
@@ -68,7 +75,7 @@ router.post('/', async (req, res, next) => {
 });
 
 // Sincroniza el mes actual: crea en BD si no existe, devuelve los valores
-router.post('/sync', async (_req, res, next) => {
+router.post('/sync', requireAdmin, async (_req, res, next) => {
   try {
     const now = new Date();
     const valor = await forzarSyncValoresMes(now.getFullYear(), now.getMonth() + 1);
@@ -79,7 +86,7 @@ router.post('/sync', async (_req, res, next) => {
 });
 
 // Sync de un mes específico (sin forzar: solo crea si no existe)
-router.post('/sync/:anio/:mes', async (req, res, next) => {
+router.post('/sync/:anio/:mes', requireAdmin, async (req, res, next) => {
   try {
     const { anio, mes } = req.params as { anio: string; mes: string };
     const valor = await syncValoresMes(Number(anio), Number(mes));
@@ -90,7 +97,7 @@ router.post('/sync/:anio/:mes', async (req, res, next) => {
 });
 
 // Forzar re-fetch desde mindicador.cl para un mes específico
-router.post('/sync/:anio/:mes/forzar', async (req, res, next) => {
+router.post('/sync/:anio/:mes/forzar', requireAdmin, async (req, res, next) => {
   try {
     const { anio, mes } = req.params as { anio: string; mes: string };
     const valor = await forzarSyncValoresMes(Number(anio), Number(mes));
@@ -101,7 +108,7 @@ router.post('/sync/:anio/:mes/forzar', async (req, res, next) => {
 });
 
 // Sync de indicadores Previred (AFP rates, SIS, tope) para el mes actual
-router.post('/sync-previred', async (_req, res, next) => {
+router.post('/sync-previred', requireAdmin, async (_req, res, next) => {
   try {
     const now = new Date();
     const anio = now.getFullYear();

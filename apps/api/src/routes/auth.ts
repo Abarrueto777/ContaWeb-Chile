@@ -9,7 +9,9 @@ import { loginSchema, registroSchema } from '@contaweb/validations';
 
 const router = Router();
 
-router.post('/registro', validate(registroSchema), async (req, res, next) => {
+// Solo ADMIN puede registrar nuevos usuarios
+router.post('/registro', requireAuth, validate(registroSchema), async (req, res, next) => {
+  if (req.user!.rol !== 'ADMIN') return next(createError('Solo un administrador puede registrar usuarios', 403));
   try {
     const { email, nombre, password, rol } = req.body;
 

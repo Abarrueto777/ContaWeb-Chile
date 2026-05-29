@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cron from 'node-cron';
+import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middlewares/errorHandler';
 import authRoutes from './routes/auth';
 import empresasRoutes from './routes/empresas';
@@ -10,6 +11,12 @@ import ufRoutes from './routes/uf';
 import { syncValoresMes } from './services/uf.service';
 import { scrapePreviredIndicadores } from './services/previred.service';
 import { prisma } from './lib/prisma';
+
+// Validar variables críticas al inicio
+if (!process.env['JWT_SECRET'] || process.env['JWT_SECRET'].length < 32) {
+  console.error('FATAL: JWT_SECRET no definido o demasiado corto (mínimo 32 chars). El servidor no puede arrancar de forma segura.');
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env['API_PORT'] ?? 3001;
@@ -20,8 +27,28 @@ app.use(cors({
     ? process.env['CORS_ORIGIN'].split(',').map((o) => o.trim())
     : /^http:\/\/localhost:\d+$/,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
+// Rate limiting — login: 10 intentos / 15 min por IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Intentá de nuevo en 15 minutos.' },
+});
+
+// Rate limiting general — 200 req / min por IP
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Intentá más tarde.' },
+});
+
+app.use('/api/auth/login', loginLimiter);
+app.use('/api', apiLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/empresas', empresasRoutes);
 app.use('/api/uf', ufRoutes);

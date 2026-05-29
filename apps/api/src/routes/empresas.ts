@@ -85,6 +85,22 @@ router.put('/:id', validate(empresaSchema), async (req, res, next) => {
   }
 });
 
+// Verifica que la empresa del param pertenece al usuario autenticado
+// antes de cualquier sub-ruta. Previene BOLA/IDOR entre usuarios.
+router.use('/:empresaId', async (req, _res, next) => {
+  try {
+    const { empresaId } = req.params as { empresaId: string };
+    const empresa = await prisma.empresa.findFirst({
+      where: { id: empresaId, usuarioId: req.user!.id },
+      select: { id: true },
+    });
+    if (!empresa) return next(createError('Empresa no encontrada', 404));
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.use('/:empresaId/clientes', clientesRouter);
 router.use('/:empresaId/documentos', documentosRouter);
 router.use('/:empresaId/cuentas', cuentasRouter);
