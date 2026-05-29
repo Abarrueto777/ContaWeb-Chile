@@ -11,6 +11,7 @@ import { useLiquidaciones, useCreateLiquidacion, useUpdateLiquidacion, useDelete
 import { useVacaciones, useVacacionSaldos, useCreateVacacion, useDeleteVacacion } from '@/hooks/useVacaciones';
 import { usePermisos, useCreatePermiso, useDeletePermiso } from '@/hooks/usePermisos';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
+import { useValorUFMes } from '@/hooks/useUF';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -108,8 +109,16 @@ export default function RRHH() {
   const [editando, setEditando] = useState<Trabajador | null>(null);
   const [finiquitandoTrab, setFiniquitandoTrab] = useState<Trabajador | null>(null);
   const [filtroActivo, setFiltroActivo] = useState<'todos' | 'activos' | 'inactivos'>('activos');
-  const [utm, setUtm] = useState(68400);
-  const [imm, setImm] = useState(539000);
+  const [utm, setUtm] = useState(70588);
+  const [imm, setImm] = useState(500000);
+  const { data: ufMesData } = useValorUFMes(anio, mes);
+
+  // Actualizar UTM e IMM automáticamente cuando cambia el período
+  useEffect(() => {
+    const v = ufMesData?.data;
+    if (v?.utm && Number(v.utm) > 0) setUtm(Number(v.utm));
+    if (v?.imm && Number(v.imm) > 0) setImm(Number(v.imm));
+  }, [ufMesData]);
   const [movs, setMovs] = useState<Record<string, { horasExtra: number; horasExtraFeriado: number; bono: number; diasTrabajados: number; anticipo: number; horasDescuento: number; otrosDescuentos: number }>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [procesando, setProcesando] = useState<Set<string>>(new Set());

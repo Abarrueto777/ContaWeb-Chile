@@ -1283,13 +1283,15 @@ export function generarLiquidacionPdf(
           <td></td>
           <td class="dfn-num">${totalDescuentos.toLocaleString('es-CL')}</td>
         </tr>
-        <tr class="dfn-liquido-row">
-          <td colspan="2" class="dfn-lbl">LIQUIDO A PAGO: <strong>${liq.liquido.toLocaleString('es-CL')}</strong> &nbsp; ${numToWords(liq.liquido)}</td>
-          <td class="dfn-lbl">SOBREGIRO:</td>
-          <td class="dfn-num">0</td>
-        </tr>
       </tfoot>
     </table>
+
+    <!-- LÍQUIDO A PAGAR — bloque prominente igual que Liq_13 -->
+    <div class="dfn-liquido-box">
+      <span class="dfn-liquido-label">LÍQUIDO A PAGAR</span>
+      <span class="dfn-liquido-monto">$${liq.liquido.toLocaleString('es-CL')}</span>
+    </div>
+    <div class="dfn-palabras">${numToWords(liq.liquido)} pesos</div>
 
     <!-- RECIBO -->
     <div class="dfn-recibo">
@@ -1348,7 +1350,10 @@ export function generarLiquidacionPdf(
   .dfn-desc { color: #c00; }
   .dfn-subtotal td { border-top: 1px solid #999; border-bottom: 2px solid #000; font-weight: bold; background: #f5f5f5; }
   .dfn-total-hab td { font-weight: bold; font-size: 9.5pt; border-top: 2px solid #000; background: #eee; padding: 4px 8px; }
-  .dfn-liquido-row td { font-size: 9.5pt; border-top: 1px solid #000; padding: 4px 8px; }
+  .dfn-liquido-box { display:flex; justify-content:space-between; align-items:center; background:#1ABC9C; color:#fff; padding:8px 14px; margin-top:4px; }
+  .dfn-liquido-label { font-size:11pt; font-weight:bold; text-transform:uppercase; letter-spacing:1px; }
+  .dfn-liquido-monto { font-size:14pt; font-weight:bold; font-family:monospace; }
+  .dfn-palabras { font-size:8pt; font-weight:bold; text-transform:uppercase; border:1px solid #aaa; padding:3px 10px; margin-bottom:8px; color:#333; }
 
   /* RECIBO / FOOTER */
   .dfn-recibo { font-size: 8pt; line-height: 1.5; margin: 8px 0 4px; }
