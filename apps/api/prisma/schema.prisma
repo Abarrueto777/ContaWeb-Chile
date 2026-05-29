@@ -394,7 +394,7 @@ model Trabajador {
   montoMovilizacion Decimal?          @db.Decimal(19, 4)
   montoColacion     Decimal?          @db.Decimal(19, 4)
   email             String?
-  montoIsapre       Decimal?          @db.Decimal(8, 2)
+  montoIsapre       Decimal?          @db.Decimal(10, 4)
   domicilio         String?
   fechaNacimiento   DateTime?
   estadoCivil       String?
