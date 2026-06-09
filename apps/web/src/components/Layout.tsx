@@ -62,6 +62,7 @@ const navGroups: { label: string | null; items: { to: string; label: string; ico
       { to: '/clientes', label: 'Clientes', icon: Users },
       { to: '/rrhh', label: 'RRHH', icon: UserCog },
       { to: '/dj1887', label: 'DJ 1887', icon: ScrollText },
+      { to: '/dj1879', label: 'DJ 1879', icon: ScrollText },
       { to: '/retiros', label: 'Retiros', icon: Wallet },
       { to: '/renta-presunta', label: 'Renta Presunta', icon: Tractor },
       { to: '/activos', label: 'Activos Fijos', icon: Package },

@@ -581,6 +581,24 @@ export interface DJ1948Result {
   totales: { historico: number; corregido: number; creditoIdpc: number; afecta: number; exenta: number; noRenta: number };
 }
 
+export interface DJ1879Prestador {
+  nro: number;
+  rut: string;
+  nombre: string;
+  nBoletas: number;
+  bruto: number;
+  retencion: number;
+  neto: number;
+}
+
+export interface DJ1879Result {
+  empresaRut: string;
+  empresaNombre: string;
+  anio: number;
+  prestadores: DJ1879Prestador[];
+  totales: { bruto: number; retencion: number; neto: number; boletas: number };
+}
+
 export interface DJ1887Trabajador {
   nCert: number;
   rut: string;

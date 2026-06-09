@@ -16,6 +16,7 @@ import Honorarios from '@/pages/Honorarios';
 import Banco from '@/pages/Banco';
 import RRHH from '@/pages/RRHH';
 import DJ1887 from '@/pages/DJ1887';
+import DJ1879 from '@/pages/DJ1879';
 import Retiros from '@/pages/Retiros';
 import F22 from '@/pages/F22';
 import RentaPresunta from '@/pages/RentaPresunta';
@@ -82,6 +83,10 @@ export default function App() {
           <Route
             path="/dj1887"
             element={<ProtectedRoute><DJ1887 /></ProtectedRoute>}
+          />
+          <Route
+            path="/dj1879"
+            element={<ProtectedRoute><DJ1879 /></ProtectedRoute>}
           />
           <Route
             path="/retiros"
