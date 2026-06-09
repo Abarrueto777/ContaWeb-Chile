@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -23,6 +24,8 @@ import {
   Moon,
   ChevronsUpDown,
   Check,
+  Menu,
+  X,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -46,27 +49,35 @@ const navGroups: { label: string | null; items: { to: string; label: string; ico
     ],
   },
   {
+    label: 'Administración',
+    items: [
+      { to: '/empresas', label: 'Empresas', icon: Building2 },
+      { to: '/clientes', label: 'Clientes', icon: Users },
+    ],
+  },
+  {
     label: 'Finanzas',
     items: [
       { to: '/documentos', label: 'Ventas', icon: FileText },
       { to: '/compras', label: 'Compras', icon: ShoppingCart },
       { to: '/honorarios', label: 'Honorarios', icon: Receipt },
-      { to: '/f29', label: 'F29 IVA', icon: Calculator },
-      { to: '/f22', label: 'F22 Renta', icon: ScrollText },
       { to: '/banco', label: 'Banco', icon: Landmark },
     ],
   },
   {
-    label: 'Gestión',
+    label: 'Remuneraciones',
     items: [
-      { to: '/empresas', label: 'Empresas', icon: Building2 },
-      { to: '/clientes', label: 'Clientes', icon: Users },
       { to: '/rrhh', label: 'RRHH', icon: UserCog },
+    ],
+  },
+  {
+    label: 'Impuestos y DDJJ',
+    items: [
+      { to: '/f29', label: 'F29 IVA', icon: Calculator },
+      { to: '/f22', label: 'F22 Renta', icon: ScrollText },
       { to: '/dj1887', label: 'DJ 1887', icon: ScrollText },
       { to: '/dj1879', label: 'DJ 1879', icon: ScrollText },
-      { to: '/retiros', label: 'Retiros', icon: Wallet },
       { to: '/renta-presunta', label: 'Renta Presunta', icon: Tractor },
-      { to: '/activos', label: 'Activos Fijos', icon: Package },
     ],
   },
   {
@@ -75,6 +86,8 @@ const navGroups: { label: string | null; items: { to: string; label: string; ico
       { to: '/plan-cuentas', label: 'Plan Cuentas', icon: List },
       { to: '/contabilidad', label: 'Contabilidad', icon: BookOpen },
       { to: '/propyme', label: 'ProPyme D3', icon: BarChart3 },
+      { to: '/retiros', label: 'Retiros', icon: Wallet },
+      { to: '/activos', label: 'Activos Fijos', icon: Package },
     ],
   },
 ];
@@ -85,6 +98,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggle } = useTheme();
   const { empresa, empresas, setEmpresaId } = useEmpresaContext();
   const usuario = data?.data;
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const initials = usuario?.nombre
     ? usuario.nombre.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -96,10 +110,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'hsl(var(--background))' }}>
-      {/* Sidebar */}
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Backdrop (mobile) */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      {/* Sidebar — drawer en mobile, fijo en desktop */}
       <aside
-        className="w-56 flex flex-col shrink-0"
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-56 lg:translate-x-0',
+          mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
+        )}
         style={{
           background: 'hsl(var(--sidebar-bg))',
           borderRight: '1px solid hsl(var(--sidebar-border))',
@@ -107,13 +133,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 h-14 shrink-0" style={{ borderBottom: '1px solid hsl(var(--sidebar-border))' }}>
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
-            <Calculator className="h-3.5 w-3.5 text-primary-foreground" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-indigo-400 shadow-sm shadow-primary/30">
+            <Calculator className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-none tracking-tight">ContaWeb</p>
-            <p className="text-[10px] text-muted-foreground leading-none mt-0.5 uppercase tracking-widest">Chile</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold leading-none tracking-tight">ContaWeb</p>
+            <p className="text-[10px] text-muted-foreground leading-none mt-1 uppercase tracking-[0.2em]">Chile</p>
           </div>
+          {/* Cerrar (mobile) */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+            aria-label="Cerrar menú"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Empresa switcher */}
@@ -165,9 +199,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     key={to}
                     to={to}
                     end={end ?? false}
+                    onClick={() => setMobileOpen(false)}
                     className={({ isActive }) =>
                       cn(
-                        'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-100 select-none',
+                        'group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-100 select-none',
                         isActive
                           ? 'bg-primary/10 text-primary dark:bg-primary/15'
                           : 'text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -176,6 +211,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   >
                     {({ isActive }) => (
                       <>
+                        {/* Indicador de activo */}
+                        <span className={cn('absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary transition-opacity', isActive ? 'opacity-100' : 'opacity-0')} />
                         <Icon className={cn('h-4 w-4 shrink-0 transition-colors', isActive ? 'text-primary' : '')} />
                         {label}
                       </>
@@ -193,6 +230,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1">
             <NavLink
               to="/configuracion"
+              onClick={() => setMobileOpen(false)}
               className={({ isActive }) =>
                 cn(
                   'flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-100',
@@ -252,6 +290,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar (mobile) */}
+        <header className="lg:hidden flex items-center gap-3 h-14 px-4 shrink-0 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60" style={{ borderBottom: '1px solid hsl(var(--sidebar-border))' }}>
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            aria-label="Abrir menú"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-indigo-400">
+            <Calculator className="h-3.5 w-3.5 text-primary-foreground" />
+          </div>
+          <span className="text-sm font-semibold truncate">{empresa?.razonSocial ?? 'ContaWeb'}</span>
+        </header>
+
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 xl:p-8">
           {children}
         </main>

@@ -1001,7 +1001,18 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                         <option value="NINGUNA">Ninguna</option>
                       </select>
                     </div>
-                    <div className="space-y-1.5"><Label>Jornada (h/semana)</Label><Input {...formTrab.register('jornadaHoras', { valueAsNumber: true })} type="number" min="1" max="45" /></div>
+                    <div className="space-y-1.5">
+                      <Label>Jornada semanal</Label>
+                      <select {...formTrab.register('jornadaHoras', { valueAsNumber: true })} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                        <option value={45}>45 horas (régimen anterior)</option>
+                        <option value={44}>44 horas</option>
+                        <option value={42}>42 horas (vigente — Ley 21.561)</option>
+                        <option value={40}>40 horas (jornada reducida)</option>
+                        <option value={30}>30 horas (parcial)</option>
+                        <option value={20}>20 horas (parcial)</option>
+                      </select>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Ley 21.561: la jornada baja gradualmente 44h → 42h (2024) → 40h (2028). Definí la que aplica la empresa; afecta el valor hora extra.</p>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-6">
                     <label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" {...formTrab.register('tieneCes')} className="h-4 w-4 accent-primary" /> CES (Seguro cesantía)</label>
