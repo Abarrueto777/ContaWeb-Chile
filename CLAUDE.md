@@ -1,7 +1,7 @@
-`# ContaWeb Chile — Contexto del proyecto
+`# ContaCLWEB — Contexto del proyecto
 
 Sistema contable web para contadores chilenos que atienden clientes pequeños.
-Versión web moderna del flujo de trabajo de ContaPlus Chile.
+Versión web de ContaCL (app de escritorio), alineada bajo la marca ContaCLWEB.
 
 ---
 
@@ -27,7 +27,7 @@ Versión web moderna del flujo de trabajo de ContaPlus Chile.
 ## Estructura de carpetas
 
 ```
-ContaWeb-Chile/
+ContaCLWEB/
 ├── apps/
 │   ├── web/                        # React + Vite
 │   │   └── src/

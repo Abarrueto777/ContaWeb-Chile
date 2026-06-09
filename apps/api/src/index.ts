@@ -121,7 +121,7 @@ if (process.env['NODE_ENV'] === 'production') {
 }
 
 app.listen(PORT, () => {
-  console.log(`ContaWeb API corriendo en http://localhost:${PORT}`);
+  console.log(`ContaCLWEB API corriendo en http://localhost:${PORT}`);
 
   const now = new Date();
   syncValoresMes(now.getFullYear(), now.getMonth() + 1)
