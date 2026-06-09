@@ -36,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Logo, LogoMark } from './Logo';
 import { useMe } from '@/hooks/useAuth';
 import { useTheme } from './ThemeProvider';
 import { useEmpresaContext } from './EmpresaProvider';
@@ -133,13 +134,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 h-14 shrink-0" style={{ borderBottom: '1px solid hsl(var(--sidebar-border))' }}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-indigo-400 shadow-sm shadow-primary/30">
-            <Calculator className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold leading-none tracking-tight">ContaWeb</p>
-            <p className="text-[10px] text-muted-foreground leading-none mt-1 uppercase tracking-[0.2em]">Chile</p>
-          </div>
+          <Logo className="flex-1" />
           {/* Cerrar (mobile) */}
           <button
             onClick={() => setMobileOpen(false)}
@@ -299,10 +294,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-indigo-400">
-            <Calculator className="h-3.5 w-3.5 text-primary-foreground" />
-          </div>
-          <span className="text-sm font-semibold truncate">{empresa?.razonSocial ?? 'ContaWeb'}</span>
+          <LogoMark className="h-7 w-7 shrink-0 rounded-lg" />
+          <span className="text-sm font-semibold truncate">{empresa?.razonSocial ?? 'ContaCLWEB'}</span>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 xl:p-8">
