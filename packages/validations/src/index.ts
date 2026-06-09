@@ -251,6 +251,40 @@ export const permisoSchema = z.object({
 
 export type PermisoInput = z.infer<typeof permisoSchema>;
 
+export const licenciaMedicaSchema = z.object({
+  trabajadorId: z.string().min(1, 'Trabajador requerido'),
+  fechaInicio: z.coerce.date(),
+  fechaFin: z.coerce.date(),
+  tipo: z.enum(['COMUN', 'ACCIDENTE_LABORAL', 'PRENATAL', 'POSTNATAL', 'MENTAL']).default('COMUN'),
+  numLicencia: z.string().optional(),
+  entidad: z.string().optional(),
+  subsidioMonto: z.number().min(0).default(0),
+  subsidioPagado: z.boolean().default(false),
+  notas: z.string().optional(),
+}).refine(d => d.fechaFin >= d.fechaInicio, { message: 'Fecha fin debe ser igual o posterior a fecha inicio', path: ['fechaFin'] });
+
+export type LicenciaMedicaInput = z.infer<typeof licenciaMedicaSchema>;
+
+export const socioSchema = z.object({
+  rut: z.string().min(1, 'RUT requerido'),
+  nombre: z.string().min(2, 'Nombre requerido'),
+  tipo: z.string().default('SOCIO'),
+  porcentaje: z.number().min(0).max(100).default(0),
+});
+
+export type SocioInput = z.infer<typeof socioSchema>;
+
+export const retiroSchema = z.object({
+  socioId: z.string().min(1, 'Socio requerido'),
+  fecha: z.coerce.date(),
+  monto: z.number().positive('Monto requerido'),
+  concepto: z.string().optional(),
+  tipoRenta: z.enum(['AFECTA', 'EXENTA', 'NO_RENTA']).default('AFECTA'),
+  factorIpc: z.number().positive().default(1),
+});
+
+export type RetiroInput = z.infer<typeof retiroSchema>;
+
 export const activoFijoSchema = z.object({
   nombre: z.string().min(2, 'Nombre requerido'),
   categoria: z.enum(['MAQUINARIA', 'VEHICULO', 'MUEBLES', 'EQUIPOS_COMPUTACION', 'CONSTRUCCION', 'TERRENO', 'OTRO']).default('OTRO'),

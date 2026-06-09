@@ -138,6 +138,20 @@ enum TipoPermiso {
   OTRO
 }
 
+enum TipoLicencia {
+  COMUN
+  ACCIDENTE_LABORAL
+  PRENATAL
+  POSTNATAL
+  MENTAL
+}
+
+enum TipoRentaRetiro {
+  AFECTA
+  EXENTA
+  NO_RENTA
+}
+
 model Usuario {
   id        String     @id @default(cuid())
   email     String     @unique
@@ -183,6 +197,9 @@ model Empresa {
   configEmpresa      ConfigEmpresa[]
   vacaciones         Vacacion[]
   permisos           Permiso[]
+  licencias          LicenciaMedica[]
+  socios             Socio[]
+  retiros            Retiro[]
 
   @@map("empresas")
 }
@@ -413,6 +430,7 @@ model Trabajador {
   finiquitos        Finiquito[]
   vacaciones        Vacacion[]
   permisos          Permiso[]
+  licencias         LicenciaMedica[]
 
   @@unique([empresaId, rut])
   @@map("trabajadores")
@@ -474,6 +492,8 @@ model Liquidacion {
   updatedAt      DateTime   @updatedAt
   diasSinGoce    Int        @default(0)
   montoSinGoce   Decimal    @default(0) @db.Decimal(19, 4)
+  diasLicenciaMedica Int    @default(0)
+  subsidioLm     Decimal    @default(0) @db.Decimal(19, 4)
   empresa        Empresa    @relation(fields: [empresaId], references: [id])
   trabajador     Trabajador @relation(fields: [trabajadorId], references: [id])
 
@@ -571,4 +591,61 @@ model Permiso {
   trabajador   Trabajador  @relation(fields: [trabajadorId], references: [id])
 
   @@map("permisos")
+}
+
+model Socio {
+  id         String   @id @default(cuid())
+  empresaId  String
+  rut        String
+  nombre     String
+  tipo       String   @default("SOCIO")
+  porcentaje Decimal  @default(0) @db.Decimal(5, 2)
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  retiros    Retiro[]
+
+  @@unique([empresaId, rut])
+  @@map("socios")
+}
+
+model Retiro {
+  id             String          @id @default(cuid())
+  empresaId      String
+  socioId        String
+  fecha          DateTime
+  monto          Decimal         @db.Decimal(19, 4)
+  concepto       String          @default("")
+  factorIpc      Decimal         @default(1.0) @db.Decimal(8, 4)
+  montoCorregido Decimal         @db.Decimal(19, 4)
+  tipoRenta      TipoRentaRetiro @default(AFECTA)
+  creditoIdpc    Decimal         @default(0) @db.Decimal(19, 4)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  empresa        Empresa         @relation(fields: [empresaId], references: [id])
+  socio          Socio           @relation(fields: [socioId], references: [id])
+
+  @@map("retiros")
+}
+
+model LicenciaMedica {
+  id             String       @id @default(cuid())
+  empresaId      String
+  trabajadorId   String
+  fechaInicio    DateTime
+  fechaFin       DateTime
+  tipo           TipoLicencia @default(COMUN)
+  numLicencia    String       @default("")
+  entidad        String       @default("FONASA")
+  diasLicencia   Int          @default(0)
+  subsidioMonto  Decimal      @default(0) @db.Decimal(19, 4)
+  subsidioPagado Boolean      @default(false)
+  notas          String       @default("")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  empresa        Empresa      @relation(fields: [empresaId], references: [id])
+  trabajador     Trabajador   @relation(fields: [trabajadorId], references: [id])
+
+  @@map("licencias_medicas")
 }

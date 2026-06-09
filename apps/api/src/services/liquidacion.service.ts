@@ -107,6 +107,7 @@ export interface LiquidacionCalculada {
   anticipo: number;
   diasSinGoce: number;
   montoSinGoce: number;
+  diasLicenciaMedica: number;
   liquido: number;
   costoEmpleador: number;
 }
@@ -126,12 +127,15 @@ export function calcularLiquidacion(
     uf: number;
     config?: ConfigCalculo;
     diasSinGoce?: number;
+    diasLicencia?: number;
   },
 ): LiquidacionCalculada {
   const { horasExtra, horasExtraFeriado, horasDescuento, otrosDescuentos, bono, diasTrabajados, anticipo, utm, imm, uf } = params;
   const cfg = params.config ?? {};
   const diasSG = params.diasSinGoce ?? 0;
-  const diasEfectivos = Math.max(0, diasTrabajados - diasSG);
+  // Licencia médica: el empleador no paga esos días (los cubre FONASA/ISAPRE vía subsidio)
+  const diasLic = params.diasLicencia ?? 0;
+  const diasEfectivos = Math.max(0, diasTrabajados - diasSG - diasLic);
   const factor = diasEfectivos / 30;
 
   const sueldoBase = Number(trabajador.sueldoBase);
@@ -267,6 +271,7 @@ export function calcularLiquidacion(
     anticipo,
     diasSinGoce: diasSG,
     montoSinGoce,
+    diasLicenciaMedica: diasLic,
     liquido: Math.max(0, liquido),
     costoEmpleador,
   };

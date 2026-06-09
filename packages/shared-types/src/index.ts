@@ -351,6 +351,8 @@ export interface Liquidacion {
   anticipo: string;
   diasSinGoce: number;
   montoSinGoce: string;
+  diasLicenciaMedica: number;
+  subsidioLm: string;
   liquido: string;
   costoEmpleador: string;
   pagada: boolean;
@@ -375,6 +377,123 @@ export interface Permiso {
   trabajador?: { nombre: string; rut: string };
   createdAt: string;
   updatedAt: string;
+}
+
+export type TipoLicencia = 'COMUN' | 'ACCIDENTE_LABORAL' | 'PRENATAL' | 'POSTNATAL' | 'MENTAL';
+
+export interface LicenciaMedica {
+  id: string;
+  empresaId: string;
+  trabajadorId: string;
+  fechaInicio: string;
+  fechaFin: string;
+  tipo: TipoLicencia;
+  numLicencia: string;
+  entidad: string;
+  diasLicencia: number;
+  subsidioMonto: string;
+  subsidioPagado: boolean;
+  notas: string;
+  trabajador?: { nombre: string; rut: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Socio {
+  id: string;
+  empresaId: string;
+  rut: string;
+  nombre: string;
+  tipo: string;
+  porcentaje: string;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TipoRentaRetiro = 'AFECTA' | 'EXENTA' | 'NO_RENTA';
+
+export interface Retiro {
+  id: string;
+  empresaId: string;
+  socioId: string;
+  fecha: string;
+  monto: string;
+  concepto: string;
+  factorIpc: string;
+  montoCorregido: string;
+  tipoRenta: TipoRentaRetiro;
+  creditoIdpc: string;
+  socio?: { nombre: string; rut: string; tipo: string; porcentaje: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DJ1886Socio {
+  nro: number;
+  rut: string;
+  nombre: string;
+  tipo: string;
+  porcentaje: string;
+  nRetiros: number;
+  afecta: number;
+  exenta: number;
+  noRenta: number;
+  incremento: number;
+  credito: number;
+  totalCorregido: number;
+}
+
+export interface DJ1886Result {
+  empresaRut: string;
+  empresaNombre: string;
+  anio: number;
+  tasa1cat: number;
+  socios: DJ1886Socio[];
+  totales: {
+    afecta: number;
+    exenta: number;
+    noRenta: number;
+    incremento: number;
+    credito: number;
+  };
+}
+
+export interface DJ1887Trabajador {
+  nCert: number;
+  rut: string;
+  nombre: string;
+  apPaterno: string;
+  apMaterno: string;
+  nombres: string;
+  meses: number;
+  rentaNeta: number;
+  impuestoUnico: number;
+  noGravada: number;
+  mayorRetencion: number;
+  rentaExenta: number;
+  rebajaZona: number;
+  prestamo3pct: number;
+  rentaNetaSinAct: number;
+  impuestoUnicoSinAct: number;
+  periodoCod: 'C' | 'P' | 'F';
+  jornadaHoras: number;
+  anio40h: number;
+}
+
+export interface DJ1887Result {
+  empresaRut: string;
+  empresaNombre: string;
+  anio: number;
+  trabajadores: DJ1887Trabajador[];
+  totales: {
+    trabajadores: number;
+    rentaNeta: number;
+    impuestoUnico: number;
+    noGravada: number;
+    rentaNetaSinAct: number;
+    impuestoUnicoSinAct: number;
+  };
 }
 
 export interface ActivoFijo {
