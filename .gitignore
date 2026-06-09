@@ -9,3 +9,5 @@ dist/
 uploads/
 *.exe
 credenciales*.txt
+# PDFs generados/de prueba en la raíz (liquidaciones, boletas, etc.)
+/*.pdf
