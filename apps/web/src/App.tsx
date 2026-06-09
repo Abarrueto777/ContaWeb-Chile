@@ -18,6 +18,7 @@ import RRHH from '@/pages/RRHH';
 import DJ1887 from '@/pages/DJ1887';
 import Retiros from '@/pages/Retiros';
 import F22 from '@/pages/F22';
+import RentaPresunta from '@/pages/RentaPresunta';
 import Activos from '@/pages/Activos';
 import PlanCuentas from '@/pages/PlanCuentas';
 import Contabilidad from '@/pages/Contabilidad';
@@ -89,6 +90,10 @@ export default function App() {
           <Route
             path="/f22"
             element={<ProtectedRoute><F22 /></ProtectedRoute>}
+          />
+          <Route
+            path="/renta-presunta"
+            element={<ProtectedRoute><RentaPresunta /></ProtectedRoute>}
           />
           <Route
             path="/activos"

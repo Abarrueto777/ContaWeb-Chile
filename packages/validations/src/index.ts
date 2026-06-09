@@ -285,6 +285,35 @@ export const retiroSchema = z.object({
 
 export type RetiroInput = z.infer<typeof retiroSchema>;
 
+export const rpBienSchema = z.object({
+  tipo: z.enum(['AGRICOLA', 'TRANSPORTE']),
+  descripcion: z.string().optional(),
+  rolAvaluo: z.string().optional(),
+  municipio: z.string().optional(),
+  avaluoFiscal: z.number().min(0).default(0),
+  anioAvaluo: z.number().int().min(1900).max(2100).optional(),
+  patente: z.string().optional(),
+  tipoVehiculo: z.string().optional(),
+  marca: z.string().optional(),
+  modelo: z.string().optional(),
+  anioVehiculo: z.number().int().min(1900).max(2100).optional(),
+  valorTasacion: z.number().min(0).default(0),
+  anioTasacion: z.number().int().min(1900).max(2100).optional(),
+});
+
+export type RPBienInput = z.infer<typeof rpBienSchema>;
+
+export const rpPpmSchema = z.object({
+  anio: z.number().int().min(2000).max(2100),
+  mes: z.number().int().min(1).max(12),
+  ventasPeriodo: z.number().min(0).default(0),
+  tipo: z.enum(['AGRICOLA', 'TRANSPORTE']).default('AGRICOLA'),
+  pagado: z.boolean().default(false),
+  observacion: z.string().optional(),
+});
+
+export type RPPpmInput = z.infer<typeof rpPpmSchema>;
+
 export const activoFijoSchema = z.object({
   nombre: z.string().min(2, 'Nombre requerido'),
   categoria: z.enum(['MAQUINARIA', 'VEHICULO', 'MUEBLES', 'EQUIPOS_COMPUTACION', 'CONSTRUCCION', 'TERRENO', 'OTRO']).default('OTRO'),

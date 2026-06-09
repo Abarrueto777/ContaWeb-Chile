@@ -152,6 +152,11 @@ enum TipoRentaRetiro {
   NO_RENTA
 }
 
+enum TipoBienRP {
+  AGRICOLA
+  TRANSPORTE
+}
+
 model Usuario {
   id        String     @id @default(cuid())
   email     String     @unique
@@ -200,6 +205,8 @@ model Empresa {
   licencias          LicenciaMedica[]
   socios             Socio[]
   retiros            Retiro[]
+  rpBienes           RPBien[]
+  rpPpm              RPPpm[]
 
   @@map("empresas")
 }
@@ -591,6 +598,49 @@ model Permiso {
   trabajador   Trabajador  @relation(fields: [trabajadorId], references: [id])
 
   @@map("permisos")
+}
+
+model RPBien {
+  id            String     @id @default(cuid())
+  empresaId     String
+  tipo          TipoBienRP
+  descripcion   String     @default("")
+  rolAvaluo     String?
+  municipio     String?
+  avaluoFiscal  Decimal    @default(0) @db.Decimal(19, 4)
+  anioAvaluo    Int?
+  patente       String?
+  tipoVehiculo  String?
+  marca         String?
+  modelo        String?
+  anioVehiculo  Int?
+  valorTasacion Decimal    @default(0) @db.Decimal(19, 4)
+  anioTasacion  Int?
+  activo        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  empresa       Empresa    @relation(fields: [empresaId], references: [id])
+
+  @@map("rp_bienes")
+}
+
+model RPPpm {
+  id            String    @id @default(cuid())
+  empresaId     String
+  anio          Int
+  mes           Int
+  ventasPeriodo Decimal   @default(0) @db.Decimal(19, 4)
+  ppmTasa       Decimal   @default(0.0025) @db.Decimal(8, 4)
+  ppmMonto      Decimal   @default(0) @db.Decimal(19, 4)
+  pagado        Boolean   @default(false)
+  fechaPago     DateTime?
+  observacion   String    @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  empresa       Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, anio, mes])
+  @@map("rp_ppm")
 }
 
 model Socio {

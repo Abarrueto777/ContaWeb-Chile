@@ -399,6 +399,77 @@ export interface LicenciaMedica {
   updatedAt: string;
 }
 
+export type TipoBienRP = 'AGRICOLA' | 'TRANSPORTE';
+
+export interface RPBien {
+  id: string;
+  empresaId: string;
+  tipo: TipoBienRP;
+  descripcion: string;
+  rolAvaluo?: string;
+  municipio?: string;
+  avaluoFiscal: string;
+  anioAvaluo?: number;
+  patente?: string;
+  tipoVehiculo?: string;
+  marca?: string;
+  modelo?: string;
+  anioVehiculo?: number;
+  valorTasacion: string;
+  anioTasacion?: number;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RPPpm {
+  id: string;
+  empresaId: string;
+  anio: number;
+  mes: number;
+  ventasPeriodo: string;
+  ppmTasa: string;
+  ppmMonto: string;
+  pagado: boolean;
+  fechaPago?: string;
+  observacion: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RentaPresuntaDetalle {
+  id: string;
+  tipo: TipoBienRP;
+  descripcion: string;
+  base: number;
+  rentaPresunta: number;
+}
+
+export interface RentaPresuntaResult {
+  anio: number;
+  detalle: RentaPresuntaDetalle[];
+  baseAgricola: number;
+  baseTransporte: number;
+  rpAgricola: number;
+  rpTransporte: number;
+  rentaPresunta: number;
+  impuesto1cat: number;
+  tasaPresuncion: number;
+  tasa1cat: number;
+  ppmPagado: number;
+  diferencia: number;
+  aPagar: number;
+  saldoFavor: number;
+}
+
+export interface RPPpmResumen {
+  registros: RPPpm[];
+  totalVentas: number;
+  totalPpm: number;
+  totalPagado: number;
+  totalPendiente: number;
+}
+
 export interface F22Result {
   anio: number;
   periodo: string;
