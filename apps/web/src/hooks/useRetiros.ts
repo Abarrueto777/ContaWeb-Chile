@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Socio, Retiro, DJ1886Result, ApiResponse } from '@contaweb/shared-types';
+import type { Socio, Retiro, DJ1886Result, DJ1948Result, ApiResponse } from '@contaweb/shared-types';
 import type { SocioInput, RetiroInput } from '@contaweb/validations';
 import api from '@/lib/api';
 
@@ -114,4 +114,25 @@ export async function descargarDJ1886Txt(empresaId: string, anio: number) {
   a.download = `DJ1886_${anio}.txt`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── DJ 1948 ─────────────────────────────────────────────────────────
+export function useDJ1948(empresaId: string, anio: number) {
+  return useQuery<ApiResponse<DJ1948Result>>({
+    queryKey: ['dj1948', empresaId, anio],
+    queryFn: () => api.get<ApiResponse<DJ1948Result>>(`/api/empresas/${empresaId}/dj1948?anio=${anio}`).then(r => r.data),
+    enabled: !!empresaId && !!anio,
+  });
+}
+
+export function useRecalcularRetiros(empresaId: string) {
+  const qc = useQueryClient();
+  return useMutation<{ data: { actualizados: number }; message: string }, Error, number>({
+    mutationFn: (anio) => api.post(`/api/empresas/${empresaId}/dj1948/recalcular?anio=${anio}`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['retiros', empresaId] });
+      qc.invalidateQueries({ queryKey: ['dj1886', empresaId] });
+      qc.invalidateQueries({ queryKey: ['dj1948', empresaId] });
+    },
+  });
 }

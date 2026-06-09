@@ -399,6 +399,33 @@ export interface LicenciaMedica {
   updatedAt: string;
 }
 
+export interface F22Result {
+  anio: number;
+  periodo: string;
+  ingresos: number;
+  gastosTotal: number;
+  utilidadNeta: number;
+  gastosRechazados: number;
+  ajustes: number;
+  rentaLiquida: number;
+  rentaImponible: number;
+  tasa1cat: number;
+  impuesto1cat: number;
+  ventasNetas: number;
+  tasaPpm: number;
+  ppmAcumulado: number;
+  creditoPpm: number;
+  creditoSence: number;
+  creditoDonaciones: number;
+  creditoOtros: number;
+  retenciones: number;
+  totalCreditos: number;
+  impuestoNeto: number;
+  aPagar: number;
+  devolucion: number;
+  sueldosEmpresarial: number;
+}
+
 export interface Socio {
   id: string;
   empresaId: string;
@@ -457,6 +484,30 @@ export interface DJ1886Result {
     incremento: number;
     credito: number;
   };
+}
+
+export interface DJ1948Socio {
+  nro: number;
+  rut: string;
+  nombre: string;
+  tipo: string;
+  porcentaje: string;
+  nRetiros: number;
+  totalAfecta: number;
+  totalExenta: number;
+  totalNoRenta: number;
+  totalHistorico: number;
+  totalCorregido: number;
+  totalCreditoIdpc: number;
+}
+
+export interface DJ1948Result {
+  empresaRut: string;
+  empresaNombre: string;
+  anio: number;
+  tasa1cat: number;
+  socios: DJ1948Socio[];
+  totales: { historico: number; corregido: number; creditoIdpc: number; afecta: number; exenta: number; noRenta: number };
 }
 
 export interface DJ1887Trabajador {

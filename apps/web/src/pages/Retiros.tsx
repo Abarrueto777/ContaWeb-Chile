@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, TrendingDown, ScrollText, Trash2, Pencil, Loader2, Download } from 'lucide-react';
+import { Plus, Users, TrendingDown, ScrollText, Trash2, Pencil, Loader2, Download, FileBarChart, RefreshCw } from 'lucide-react';
 import { socioSchema, retiroSchema, type SocioInput, type RetiroInput } from '@contaweb/validations';
-import type { Socio, Retiro, DJ1886Socio } from '@contaweb/shared-types';
+import type { Socio, Retiro, DJ1886Socio, DJ1948Socio } from '@contaweb/shared-types';
 import {
   useSocios, useCreateSocio, useUpdateSocio, useDeleteSocio,
   useRetiros, useCreateRetiro, useUpdateRetiro, useDeleteRetiro,
   useDJ1886, descargarDJ1886Txt,
+  useDJ1948, useRecalcularRetiros,
 } from '@/hooks/useRetiros';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,7 @@ const TIPO_SOCIO = ['SOCIO', 'DUEÑO', 'ACCIONISTA', 'EMPRESARIO INDIVIDUAL', 'C
 const TIPO_RENTA_LABEL: Record<string, string> = { AFECTA: 'Afecta a GC', EXENTA: 'Exenta', NO_RENTA: 'No renta' };
 const TIPO_RENTA_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = { AFECTA: 'default', EXENTA: 'secondary', NO_RENTA: 'outline' };
 
-type Vista = 'socios' | 'retiros' | 'dj1886';
+type Vista = 'socios' | 'retiros' | 'dj1886' | 'dj1948';
 
 export default function Retiros() {
   const now = new Date();
@@ -49,10 +50,13 @@ export default function Retiros() {
   const updateRetiro = useUpdateRetiro(eid);
   const deleteRetiro = useDeleteRetiro(eid);
   const { data: djData, isLoading: loadingDj } = useDJ1886(eid, anio);
+  const { data: dj48Data, isLoading: loadingDj48 } = useDJ1948(eid, anio);
+  const recalcular = useRecalcularRetiros(eid);
 
   const socios = sociosData?.data ?? [];
   const retiros = retirosData?.data ?? [];
   const dj = djData?.data;
+  const dj48 = dj48Data?.data;
 
   const formSocio = useForm<SocioInput>({ resolver: zodResolver(socioSchema), defaultValues: { tipo: 'SOCIO', porcentaje: 0 } });
   const formRetiro = useForm<RetiroInput>({ resolver: zodResolver(retiroSchema), defaultValues: { tipoRenta: 'AFECTA', factorIpc: 1 } });
@@ -117,6 +121,9 @@ export default function Retiros() {
           </Button>
           <Button variant={vista === 'dj1886' ? 'default' : 'outline'} size="sm" onClick={() => setVista('dj1886')}>
             <ScrollText className="mr-1.5 h-3.5 w-3.5" />DJ 1886
+          </Button>
+          <Button variant={vista === 'dj1948' ? 'default' : 'outline'} size="sm" onClick={() => setVista('dj1948')}>
+            <FileBarChart className="mr-1.5 h-3.5 w-3.5" />DJ 1948
           </Button>
           {vista !== 'socios' && (
             <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-24 h-9" min={2000} max={now.getFullYear()} />
@@ -277,6 +284,75 @@ export default function Retiros() {
                           <td className="px-3 py-2 text-right font-mono hidden md:table-cell">{clp(dj.totales.noRenta)}</td>
                           <td className="px-3 py-2 text-right font-mono text-blue-600">{clp(dj.totales.incremento)}</td>
                           <td className="px-3 py-2 text-right font-mono text-green-600">{clp(dj.totales.credito)}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* DJ 1948 */}
+      {vista === 'dj1948' && (
+        <>
+          <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-xs text-blue-800 flex items-center justify-between gap-3">
+            <span>
+              DJ 1948 · Retiros, remesas y distribuciones (régimen 14 A) · AT {anio + 1} (año {anio}) ·
+              Tasa 1ª Cat: <strong>{((dj48?.tasa1cat ?? 0.25) * 100).toFixed(0)}%</strong>.
+              El crédito IDPC se calcula al registrar el retiro; usá Recalcular si cambió la tasa.
+            </span>
+            <Button size="sm" variant="outline" onClick={() => recalcular.mutate(anio)} disabled={recalcular.isPending}>
+              {recalcular.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Recalcular
+            </Button>
+          </div>
+          {loadingDj48 ? (
+            <div className="flex items-center justify-center py-20 text-muted-foreground text-sm"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Calculando…</div>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/20 text-xs text-muted-foreground">
+                        <th className="px-3 py-2 text-center font-medium">N°</th>
+                        <th className="px-3 py-2 text-left font-medium">RUT</th>
+                        <th className="px-3 py-2 text-left font-medium">Socio</th>
+                        <th className="px-3 py-2 text-center font-medium">Retiros</th>
+                        <th className="px-3 py-2 text-right font-medium">Afecta</th>
+                        <th className="px-3 py-2 text-right font-medium hidden md:table-cell">Exenta</th>
+                        <th className="px-3 py-2 text-right font-medium hidden md:table-cell">No renta</th>
+                        <th className="px-3 py-2 text-right font-medium">Corregido</th>
+                        <th className="px-3 py-2 text-right font-medium">Crédito IDPC</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(dj48?.socios ?? []).map((f: DJ1948Socio) => (
+                        <tr key={f.nro} className="border-b hover:bg-muted/10">
+                          <td className="px-3 py-2 text-center text-muted-foreground">{f.nro}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{f.rut}</td>
+                          <td className="px-3 py-2">{f.nombre}</td>
+                          <td className="px-3 py-2 text-center">{f.nRetiros}</td>
+                          <td className="px-3 py-2 text-right font-mono">{clp(f.totalAfecta)}</td>
+                          <td className="px-3 py-2 text-right font-mono hidden md:table-cell">{clp(f.totalExenta)}</td>
+                          <td className="px-3 py-2 text-right font-mono hidden md:table-cell">{clp(f.totalNoRenta)}</td>
+                          <td className="px-3 py-2 text-right font-mono font-medium">{clp(f.totalCorregido)}</td>
+                          <td className="px-3 py-2 text-right font-mono text-green-600">{clp(f.totalCreditoIdpc)}</td>
+                        </tr>
+                      ))}
+                      {(dj48?.socios ?? []).length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">Sin socios activos</td></tr>}
+                    </tbody>
+                    {dj48 && dj48.socios.length > 0 && (
+                      <tfoot>
+                        <tr className="border-t bg-muted/30 font-semibold">
+                          <td className="px-3 py-2" colSpan={4}>Totales</td>
+                          <td className="px-3 py-2 text-right font-mono">{clp(dj48.totales.afecta)}</td>
+                          <td className="px-3 py-2 text-right font-mono hidden md:table-cell">{clp(dj48.totales.exenta)}</td>
+                          <td className="px-3 py-2 text-right font-mono hidden md:table-cell">{clp(dj48.totales.noRenta)}</td>
+                          <td className="px-3 py-2 text-right font-mono">{clp(dj48.totales.corregido)}</td>
+                          <td className="px-3 py-2 text-right font-mono text-green-600">{clp(dj48.totales.creditoIdpc)}</td>
                         </tr>
                       </tfoot>
                     )}

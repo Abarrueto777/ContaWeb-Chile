@@ -50,6 +50,7 @@ const navGroups: { label: string | null; items: { to: string; label: string; ico
       { to: '/compras', label: 'Compras', icon: ShoppingCart },
       { to: '/honorarios', label: 'Honorarios', icon: Receipt },
       { to: '/f29', label: 'F29 IVA', icon: Calculator },
+      { to: '/f22', label: 'F22 Renta', icon: ScrollText },
       { to: '/banco', label: 'Banco', icon: Landmark },
     ],
   },
