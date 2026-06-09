@@ -18,6 +18,7 @@ import {
   ScrollText,
   Wallet,
   Tractor,
+  BarChart3,
   Sun,
   Moon,
   ChevronsUpDown,
@@ -73,6 +74,7 @@ const navGroups: { label: string | null; items: { to: string; label: string; ico
     items: [
       { to: '/plan-cuentas', label: 'Plan Cuentas', icon: List },
       { to: '/contabilidad', label: 'Contabilidad', icon: BookOpen },
+      { to: '/propyme', label: 'ProPyme D3', icon: BarChart3 },
     ],
   },
 ];

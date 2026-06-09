@@ -20,6 +20,7 @@ import DJ1879 from '@/pages/DJ1879';
 import Retiros from '@/pages/Retiros';
 import F22 from '@/pages/F22';
 import RentaPresunta from '@/pages/RentaPresunta';
+import ProPyme from '@/pages/ProPyme';
 import Activos from '@/pages/Activos';
 import PlanCuentas from '@/pages/PlanCuentas';
 import Contabilidad from '@/pages/Contabilidad';
@@ -99,6 +100,10 @@ export default function App() {
           <Route
             path="/renta-presunta"
             element={<ProtectedRoute><RentaPresunta /></ProtectedRoute>}
+          />
+          <Route
+            path="/propyme"
+            element={<ProtectedRoute><ProPyme /></ProtectedRoute>}
           />
           <Route
             path="/activos"

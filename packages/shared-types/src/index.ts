@@ -470,6 +470,21 @@ export interface RPPpmResumen {
   totalPendiente: number;
 }
 
+export interface ProPymeResumen {
+  anio: number;
+  mes: number | null;
+  ingresos: number;
+  gastos: number;
+  rentaLiquida: number;
+  tasa1cat: number;
+  impuesto1cat: number;
+  tasaPpm: number;
+  ppmAcumulado: number;
+  diferencia: number;
+  aPagar: number;
+  aFavor: number;
+}
+
 export interface F22Result {
   anio: number;
   periodo: string;
