@@ -26,7 +26,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', validate(documentoSchema), async (req, res, next) => {
   try {
-    const { clienteId: clienteIdInput, clienteRut, clienteNombre, tipo, fecha, glosa, lineas } = req.body;
+    const { clienteId: clienteIdInput, clienteRut, clienteNombre, tipo, fecha, glosa, condicionPago, lineas } = req.body;
     const { empresaId } = req.params as { empresaId: string };
 
     let clienteId = clienteIdInput ?? null;
@@ -62,6 +62,7 @@ router.post('/', validate(documentoSchema), async (req, res, next) => {
         folio,
         fecha,
         glosa: glosa ?? null,
+        condicionPago: condicionPago ?? 'CONTADO',
         neto: new Decimal(neto).toDecimalPlaces(4),
         iva,
         total,
@@ -87,6 +88,7 @@ router.post('/', validate(documentoSchema), async (req, res, next) => {
         total: Number(total),
         tipo,
         glosa: glosa ?? null,
+        condicionPago: condicionPago ?? 'CONTADO',
       });
     } catch {
       // Si no existe el plan de cuentas no se bloquea la creación del documento

@@ -81,6 +81,7 @@ export const documentoSchema = z.object({
   tipo: z.enum(['BOLETA_ELECTRONICA', 'FACTURA_ELECTRONICA', 'NOTA_CREDITO', 'NOTA_DEBITO']),
   fecha: z.coerce.date(),
   glosa: z.string().optional(),
+  condicionPago: z.enum(['CONTADO', 'CREDITO']).default('CONTADO'),
   lineas: z.array(lineaDocumentoSchema).min(1, 'Al menos una línea requerida'),
 });
 
@@ -120,6 +121,7 @@ export const facturaRecibidaSchema = z.object({
   tipoImpuesto: z
     .enum(['NINGUNO', 'BEBIDAS_20', 'BEBIDAS_31', 'LUJO', 'CARNE', 'HARINA', 'DIESEL'])
     .default('NINGUNO'),
+  condicionPago: z.enum(['CONTADO', 'CREDITO']).default('CONTADO'),
   glosa: z.string().optional(),
 });
 

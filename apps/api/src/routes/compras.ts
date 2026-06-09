@@ -50,6 +50,7 @@ router.post('/', validate(facturaRecibidaSchema), async (req, res, next) => {
         iva: Number(req.body.iva),
         total: Number(req.body.total),
         glosa: req.body.glosa ?? null,
+        condicionPago: req.body.condicionPago ?? 'CONTADO',
       });
     } catch {
       // Si no existe el plan de cuentas no se bloquea
