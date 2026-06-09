@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { retiroSchema } from '@contaweb/validations';
 import { getConfig } from '../services/config.service';
 import { calcularRetiro } from '../services/retiros.service';
+import { factorIpcParaFecha } from '../services/factoresIpc.service';
 
 const router = Router({ mergeParams: true });
 
@@ -36,13 +37,14 @@ router.post('/', async (req, res) => {
 
     const config = await getConfig(empresaId);
     const tasa = Number(config['tasa_1cat_pct'] ?? '0.25');
-    const { montoCorregido, creditoIdpc } = calcularRetiro(parsed.data.monto, parsed.data.factorIpc, parsed.data.tipoRenta, tasa);
+    const factorIpc = await factorIpcParaFecha(parsed.data.fecha, parsed.data.factorIpc, prisma);
+    const { montoCorregido, creditoIdpc } = calcularRetiro(parsed.data.monto, factorIpc, parsed.data.tipoRenta, tasa);
 
     const retiro = await prisma.retiro.create({
       data: {
         empresaId, socioId: parsed.data.socioId, fecha: parsed.data.fecha,
         monto: parsed.data.monto, concepto: parsed.data.concepto ?? '',
-        factorIpc: parsed.data.factorIpc, tipoRenta: parsed.data.tipoRenta,
+        factorIpc, tipoRenta: parsed.data.tipoRenta,
         montoCorregido, creditoIdpc,
       },
       include: { socio: { select: { nombre: true, rut: true, tipo: true, porcentaje: true } } },
@@ -64,14 +66,15 @@ router.put('/:id', async (req, res) => {
 
     const config = await getConfig(empresaId);
     const tasa = Number(config['tasa_1cat_pct'] ?? '0.25');
-    const { montoCorregido, creditoIdpc } = calcularRetiro(parsed.data.monto, parsed.data.factorIpc, parsed.data.tipoRenta, tasa);
+    const factorIpc = await factorIpcParaFecha(parsed.data.fecha, parsed.data.factorIpc, prisma);
+    const { montoCorregido, creditoIdpc } = calcularRetiro(parsed.data.monto, factorIpc, parsed.data.tipoRenta, tasa);
 
     const retiro = await prisma.retiro.update({
       where: { id },
       data: {
         socioId: parsed.data.socioId, fecha: parsed.data.fecha,
         monto: parsed.data.monto, concepto: parsed.data.concepto ?? '',
-        factorIpc: parsed.data.factorIpc, tipoRenta: parsed.data.tipoRenta,
+        factorIpc, tipoRenta: parsed.data.tipoRenta,
         montoCorregido, creditoIdpc,
       },
       include: { socio: { select: { nombre: true, rut: true, tipo: true, porcentaje: true } } },

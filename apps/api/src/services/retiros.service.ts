@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { getConfig } from './config.service';
+import { factorIpcParaFecha } from './factoresIpc.service';
 
 /**
  * Retiros de socios/dueños + DJ 1886 (Retiros, Remesas y/o Distribuciones).
@@ -224,9 +225,11 @@ export async function recalcularRetirosIpc(
   const retiros = await prisma.retiro.findMany({
     where: { empresaId, fecha: { gte: new Date(anio, 0, 1), lte: new Date(anio, 11, 31, 23, 59, 59) } },
   });
-  await Promise.all(retiros.map((r) => {
-    const { montoCorregido, creditoIdpc } = calcularRetiro(Number(r.monto), Number(r.factorIpc), r.tipoRenta, tasa);
-    return prisma.retiro.update({ where: { id: r.id }, data: { montoCorregido, creditoIdpc } });
+  await Promise.all(retiros.map(async (r) => {
+    // Re-aplica el factor IPC cargado para el mes del retiro (si no hay, conserva el actual)
+    const factorIpc = await factorIpcParaFecha(r.fecha, Number(r.factorIpc), prisma);
+    const { montoCorregido, creditoIdpc } = calcularRetiro(Number(r.monto), factorIpc, r.tipoRenta, tasa);
+    return prisma.retiro.update({ where: { id: r.id }, data: { factorIpc, montoCorregido, creditoIdpc } });
   }));
   return retiros.length;
 }

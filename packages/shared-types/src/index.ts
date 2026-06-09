@@ -667,6 +667,13 @@ export interface ActivoFijo {
   updatedAt: string;
 }
 
+export interface FactorIpc {
+  id: string;
+  anio: number;
+  mes: number;
+  factor: string;
+}
+
 export interface ValorUFUTM {
   id: string;
   anio: number;

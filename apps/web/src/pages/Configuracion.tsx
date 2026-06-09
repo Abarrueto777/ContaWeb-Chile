@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Save, Loader2, Building2, Calculator, RefreshCw,
-  UserCheck, CheckCircle, Briefcase, Zap,
+  UserCheck, CheckCircle, Briefcase, Zap, TrendingUp,
 } from 'lucide-react';
+import { useFactoresIpc, useUpsertFactorIpc } from '@/hooks/useFactoresIpc';
 import { empresaSchema, type EmpresaInput } from '@contaweb/validations';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { useUpsertValorUF, useValorUFMes, useSyncPrevired } from '@/hooks/useUF';
@@ -247,6 +248,9 @@ export default function Configuracion() {
           </TabsTrigger>
           <TabsTrigger value="rrhh" className="gap-2">
             <Briefcase className="h-4 w-4" />RRHH
+          </TabsTrigger>
+          <TabsTrigger value="ipc" className="gap-2">
+            <TrendingUp className="h-4 w-4" />Factores IPC
           </TabsTrigger>
         </TabsList>
 
@@ -596,7 +600,84 @@ export default function Configuracion() {
           </Card>
 
         </TabsContent>
+
+        {/* ── TAB FACTORES IPC ── */}
+        <TabsContent value="ipc" className="space-y-6 pt-4">
+          <FactoresIpcTab />
+        </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function FactoresIpcTab() {
+  const hoy = new Date();
+  const [anio, setAnio] = useState(hoy.getFullYear() - 1);
+  const [valores, setValores] = useState<Record<number, string>>({});
+  const [guardando, setGuardando] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const { data } = useFactoresIpc(anio);
+  const upsert = useUpsertFactorIpc();
+
+  // Inicializa los inputs desde los factores cargados al cambiar de año
+  useEffect(() => {
+    const map: Record<number, string> = {};
+    for (const f of data?.data ?? []) map[f.mes] = String(Number(f.factor));
+    setValores(map);
+  }, [data]);
+
+  async function guardarTodos() {
+    setGuardando(true);
+    try {
+      for (let mes = 1; mes <= 12; mes++) {
+        const v = Number(valores[mes]);
+        if (v && v > 0) await upsert.mutateAsync({ anio, mes, factor: v });
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><TrendingUp className="h-4 w-4" />Factores de actualización IPC</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Factor de corrección monetaria por mes (acumulado del mes a diciembre). Se usan para actualizar
+          montos en la <strong>DJ 1887</strong> (rentas y retenciones) y en los <strong>retiros</strong> de socios.
+          Dejá un mes vacío o en <strong>1,0</strong> si no hay reajuste.
+        </p>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs">Año:</Label>
+          <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="w-24 h-9" min={2000} max={hoy.getFullYear()} />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {MESES.map((m, i) => {
+            const mes = i + 1;
+            return (
+              <div key={mes} className="space-y-1">
+                <Label className="text-xs">{m}</Label>
+                <Input
+                  type="number" step="0.0001" min="0"
+                  value={valores[mes] ?? ''}
+                  onChange={(e) => setValores((v) => ({ ...v, [mes]: e.target.value }))}
+                  placeholder="1.0000"
+                  className="h-8"
+                />
+              </div>
+            );
+          })}
+        </div>
+        <Button onClick={guardarTodos} disabled={guardando}>
+          {guardando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {saved ? 'Guardado ✓' : 'Guardar factores'}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

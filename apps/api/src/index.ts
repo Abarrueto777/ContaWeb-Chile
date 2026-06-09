@@ -10,6 +10,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import authRoutes from './routes/auth';
 import empresasRoutes from './routes/empresas';
 import ufRoutes from './routes/uf';
+import factoresIpcRoutes from './routes/factoresIpc';
 import { syncValoresMes } from './services/uf.service';
 import { scrapePreviredIndicadores } from './services/previred.service';
 import { prisma } from './lib/prisma';
@@ -62,6 +63,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/empresas', empresasRoutes);
 app.use('/api/uf', ufRoutes);
+app.use('/api/factores-ipc', factoresIpcRoutes);
 
 app.use(errorHandler);
 

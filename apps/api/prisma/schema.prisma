@@ -549,6 +549,16 @@ model ValorUFUTM {
   @@map("valores_uf_utm")
 }
 
+model FactorIpc {
+  id     String  @id @default(cuid())
+  anio   Int
+  mes    Int
+  factor Decimal @default(1.0) @db.Decimal(8, 4)
+
+  @@unique([anio, mes])
+  @@map("factores_ipc")
+}
+
 model ConfigEmpresa {
   id        String  @id @default(cuid())
   empresaId String
