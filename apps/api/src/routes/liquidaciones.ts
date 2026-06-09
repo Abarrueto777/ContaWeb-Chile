@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { liquidacionInputSchema } from '@contaweb/validations';
 import { calcularLiquidacion } from '../services/liquidacion.service';
 import { diasSinGoceEnMes } from '../services/permisos.service';
+import { diasLicenciaEnMes, subsidioLicenciaEnMes } from '../services/licencias.service';
 import { getConfig } from '../services/config.service';
 import { getUFLiquidacion } from '../services/uf.service';
 import { createError } from '../middlewares/errorHandler';
@@ -321,7 +322,7 @@ router.get('/lre', async (req, res, next) => {
         /* 1114 */ '',
         /* 1171-1180 sindicatos */ '', '', '', '', '', '', '', '', '', '',
         /* 1115 */ String(liq.diasTrabajados ?? 30),
-        /* 1116 */ '0',
+        /* 1116 */ String(Math.round(Number((liq as typeof liq & { diasLicenciaMedica?: number | null }).diasLicenciaMedica ?? 0))),
         /* 1117 */ '0',
         /* 1118 */ '0',
         /* 1154 */ '',
@@ -502,8 +503,11 @@ router.post('/calcular', async (req, res) => {
       ...(valorUF?.sisEmpleador    !== undefined && { sis_empleador_previred:     Number(valorUF.sisEmpleador) }),
       ...(valorUF?.topeImponibleUf !== undefined && { tope_imponible_uf_previred: Number(valorUF.topeImponibleUf) }),
     };
-    const diasSinGoce = await diasSinGoceEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma);
-    const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce });
+    const [diasSinGoce, diasLicencia] = await Promise.all([
+      diasSinGoceEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma),
+      diasLicenciaEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma),
+    ]);
+    const resultado = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce, diasLicencia });
     res.json({ data: resultado });
   } catch {
     res.status(500).json({ error: 'Error al calcular liquidación' });
@@ -549,10 +553,14 @@ router.post('/', async (req, res) => {
       ...(valorUF?.sisEmpleador    !== undefined && { sis_empleador_previred:     Number(valorUF.sisEmpleador) }),
       ...(valorUF?.topeImponibleUf !== undefined && { tope_imponible_uf_previred: Number(valorUF.topeImponibleUf) }),
     };
-    const diasSinGoce = await diasSinGoceEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma);
-    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce });
+    const [diasSinGoce, diasLicencia, subsidioLm] = await Promise.all([
+      diasSinGoceEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma),
+      diasLicenciaEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma),
+      subsidioLicenciaEnMes(empresaId, parsed.data.trabajadorId, parsed.data.anio, parsed.data.mes, prisma),
+    ]);
+    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce, diasLicencia });
     const liquidacion = await prisma.liquidacion.create({
-      data: { empresaId, trabajadorId: parsed.data.trabajadorId, anio: parsed.data.anio, mes: parsed.data.mes, diasTrabajados: parsed.data.diasTrabajados, ...calc },
+      data: { empresaId, trabajadorId: parsed.data.trabajadorId, anio: parsed.data.anio, mes: parsed.data.mes, diasTrabajados: parsed.data.diasTrabajados, ...calc, subsidioLm },
       include: { trabajador: true },
     });
     res.status(201).json({ data: liquidacion });
@@ -692,11 +700,15 @@ router.put('/:liquidacionId', async (req, res, next) => {
       ...(valorUF?.sisEmpleador    !== undefined && { sis_empleador_previred:     Number(valorUF.sisEmpleador) }),
       ...(valorUF?.topeImponibleUf !== undefined && { tope_imponible_uf_previred: Number(valorUF.topeImponibleUf) }),
     };
-    const diasSinGoce = await diasSinGoceEnMes(empresaId, liq.trabajadorId, parsed.data.anio, parsed.data.mes, prisma);
-    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce });
+    const [diasSinGoce, diasLicencia, subsidioLm] = await Promise.all([
+      diasSinGoceEnMes(empresaId, liq.trabajadorId, parsed.data.anio, parsed.data.mes, prisma),
+      diasLicenciaEnMes(empresaId, liq.trabajadorId, parsed.data.anio, parsed.data.mes, prisma),
+      subsidioLicenciaEnMes(empresaId, liq.trabajadorId, parsed.data.anio, parsed.data.mes, prisma),
+    ]);
+    const calc = calcularLiquidacion(trabajador, { ...parsed.data, uf, config, diasSinGoce, diasLicencia });
     const updated = await prisma.liquidacion.update({
       where: { id: liquidacionId },
-      data: { ...calc, diasTrabajados: parsed.data.diasTrabajados },
+      data: { ...calc, diasTrabajados: parsed.data.diasTrabajados, subsidioLm },
       include: { trabajador: true },
     });
     res.json({ data: updated });

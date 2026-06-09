@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList, AlertTriangle, Mail } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList, AlertTriangle, Mail, Stethoscope } from 'lucide-react';
 import api from '@/lib/api';
 import { REGIONES_DT, COMUNAS_DT } from '@/lib/dt-geo';
-import { trabajadorSchema, finiquitoInputSchema, vacacionSchema, permisoSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput, type VacacionInput, type PermisoInput } from '@contaweb/validations';
-import type { Trabajador, Liquidacion, VacacionSaldo, Permiso } from '@contaweb/shared-types';
+import { trabajadorSchema, finiquitoInputSchema, vacacionSchema, permisoSchema, licenciaMedicaSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput, type VacacionInput, type PermisoInput, type LicenciaMedicaInput } from '@contaweb/validations';
+import type { Trabajador, Liquidacion, VacacionSaldo, Permiso, LicenciaMedica } from '@contaweb/shared-types';
 import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador, useReactivarTrabajador } from '@/hooks/useTrabajadores';
 import { useLiquidaciones, useCreateLiquidacion, useUpdateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion } from '@/hooks/useLiquidaciones';
 import { useVacaciones, useVacacionSaldos, useCreateVacacion, useDeleteVacacion } from '@/hooks/useVacaciones';
 import { usePermisos, useCreatePermiso, useDeletePermiso } from '@/hooks/usePermisos';
+import { useLicencias, useCreateLicencia, useUpdateLicencia, useDeleteLicencia } from '@/hooks/useLicencias';
 import { useEmpresaActual } from '@/hooks/useEmpresaActual';
 import { useValorUFMes } from '@/hooks/useUF';
 import { Button } from '@/components/ui/button';
@@ -59,7 +60,25 @@ function alertaContrato(t: { tipoContrato: string; fechaTerminoContrato?: string
   return null;
 }
 
-type Vista = 'trabajadores' | 'liquidaciones' | 'libro' | 'vacaciones' | 'permisos';
+type Vista = 'trabajadores' | 'liquidaciones' | 'libro' | 'vacaciones' | 'permisos' | 'licencias';
+
+const TIPO_LICENCIA_LABELS: Record<string, string> = {
+  COMUN: 'Enfermedad común',
+  ACCIDENTE_LABORAL: 'Accidente laboral',
+  PRENATAL: 'Pre-natal',
+  POSTNATAL: 'Post-natal',
+  MENTAL: 'Salud mental',
+};
+
+const ENTIDADES_LM = ['FONASA', 'BANMÉDICA', 'COLMENA', 'CONSALUD', 'CRUZ BLANCA', 'VIDA TRES', 'NUEVA MASVIDA', 'ESENCIAL', 'MUTUAL ACHS', 'MUTUAL IST', 'MUTUAL CCHC', 'OTRA'];
+
+function diasCalendarioEntre(inicio: string, fin: string): number {
+  if (!inicio || !fin) return 0;
+  const a = new Date(inicio + 'T12:00:00');
+  const b = new Date(fin + 'T12:00:00');
+  if (b < a) return 0;
+  return Math.round((b.getTime() - a.getTime()) / 86400000) + 1;
+}
 
 const TIPO_PERMISO_LABELS: Record<string, string> = {
   MATRIMONIO: 'Matrimonio (Art. 207 bis CT — 5 días)',
@@ -126,6 +145,9 @@ export default function RRHH() {
   const [filtroVacTrab, setFiltroVacTrab] = useState<string>('todos');
   const [openPermiso, setOpenPermiso] = useState(false);
   const [filtroPermTrab, setFiltroPermTrab] = useState<string>('todos');
+  const [openLicencia, setOpenLicencia] = useState(false);
+  const [editandoLicencia, setEditandoLicencia] = useState<LicenciaMedica | null>(null);
+  const [filtroLicTrab, setFiltroLicTrab] = useState<string>('todos');
 
   const { empresa, isLoading: loadingEmpresa } = useEmpresaActual();
   const { data: trabData, isLoading: loadingTrab } = useTrabajadores(empresa?.id ?? '');
@@ -145,6 +167,10 @@ export default function RRHH() {
   const { data: permData } = usePermisos(empresa?.id ?? '');
   const createPerm = useCreatePermiso(empresa?.id ?? '');
   const deletePerm = useDeletePermiso(empresa?.id ?? '');
+  const { data: licData } = useLicencias(empresa?.id ?? '');
+  const createLic = useCreateLicencia(empresa?.id ?? '');
+  const updateLic = useUpdateLicencia(empresa?.id ?? '');
+  const deleteLic = useDeleteLicencia(empresa?.id ?? '');
 
   const formVac = useForm<VacacionInput>({
     resolver: zodResolver(vacacionSchema),
@@ -176,6 +202,17 @@ export default function RRHH() {
   const fechasPermValidas = !!watchPermFechaInicio && !!watchPermFechaFin &&
     new Date(String(watchPermFechaFin).slice(0, 10) + 'T12:00:00') >=
     new Date(String(watchPermFechaInicio).slice(0, 10) + 'T12:00:00');
+
+  const formLic = useForm<LicenciaMedicaInput>({
+    resolver: zodResolver(licenciaMedicaSchema),
+    defaultValues: { tipo: 'COMUN', entidad: 'FONASA', subsidioMonto: 0, subsidioPagado: false },
+  });
+  const watchLicInicio = formLic.watch('fechaInicio');
+  const watchLicFin = formLic.watch('fechaFin');
+  const diasLicCalc = diasCalendarioEntre(
+    watchLicInicio ? String(watchLicInicio).slice(0, 10) : '',
+    watchLicFin ? String(watchLicFin).slice(0, 10) : '',
+  );
 
   const todosLosTrabajadores = trabData?.data ?? [];
 
@@ -311,6 +348,36 @@ export default function RRHH() {
     createPerm.mutate(d, {
       onSuccess: () => { formPerm.reset({ tipo: 'MATRIMONIO', conGoce: true }); createPerm.reset(); setOpenPermiso(false); },
     });
+  }
+
+  function resetFormLic() {
+    formLic.reset({ tipo: 'COMUN', entidad: 'FONASA', subsidioMonto: 0, subsidioPagado: false });
+    createLic.reset(); updateLic.reset();
+  }
+
+  function abrirEditarLicencia(l: LicenciaMedica) {
+    setEditandoLicencia(l);
+    formLic.reset({
+      trabajadorId: l.trabajadorId,
+      fechaInicio: l.fechaInicio.slice(0, 10) as unknown as Date,
+      fechaFin: l.fechaFin.slice(0, 10) as unknown as Date,
+      tipo: l.tipo,
+      numLicencia: l.numLicencia ?? '',
+      entidad: l.entidad ?? 'FONASA',
+      subsidioMonto: Number(l.subsidioMonto ?? 0),
+      subsidioPagado: l.subsidioPagado,
+      notas: l.notas ?? '',
+    });
+    setOpenLicencia(true);
+  }
+
+  async function onSubmitLicencia(d: LicenciaMedicaInput) {
+    const onSuccess = () => { resetFormLic(); setOpenLicencia(false); setEditandoLicencia(null); };
+    if (editandoLicencia) {
+      updateLic.mutate({ id: editandoLicencia.id, data: d }, { onSuccess });
+    } else {
+      createLic.mutate(d, { onSuccess });
+    }
   }
 
   async function abrirContrato(t: Trabajador) {
@@ -769,6 +836,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
           </Button>
           <Button variant={vista === 'permisos' ? 'default' : 'outline'} size="sm" onClick={() => setVista('permisos')}>
             <ClipboardList className="mr-1.5 h-3.5 w-3.5" />Permisos
+          </Button>
+          <Button variant={vista === 'licencias' ? 'default' : 'outline'} size="sm" onClick={() => setVista('licencias')}>
+            <Stethoscope className="mr-1.5 h-3.5 w-3.5" />Licencias
           </Button>
         </div>
       </div>
@@ -1372,6 +1442,206 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
               </div>
             </div>
           )}
+        </>
+      )}
+
+      {/* VISTA LICENCIAS MÉDICAS */}
+      {vista === 'licencias' && (
+        <>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base font-semibold">Licencias Médicas</h2>
+              <p className="text-xs text-muted-foreground">Los días de licencia se descuentan de la liquidación del mes (los paga FONASA/ISAPRE)</p>
+            </div>
+            <Button size="sm" onClick={() => { setEditandoLicencia(null); resetFormLic(); setOpenLicencia(true); }}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />Registrar Licencia
+            </Button>
+          </div>
+
+          <Card className="mb-4">
+            <CardContent className="p-0">
+              <div className="px-4 py-2 border-b bg-muted/40 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Historial de Licencias</span>
+                {filtroLicTrab !== 'todos' && (
+                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setFiltroLicTrab('todos')}>
+                    Ver todos ×
+                  </Button>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/20 text-xs text-muted-foreground">
+                      <th className="px-4 py-2 text-left font-medium">Trabajador</th>
+                      <th className="px-4 py-2 text-left font-medium">Tipo</th>
+                      <th className="px-4 py-2 text-left font-medium hidden md:table-cell">Fechas</th>
+                      <th className="px-4 py-2 text-right font-medium">Días</th>
+                      <th className="px-4 py-2 text-left font-medium hidden lg:table-cell">Entidad</th>
+                      <th className="px-4 py-2 text-right font-medium">Subsidio</th>
+                      <th className="px-4 py-2 text-right font-medium">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(licData?.data ?? [])
+                      .filter((l: LicenciaMedica) => filtroLicTrab === 'todos' || l.trabajadorId === filtroLicTrab)
+                      .map((l: LicenciaMedica) => (
+                        <tr
+                          key={l.id}
+                          className="border-b hover:bg-muted/10 cursor-pointer"
+                          onClick={() => setFiltroLicTrab(filtroLicTrab === l.trabajadorId ? 'todos' : l.trabajadorId)}
+                        >
+                          <td className="px-4 py-2">
+                            <div className="font-medium">{l.trabajador?.nombre ?? '—'}</div>
+                            <div className="text-xs text-muted-foreground">{l.trabajador?.rut ?? ''}</div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <Badge variant="secondary" className="text-xs whitespace-nowrap">{TIPO_LICENCIA_LABELS[l.tipo] ?? l.tipo}</Badge>
+                            {l.numLicencia && <div className="text-xs text-muted-foreground mt-0.5">N° {l.numLicencia}</div>}
+                          </td>
+                          <td className="px-4 py-2 hidden md:table-cell text-muted-foreground">
+                            {new Date(l.fechaInicio.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')} – {new Date(l.fechaFin.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL')}
+                          </td>
+                          <td className="px-4 py-2 text-right font-medium">{l.diasLicencia}</td>
+                          <td className="px-4 py-2 hidden lg:table-cell text-muted-foreground">{l.entidad}</td>
+                          <td className="px-4 py-2 text-right">
+                            {Number(l.subsidioMonto) > 0 ? clp(l.subsidioMonto) : '—'}
+                            {Number(l.subsidioMonto) > 0 && (
+                              <div className="text-xs"><Badge variant={l.subsidioPagado ? 'default' : 'secondary'} className="text-[10px]">{l.subsidioPagado ? 'Pagado' : 'Pendiente'}</Badge></div>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => abrirEditarLicencia(l)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => { if (confirm('¿Eliminar esta licencia médica?')) deleteLic.mutate(l.id); }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    {(licData?.data ?? []).filter((l: LicenciaMedica) => filtroLicTrab === 'todos' || l.trabajadorId === filtroLicTrab).length === 0 && (
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Sin licencias registradas</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Dialog open={openLicencia} onOpenChange={(o) => { setOpenLicencia(o); if (!o) { resetFormLic(); setEditandoLicencia(null); } }}>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editandoLicencia ? 'Editar Licencia Médica' : 'Registrar Licencia Médica'}</DialogTitle>
+                <DialogDescription>Registro de licencia y subsidio por incapacidad laboral.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={formLic.handleSubmit(onSubmitLicencia)} className="space-y-4 pt-2">
+                <div>
+                  <Label>Trabajador</Label>
+                  <Controller
+                    control={formLic.control}
+                    name="trabajadorId"
+                    render={({ field }) => (
+                      <select {...field} className="w-full border rounded-md px-3 py-2 text-sm mt-1">
+                        <option value="">Seleccionar trabajador…</option>
+                        {todosLosTrabajadores.filter(t => t.activo).map(t => (
+                          <option key={t.id} value={t.id}>{t.nombre} — {t.rut}</option>
+                        ))}
+                      </select>
+                    )}
+                  />
+                  {formLic.formState.errors.trabajadorId && <p className="text-xs text-red-500 mt-1">{formLic.formState.errors.trabajadorId.message}</p>}
+                </div>
+                <div>
+                  <Label>Tipo de licencia</Label>
+                  <Controller
+                    control={formLic.control}
+                    name="tipo"
+                    render={({ field }) => (
+                      <select {...field} className="w-full border rounded-md px-3 py-2 text-sm mt-1">
+                        {Object.entries(TIPO_LICENCIA_LABELS).map(([v, l]) => (
+                          <option key={v} value={v}>{l}</option>
+                        ))}
+                      </select>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Fecha inicio</Label>
+                    <Controller
+                      control={formLic.control}
+                      name="fechaInicio"
+                      render={({ field }) => (
+                        <Input type="date" className="mt-1" value={field.value ? String(field.value).slice(0, 10) : ''} onChange={e => field.onChange(e.target.value)} />
+                      )}
+                    />
+                    {formLic.formState.errors.fechaInicio && <p className="text-xs text-red-500 mt-1">Requerida</p>}
+                  </div>
+                  <div>
+                    <Label>Fecha fin</Label>
+                    <Controller
+                      control={formLic.control}
+                      name="fechaFin"
+                      render={({ field }) => (
+                        <Input type="date" className="mt-1" value={field.value ? String(field.value).slice(0, 10) : ''} onChange={e => field.onChange(e.target.value)} />
+                      )}
+                    />
+                    {formLic.formState.errors.fechaFin && <p className="text-xs text-red-500 mt-1">{formLic.formState.errors.fechaFin.message}</p>}
+                  </div>
+                </div>
+                {diasLicCalc > 0 && (
+                  <div className="border rounded-md px-3 py-2 text-sm font-medium bg-blue-50 border-blue-200 text-blue-800">
+                    Días de licencia (calendario): <span className="text-lg font-bold">{diasLicCalc}</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>N° de licencia</Label>
+                    <Input {...formLic.register('numLicencia')} className="mt-1" placeholder="Ej: 123456789" />
+                  </div>
+                  <div>
+                    <Label>Entidad pagadora</Label>
+                    <Controller
+                      control={formLic.control}
+                      name="entidad"
+                      render={({ field }) => (
+                        <select {...field} value={field.value ?? 'FONASA'} className="w-full border rounded-md px-3 py-2 text-sm mt-1">
+                          {ENTIDADES_LM.map(e => <option key={e} value={e}>{e}</option>)}
+                        </select>
+                      )}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Subsidio recibido $</Label>
+                  <Input type="number" min={0} step={1} className="mt-1" {...formLic.register('subsidioMonto', { valueAsNumber: true })} placeholder="0" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Controller
+                    control={formLic.control}
+                    name="subsidioPagado"
+                    render={({ field }) => (
+                      <input type="checkbox" id="subsidioPagado" checked={field.value} onChange={e => field.onChange(e.target.checked)} className="h-4 w-4 accent-primary" />
+                    )}
+                  />
+                  <Label htmlFor="subsidioPagado" className="cursor-pointer">Subsidio recibido / pagado al trabajador</Label>
+                </div>
+                <div>
+                  <Label>Notas (opcional)</Label>
+                  <Input {...formLic.register('notas')} className="mt-1" placeholder="Observaciones…" />
+                </div>
+                {(createLic.error || updateLic.error) && <p className="text-xs text-red-500">{(createLic.error ?? updateLic.error)?.message}</p>}
+                <DialogFooter>
+                  <Button type="submit" disabled={createLic.isPending || updateLic.isPending}>
+                    {(createLic.isPending || updateLic.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {editandoLicencia ? 'Guardar cambios' : 'Registrar Licencia'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </>
       )}
 

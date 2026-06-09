@@ -351,6 +351,8 @@ export interface Liquidacion {
   anticipo: string;
   diasSinGoce: number;
   montoSinGoce: string;
+  diasLicenciaMedica: number;
+  subsidioLm: string;
   liquido: string;
   costoEmpleador: string;
   pagada: boolean;
@@ -375,6 +377,263 @@ export interface Permiso {
   trabajador?: { nombre: string; rut: string };
   createdAt: string;
   updatedAt: string;
+}
+
+export type TipoLicencia = 'COMUN' | 'ACCIDENTE_LABORAL' | 'PRENATAL' | 'POSTNATAL' | 'MENTAL';
+
+export interface LicenciaMedica {
+  id: string;
+  empresaId: string;
+  trabajadorId: string;
+  fechaInicio: string;
+  fechaFin: string;
+  tipo: TipoLicencia;
+  numLicencia: string;
+  entidad: string;
+  diasLicencia: number;
+  subsidioMonto: string;
+  subsidioPagado: boolean;
+  notas: string;
+  trabajador?: { nombre: string; rut: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TipoBienRP = 'AGRICOLA' | 'TRANSPORTE';
+
+export interface RPBien {
+  id: string;
+  empresaId: string;
+  tipo: TipoBienRP;
+  descripcion: string;
+  rolAvaluo?: string;
+  municipio?: string;
+  avaluoFiscal: string;
+  anioAvaluo?: number;
+  patente?: string;
+  tipoVehiculo?: string;
+  marca?: string;
+  modelo?: string;
+  anioVehiculo?: number;
+  valorTasacion: string;
+  anioTasacion?: number;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RPPpm {
+  id: string;
+  empresaId: string;
+  anio: number;
+  mes: number;
+  ventasPeriodo: string;
+  ppmTasa: string;
+  ppmMonto: string;
+  pagado: boolean;
+  fechaPago?: string;
+  observacion: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RentaPresuntaDetalle {
+  id: string;
+  tipo: TipoBienRP;
+  descripcion: string;
+  base: number;
+  rentaPresunta: number;
+}
+
+export interface RentaPresuntaResult {
+  anio: number;
+  detalle: RentaPresuntaDetalle[];
+  baseAgricola: number;
+  baseTransporte: number;
+  rpAgricola: number;
+  rpTransporte: number;
+  rentaPresunta: number;
+  impuesto1cat: number;
+  tasaPresuncion: number;
+  tasa1cat: number;
+  ppmPagado: number;
+  diferencia: number;
+  aPagar: number;
+  saldoFavor: number;
+}
+
+export interface RPPpmResumen {
+  registros: RPPpm[];
+  totalVentas: number;
+  totalPpm: number;
+  totalPagado: number;
+  totalPendiente: number;
+}
+
+export interface F22Result {
+  anio: number;
+  periodo: string;
+  ingresos: number;
+  gastosTotal: number;
+  utilidadNeta: number;
+  gastosRechazados: number;
+  ajustes: number;
+  rentaLiquida: number;
+  rentaImponible: number;
+  tasa1cat: number;
+  impuesto1cat: number;
+  ventasNetas: number;
+  tasaPpm: number;
+  ppmAcumulado: number;
+  creditoPpm: number;
+  creditoSence: number;
+  creditoDonaciones: number;
+  creditoOtros: number;
+  retenciones: number;
+  totalCreditos: number;
+  impuestoNeto: number;
+  aPagar: number;
+  devolucion: number;
+  sueldosEmpresarial: number;
+}
+
+export interface Socio {
+  id: string;
+  empresaId: string;
+  rut: string;
+  nombre: string;
+  tipo: string;
+  porcentaje: string;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TipoRentaRetiro = 'AFECTA' | 'EXENTA' | 'NO_RENTA';
+
+export interface Retiro {
+  id: string;
+  empresaId: string;
+  socioId: string;
+  fecha: string;
+  monto: string;
+  concepto: string;
+  factorIpc: string;
+  montoCorregido: string;
+  tipoRenta: TipoRentaRetiro;
+  creditoIdpc: string;
+  socio?: { nombre: string; rut: string; tipo: string; porcentaje: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DJ1886Socio {
+  nro: number;
+  rut: string;
+  nombre: string;
+  tipo: string;
+  porcentaje: string;
+  nRetiros: number;
+  afecta: number;
+  exenta: number;
+  noRenta: number;
+  incremento: number;
+  credito: number;
+  totalCorregido: number;
+}
+
+export interface DJ1886Result {
+  empresaRut: string;
+  empresaNombre: string;
+  anio: number;
+  tasa1cat: number;
+  socios: DJ1886Socio[];
+  totales: {
+    afecta: number;
+    exenta: number;
+    noRenta: number;
+    incremento: number;
+    credito: number;
+  };
+}
+
+export interface DJ1948Socio {
+  nro: number;
+  rut: string;
+  nombre: string;
+  tipo: string;
+  porcentaje: string;
+  nRetiros: number;
+  totalAfecta: number;
+  totalExenta: number;
+  totalNoRenta: number;
+  totalHistorico: number;
+  totalCorregido: number;
+  totalCreditoIdpc: number;
+}
+
+export interface DJ1948Result {
+  empresaRut: string;
+  empresaNombre: string;
+  anio: number;
+  tasa1cat: number;
+  socios: DJ1948Socio[];
+  totales: { historico: number; corregido: number; creditoIdpc: number; afecta: number; exenta: number; noRenta: number };
+}
+
+export interface DJ1879Prestador {
+  nro: number;
+  rut: string;
+  nombre: string;
+  nBoletas: number;
+  bruto: number;
+  retencion: number;
+  neto: number;
+}
+
+export interface DJ1879Result {
+  empresaRut: string;
+  empresaNombre: string;
+  anio: number;
+  prestadores: DJ1879Prestador[];
+  totales: { bruto: number; retencion: number; neto: number; boletas: number };
+}
+
+export interface DJ1887Trabajador {
+  nCert: number;
+  rut: string;
+  nombre: string;
+  apPaterno: string;
+  apMaterno: string;
+  nombres: string;
+  meses: number;
+  rentaNeta: number;
+  impuestoUnico: number;
+  noGravada: number;
+  mayorRetencion: number;
+  rentaExenta: number;
+  rebajaZona: number;
+  prestamo3pct: number;
+  rentaNetaSinAct: number;
+  impuestoUnicoSinAct: number;
+  periodoCod: 'C' | 'P' | 'F';
+  jornadaHoras: number;
+  anio40h: number;
+}
+
+export interface DJ1887Result {
+  empresaRut: string;
+  empresaNombre: string;
+  anio: number;
+  trabajadores: DJ1887Trabajador[];
+  totales: {
+    trabajadores: number;
+    rentaNeta: number;
+    impuestoUnico: number;
+    noGravada: number;
+    rentaNetaSinAct: number;
+    impuestoUnicoSinAct: number;
+  };
 }
 
 export interface ActivoFijo {
