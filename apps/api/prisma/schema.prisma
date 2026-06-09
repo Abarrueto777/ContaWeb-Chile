@@ -52,6 +52,11 @@ enum TipoDocCompra {
   LIQUIDACION_FACTURA
 }
 
+enum CondicionPago {
+  CONTADO
+  CREDITO
+}
+
 enum TipoImpuesto {
   NINGUNO
   BEBIDAS_20
@@ -240,6 +245,7 @@ model DocumentoTributario {
   iva       Decimal         @db.Decimal(19, 4)
   total     Decimal         @db.Decimal(19, 4)
   glosa     String?
+  condicionPago CondicionPago @default(CONTADO)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
   empresa   Empresa         @relation(fields: [empresaId], references: [id])

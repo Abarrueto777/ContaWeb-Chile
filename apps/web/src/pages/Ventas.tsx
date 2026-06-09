@@ -74,6 +74,7 @@ export default function Ventas() {
     defaultValues: {
       tipo: 'FACTURA_ELECTRONICA',
       fecha: new Date().toISOString().split('T')[0] as unknown as Date,
+      condicionPago: 'CONTADO',
       lineas: [{ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0 }],
     },
   });
@@ -235,9 +236,19 @@ export default function Ventas() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Glosa</Label>
-                <Input {...register('glosa')} placeholder="Descripción del documento (opcional)" />
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Condición de pago *</Label>
+                  <select {...register('condicionPago')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                    <option value="CONTADO">Contado</option>
+                    <option value="CREDITO">Crédito</option>
+                  </select>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Contrapartida del asiento: Caja (contado) o Clientes (crédito).</p>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Glosa</Label>
+                  <Input {...register('glosa')} placeholder="Descripción del documento (opcional)" />
+                </div>
               </div>
 
               <div className="space-y-2">

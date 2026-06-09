@@ -1,7 +1,8 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
-import { Calculator, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { LogoMark } from '@/components/Logo';
 import { loginSchema, type LoginInput } from '@contaweb/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,11 +24,9 @@ export default function Login() {
       <div className="w-full max-w-sm space-y-6">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md">
-            <Calculator className="h-6 w-6 text-primary-foreground" />
-          </div>
+          <LogoMark className="h-14 w-14 rounded-2xl shadow-md shadow-primary/30" />
           <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight">ContaWeb Chile</h1>
+            <h1 className="text-2xl font-bold tracking-tight">ContaCL<span className="text-primary">WEB</span></h1>
             <p className="text-sm text-muted-foreground">Sistema contable para contadores chilenos</p>
           </div>
         </div>

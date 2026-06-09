@@ -43,6 +43,8 @@ export interface Cliente {
   updatedAt: string;
 }
 
+export type CondicionPago = 'CONTADO' | 'CREDITO';
+
 export interface DocumentoTributario {
   id: string;
   empresaId: string;
@@ -55,6 +57,7 @@ export interface DocumentoTributario {
   iva: string;
   total: string;
   glosa?: string;
+  condicionPago: CondicionPago;
   createdAt: string;
   updatedAt: string;
 }
@@ -141,6 +144,7 @@ export interface FacturaRecibida {
   retencion: string;
   total: string;
   tipoImpuesto: TipoImpuesto;
+  condicionPago: CondicionPago;
   glosa?: string;
   createdAt: string;
   updatedAt: string;

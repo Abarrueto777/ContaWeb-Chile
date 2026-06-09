@@ -10,7 +10,7 @@ import { getConfig } from './config.service';
  *   se restan → impuesto neto → a pagar o devolución.
  *   PPM determinado = ventas netas del año × tasa PPM.
  *
- * Nota: el plan de cuentas de ContaWeb clasifica como INGRESO/GASTO (sin desglose
+ * Nota: el plan de cuentas de ContaCLWEB clasifica como INGRESO/GASTO (sin desglose
  * costos/adm/ventas/financieros), por lo que se reporta ingresos y gastos totales.
  */
 

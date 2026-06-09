@@ -6,7 +6,7 @@ function fetchUFDia(dia: number, mes: number, anio: number): Promise<number | nu
   const mesStr = String(mes).padStart(2, '0');
   const url = `https://mindicador.cl/api/uf/${diaStr}-${mesStr}-${anio}`;
   return new Promise((resolve) => {
-    https.get(url, { headers: { 'User-Agent': 'ContaWeb/1.0' } }, (resp) => {
+    https.get(url, { headers: { 'User-Agent': 'ContaCLWEB/1.0' } }, (resp) => {
       let body = '';
       resp.on('data', (c: Buffer) => { body += c.toString(); });
       resp.on('end', () => {
