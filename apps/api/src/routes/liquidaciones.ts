@@ -797,7 +797,7 @@ router.post('/:liquidacionId/enviar-email', async (req, res) => {
     const resend = new Resend(apiKey);
     const mesLabel = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][liq.mes - 1] ?? String(liq.mes);
     await resend.emails.send({
-      from: `${empresa.razonSocial} <noreply@contaweb.cl>`,
+      from: `${empresa.razonSocial} <noreply@contaclweb.cl>`,
       to: emailDest,
       subject: `Liquidación de Remuneraciones ${mesLabel} ${liq.anio} — ${empresa.razonSocial}`,
       html,
