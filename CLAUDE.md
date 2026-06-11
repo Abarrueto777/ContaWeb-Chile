@@ -137,6 +137,9 @@ POST   /api/empresas/:id/documentos
 GET    /api/empresas/:id/documentos/:docId
 
 GET    /api/empresas/:id/cuentas
+POST   /api/empresas/:id/cuentas               # crear subcuenta (código derivado del padre)
+PUT    /api/empresas/:id/cuentas/:cuentaId     # editar (no toca código/tipo/padre)
+DELETE /api/empresas/:id/cuentas/:cuentaId     # borrar (rechaza si tiene movimientos o subcuentas)
 GET    /api/empresas/:id/asientos
 POST   /api/empresas/:id/asientos
 ```
@@ -145,14 +148,24 @@ POST   /api/empresas/:id/asientos
 
 ## Frontend — Rutas
 
+El frontend usa **rutas planas** + modelo de **empresa activa global**
+(`EmpresaProvider`, persistida en `localStorage` como `cw-empresa-id`).
+NO hay rutas anidadas `/empresas/:id/...`: cada módulo opera sobre la empresa
+activa y las llamadas al API usan su id internamente.
+
 ```
-/login
-/registro
-/                          → Dashboard (resumen empresa activa)
-/empresas                  → Lista de empresas
-/empresas/:id/clientes     → Gestión de clientes
-/empresas/:id/documentos   → Emisión y listado de documentos
-/empresas/:id/contabilidad → Libro diario, plan de cuentas
+/                → Landing pública (login embebido); si hay sesión → /dashboard
+/login           → Login (también accesible directo)
+/registro        → Registro de usuario
+/dashboard       → Dashboard (resumen, protegido)
+/empresas        → Lista y alta de empresas
+/clientes        → Gestión de clientes
+/documentos      → Ventas (emisión y listado)
+/compras         → Compras / facturas recibidas
+/contabilidad    → Libro diario
+/plan-cuentas    → Plan de cuentas (alta/edición/borrado)
+/banco           → Conciliación bancaria
+/honorarios · /rrhh · /f29 · /f22 · /dj1887 · /dj1879 · /libros-iva · …
 ```
 
 ---
