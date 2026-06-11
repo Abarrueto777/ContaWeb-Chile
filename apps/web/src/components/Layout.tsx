@@ -46,7 +46,7 @@ const navGroups: { label: string | null; items: { to: string; label: string; ico
   {
     label: null,
     items: [
-      { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
     ],
   },
   {
