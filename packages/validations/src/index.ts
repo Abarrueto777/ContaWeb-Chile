@@ -135,6 +135,22 @@ export const honorarioSchema = z.object({
   glosa: z.string().optional(),
 });
 
+// Plan de cuentas: crear subcuenta derivada de un padre.
+// El código, tipo y nivel los calcula el backend a partir del padre.
+export const cuentaContableSchema = z.object({
+  cuentaPadreId: z.string().min(1, 'Cuenta padre requerida'),
+  nombre: z.string().min(2, 'Nombre requerido'),
+  naturaleza: z.enum(['DEUDORA', 'ACREEDORA']).optional(),
+  permiteMovimientos: z.boolean().default(true),
+});
+
+// Editar cuenta: solo datos que no corrompen el libro (nunca código/tipo/padre).
+export const cuentaContableUpdateSchema = z.object({
+  nombre: z.string().min(2, 'Nombre requerido'),
+  naturaleza: z.enum(['DEUDORA', 'ACREEDORA']).optional(),
+  permiteMovimientos: z.boolean().optional(),
+});
+
 export const cuentaBancariaSchema = z.object({
   banco: z.string().min(2, 'Banco requerido'),
   tipoCuenta: z.enum(['CORRIENTE', 'VISTA', 'AHORRO']).default('CORRIENTE'),
@@ -333,6 +349,8 @@ export type DocumentoInput = z.infer<typeof documentoSchema>;
 export type AsientoInput = z.infer<typeof asientoSchema>;
 export type FacturaRecibidaInput = z.infer<typeof facturaRecibidaSchema>;
 export type HonorarioInput = z.infer<typeof honorarioSchema>;
+export type CuentaContableInput = z.infer<typeof cuentaContableSchema>;
+export type CuentaContableUpdateInput = z.infer<typeof cuentaContableUpdateSchema>;
 export type CuentaBancariaInput = z.infer<typeof cuentaBancariaSchema>;
 export type MovimientoBancoInput = z.infer<typeof movimientoBancoSchema>;
 export type TrabajadorInput = z.infer<typeof trabajadorSchema>;
