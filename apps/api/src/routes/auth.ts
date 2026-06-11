@@ -9,18 +9,18 @@ import { loginSchema, registroSchema } from '@contaweb/validations';
 
 const router = Router();
 
-// Solo ADMIN puede registrar nuevos usuarios
-router.post('/registro', requireAuth, validate(registroSchema), async (req, res, next) => {
-  if (req.user!.rol !== 'ADMIN') return next(createError('Solo un administrador puede registrar usuarios', 403));
+// Registro público (self-signup). El rol se FUERZA a CONTADOR en el server:
+// nunca se confía en el rol que manda el cliente. Los ADMIN se promueven a mano.
+router.post('/registro', validate(registroSchema), async (req, res, next) => {
   try {
-    const { email, nombre, password, rol } = req.body;
+    const { email, nombre, password } = req.body;
 
     const existente = await prisma.usuario.findUnique({ where: { email } });
     if (existente) return next(createError('El email ya está registrado', 409));
 
     const hash = await bcrypt.hash(password, 12);
     const usuario = await prisma.usuario.create({
-      data: { email, nombre, password: hash, rol },
+      data: { email, nombre, password: hash, rol: 'CONTADOR' },
       select: { id: true, email: true, nombre: true, rol: true, createdAt: true, updatedAt: true },
     });
 
