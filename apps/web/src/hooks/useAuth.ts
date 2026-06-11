@@ -46,6 +46,6 @@ export function useLogout() {
   const navigate = useNavigate();
   return () => {
     localStorage.removeItem('auth_token');
-    navigate('/login');
+    navigate('/');
   };
 }
