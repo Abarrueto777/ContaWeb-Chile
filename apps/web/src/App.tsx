@@ -4,6 +4,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from '@/lib/queryClient';
 import Layout from '@/components/Layout';
 import { EmpresaProvider } from '@/components/EmpresaProvider';
+import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Dashboard from '@/pages/Dashboard';
@@ -43,6 +44,14 @@ export default function App() {
           <Route path="/registro" element={<Register />} />
           <Route
             path="/"
+            element={
+              localStorage.getItem('auth_token')
+                ? <Navigate to="/dashboard" replace />
+                : <Landing />
+            }
+          />
+          <Route
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard />

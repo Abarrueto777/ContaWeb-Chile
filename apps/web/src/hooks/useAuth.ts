@@ -26,7 +26,7 @@ export function useLogin() {
     mutationFn: (data) => api.post<AuthResponse>('/api/auth/login', data).then((r) => r.data),
     onSuccess: ({ data }) => {
       localStorage.setItem('auth_token', data.token);
-      navigate('/');
+      navigate('/dashboard');
     },
   });
 }
@@ -37,7 +37,7 @@ export function useRegistro() {
     mutationFn: (data) => api.post<AuthResponse>('/api/auth/registro', data).then((r) => r.data),
     onSuccess: ({ data }) => {
       localStorage.setItem('auth_token', data.token);
-      navigate('/');
+      navigate('/dashboard');
     },
   });
 }

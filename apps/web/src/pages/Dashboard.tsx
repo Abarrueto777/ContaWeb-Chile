@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useMe } from '@/hooks/useAuth';
+import { useEmpresaContext } from '@/components/EmpresaProvider';
 
 export default function Dashboard() {
   const { data: empresasData, isLoading } = useEmpresas();
   const { data: meData } = useMe();
+  const { setEmpresaId } = useEmpresaContext();
   const empresas = empresasData?.data ?? [];
   const usuario = meData?.data;
 
@@ -121,19 +123,22 @@ export default function Dashboard() {
                   </div>
                   <div className="flex gap-3 mt-4 pt-3 border-t">
                     <Link
-                      to={`/empresas/${e.id}/clientes`}
+                      to="/clientes"
+                      onClick={() => setEmpresaId(e.id)}
                       className="text-xs text-primary hover:underline"
                     >
                       Clientes
                     </Link>
                     <Link
-                      to={`/empresas/${e.id}/documentos`}
+                      to="/documentos"
+                      onClick={() => setEmpresaId(e.id)}
                       className="text-xs text-primary hover:underline"
                     >
                       Documentos
                     </Link>
                     <Link
-                      to={`/empresas/${e.id}/contabilidad`}
+                      to="/contabilidad"
+                      onClick={() => setEmpresaId(e.id)}
                       className="text-xs text-primary hover:underline"
                     >
                       Contabilidad
