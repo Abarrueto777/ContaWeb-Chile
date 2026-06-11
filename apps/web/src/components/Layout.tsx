@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Building2,
   Users,
+  ShieldCheck,
   FileText,
   BookOpen,
   LogOut,
@@ -107,8 +108,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   function handleLogout() {
     localStorage.removeItem('auth_token');
-    navigate('/login');
+    navigate('/');
   }
+
+  // Panel de admin: solo visible para ADMIN
+  const navGroupsVisible: typeof navGroups = usuario?.rol === 'ADMIN'
+    ? [...navGroups, { label: 'Administración del sistema', items: [{ to: '/admin/usuarios', label: 'Usuarios', icon: ShieldCheck }] }]
+    : navGroups;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -181,7 +187,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
-          {navGroups.map((group, gi) => (
+          {navGroupsVisible.map((group, gi) => (
             <div key={gi}>
               {group.label && (
                 <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 select-none">

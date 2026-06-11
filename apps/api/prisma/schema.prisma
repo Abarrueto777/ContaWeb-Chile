@@ -162,14 +162,20 @@ enum TipoBienRP {
   TRANSPORTE
 }
 
+enum EstadoUsuario {
+  ACTIVO
+  SUSPENDIDO
+}
+
 model Usuario {
-  id        String     @id @default(cuid())
-  email     String     @unique
+  id        String        @id @default(cuid())
+  email     String        @unique
   nombre    String
   password  String
-  rol       RolUsuario @default(CONTADOR)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  rol       RolUsuario    @default(CONTADOR)
+  estado    EstadoUsuario @default(ACTIVO)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   empresas  Empresa[]
 
   @@map("usuarios")
@@ -191,7 +197,7 @@ model Empresa {
   usuarioId          String
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
-  usuario            Usuario               @relation(fields: [usuarioId], references: [id])
+  usuario            Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   clientes           Cliente[]
   documentos         DocumentoTributario[]
   cuentas            CuentaContable[]
@@ -226,7 +232,7 @@ model Cliente {
   direccion  String?
   createdAt  DateTime              @default(now())
   updatedAt  DateTime              @updatedAt
-  empresa    Empresa               @relation(fields: [empresaId], references: [id])
+  empresa    Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   documentos DocumentoTributario[]
 
   @@unique([empresaId, rut])
@@ -248,8 +254,8 @@ model DocumentoTributario {
   condicionPago CondicionPago @default(CONTADO)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
-  empresa   Empresa         @relation(fields: [empresaId], references: [id])
-  cliente   Cliente?        @relation(fields: [clienteId], references: [id])
+  empresa   Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cliente   Cliente?        @relation(fields: [clienteId], references: [id], onDelete: SetNull)
   lineas    LineaDocumento[]
   asientos  AsientoContable[]
 
@@ -282,8 +288,8 @@ model CuentaContable {
   permiteMovimientos Boolean          @default(true)
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
-  empresa            Empresa          @relation(fields: [empresaId], references: [id])
-  cuentaPadre        CuentaContable?  @relation("CuentaHijos", fields: [cuentaPadreId], references: [id])
+  empresa            Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cuentaPadre        CuentaContable?  @relation("CuentaHijos", fields: [cuentaPadreId], references: [id], onDelete: SetNull)
   cuentasHijo        CuentaContable[] @relation("CuentaHijos")
   lineasAsiento      LineaAsiento[]
 
@@ -301,8 +307,8 @@ model AsientoContable {
   estado      EstadoAsiento        @default(BORRADOR)
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
-  empresa     Empresa              @relation(fields: [empresaId], references: [id])
-  documento   DocumentoTributario? @relation(fields: [documentoId], references: [id])
+  empresa     Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  documento   DocumentoTributario? @relation(fields: [documentoId], references: [id], onDelete: SetNull)
   lineas      LineaAsiento[]
 
   @@unique([empresaId, numero])
@@ -326,7 +332,7 @@ model FacturaRecibida {
   glosa           String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  empresa         Empresa       @relation(fields: [empresaId], references: [id])
+  empresa         Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@unique([empresaId, proveedorRut, tipo, folio])
   @@map("facturas_recibidas")
@@ -345,7 +351,7 @@ model Honorario {
   glosa           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  empresa         Empresa  @relation(fields: [empresaId], references: [id])
+  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@map("honorarios")
 }
@@ -358,7 +364,7 @@ model LineaAsiento {
   haber     Decimal         @default(0) @db.Decimal(19, 4)
   glosa     String?
   asiento   AsientoContable @relation(fields: [asientoId], references: [id], onDelete: Cascade)
-  cuenta    CuentaContable  @relation(fields: [cuentaId], references: [id])
+  cuenta    CuentaContable  @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
 
   @@map("lineas_asiento")
 }
@@ -373,7 +379,7 @@ model CuentaBancaria {
   moneda       String            @default("CLP")
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
-  empresa      Empresa           @relation(fields: [empresaId], references: [id])
+  empresa      Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   movimientos  MovimientoBanco[]
 
   @@unique([empresaId, banco, numero])
@@ -394,7 +400,7 @@ model MovimientoBanco {
   glosa       String?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
-  empresa     Empresa             @relation(fields: [empresaId], references: [id])
+  empresa     Empresa             @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   cuenta      CuentaBancaria      @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
 
   @@map("movimientos_banco")
@@ -438,7 +444,7 @@ model Trabajador {
   activo            Boolean           @default(true)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
-  empresa           Empresa           @relation(fields: [empresaId], references: [id])
+  empresa           Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   liquidaciones     Liquidacion[]
   finiquitos        Finiquito[]
   vacaciones        Vacacion[]
@@ -465,8 +471,8 @@ model Finiquito {
   totalNeto       Decimal    @db.Decimal(19, 4)
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
-  empresa         Empresa    @relation(fields: [empresaId], references: [id])
-  trabajador      Trabajador @relation(fields: [trabajadorId], references: [id])
+  empresa         Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  trabajador      Trabajador @relation(fields: [trabajadorId], references: [id], onDelete: Cascade)
 
   @@map("finiquitos")
 }
@@ -507,8 +513,8 @@ model Liquidacion {
   montoSinGoce   Decimal    @default(0) @db.Decimal(19, 4)
   diasLicenciaMedica Int    @default(0)
   subsidioLm     Decimal    @default(0) @db.Decimal(19, 4)
-  empresa        Empresa    @relation(fields: [empresaId], references: [id])
-  trabajador     Trabajador @relation(fields: [trabajadorId], references: [id])
+  empresa        Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  trabajador     Trabajador @relation(fields: [trabajadorId], references: [id], onDelete: Cascade)
 
   @@unique([empresaId, trabajadorId, anio, mes])
   @@map("liquidaciones")
@@ -528,7 +534,7 @@ model ActivoFijo {
   activo           Boolean         @default(true)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
-  empresa          Empresa         @relation(fields: [empresaId], references: [id])
+  empresa          Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@map("activos_fijos")
 }
@@ -570,7 +576,7 @@ model ConfigEmpresa {
   empresaId String
   clave     String
   valor     String
-  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@unique([empresaId, clave])
   @@map("config_empresa")
@@ -591,8 +597,8 @@ model Vacacion {
   observacion    String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
-  empresa        Empresa        @relation(fields: [empresaId], references: [id])
-  trabajador     Trabajador     @relation(fields: [trabajadorId], references: [id])
+  empresa        Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  trabajador     Trabajador     @relation(fields: [trabajadorId], references: [id], onDelete: Cascade)
 
   @@map("vacaciones")
 }
@@ -610,8 +616,8 @@ model Permiso {
   observacion  String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
-  empresa      Empresa     @relation(fields: [empresaId], references: [id])
-  trabajador   Trabajador  @relation(fields: [trabajadorId], references: [id])
+  empresa      Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  trabajador   Trabajador  @relation(fields: [trabajadorId], references: [id], onDelete: Cascade)
 
   @@map("permisos")
 }
@@ -635,7 +641,7 @@ model RPBien {
   activo        Boolean    @default(true)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
-  empresa       Empresa    @relation(fields: [empresaId], references: [id])
+  empresa       Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@map("rp_bienes")
 }
@@ -653,7 +659,7 @@ model RPPpm {
   observacion   String    @default("")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  empresa       Empresa   @relation(fields: [empresaId], references: [id])
+  empresa       Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@unique([empresaId, anio, mes])
   @@map("rp_ppm")
@@ -669,7 +675,7 @@ model Socio {
   activo     Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   retiros    Retiro[]
 
   @@unique([empresaId, rut])
@@ -689,8 +695,8 @@ model Retiro {
   creditoIdpc    Decimal         @default(0) @db.Decimal(19, 4)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  empresa        Empresa         @relation(fields: [empresaId], references: [id])
-  socio          Socio           @relation(fields: [socioId], references: [id])
+  empresa        Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  socio          Socio           @relation(fields: [socioId], references: [id], onDelete: Cascade)
 
   @@map("retiros")
 }
@@ -710,8 +716,8 @@ model LicenciaMedica {
   notas          String       @default("")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  empresa        Empresa      @relation(fields: [empresaId], references: [id])
-  trabajador     Trabajador   @relation(fields: [trabajadorId], references: [id])
+  empresa        Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  trabajador     Trabajador   @relation(fields: [trabajadorId], references: [id], onDelete: Cascade)
 
   @@map("licencias_medicas")
 }

@@ -31,3 +31,11 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
     next(createError('Token inválido o expirado', 401));
   }
 }
+
+// Debe usarse SIEMPRE después de requireAuth (necesita req.user)
+export function requireAdmin(req: Request, _res: Response, next: NextFunction): void {
+  if (req.user?.rol !== 'ADMIN') {
+    return next(createError('Acceso solo para administradores', 403));
+  }
+  next();
+}

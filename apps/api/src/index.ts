@@ -8,6 +8,7 @@ import { execSync } from 'child_process';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middlewares/errorHandler';
 import authRoutes from './routes/auth';
+import adminRoutes from './routes/admin';
 import empresasRoutes from './routes/empresas';
 import ufRoutes from './routes/uf';
 import factoresIpcRoutes from './routes/factoresIpc';
@@ -61,6 +62,7 @@ app.use('/api', apiLimiter);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/empresas', empresasRoutes);
 app.use('/api/uf', ufRoutes);
 app.use('/api/factores-ipc', factoresIpcRoutes);

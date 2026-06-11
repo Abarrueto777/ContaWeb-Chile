@@ -27,6 +27,7 @@ import PlanCuentas from '@/pages/PlanCuentas';
 import Contabilidad from '@/pages/Contabilidad';
 import LibrosIVA from '@/pages/LibrosIVA';
 import Configuracion from '@/pages/Configuracion';
+import AdminUsuarios from '@/pages/AdminUsuarios';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('auth_token');
@@ -133,6 +134,10 @@ export default function App() {
           <Route
             path="/configuracion"
             element={<ProtectedRoute><Configuracion /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/usuarios"
+            element={<ProtectedRoute><AdminUsuarios /></ProtectedRoute>}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

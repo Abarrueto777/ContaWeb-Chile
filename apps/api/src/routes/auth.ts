@@ -46,6 +46,10 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
     const valida = await bcrypt.compare(password, usuario.password);
     if (!valida) return next(createError('Credenciales inválidas', 401));
 
+    if (usuario.estado === 'SUSPENDIDO') {
+      return next(createError('Tu cuenta está suspendida. Contactá al administrador.', 403));
+    }
+
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, rol: usuario.rol },
       process.env.JWT_SECRET!,
