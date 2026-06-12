@@ -354,6 +354,11 @@ export const activoFijoSchema = z.object({
   valorResidual: z.number().min(0).default(0),
 });
 
+// Solicitud de plan de suscripción (etapa de cobro manual por transferencia)
+export const solicitudPlanSchema = z.object({
+  plan: z.enum(['MENSUAL', 'SEMESTRAL', 'ANUAL']),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegistroInput = z.infer<typeof registroSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
@@ -374,3 +379,4 @@ export type LiquidacionInput = z.infer<typeof liquidacionInputSchema>;
 export type ActivoFijoInput = z.infer<typeof activoFijoSchema>;
 export type FiniquitoInput = z.infer<typeof finiquitoInputSchema>;
 export type VacacionInput = z.infer<typeof vacacionSchema>;
+export type SolicitudPlanInput = z.infer<typeof solicitudPlanSchema>;

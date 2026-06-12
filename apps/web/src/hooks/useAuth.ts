@@ -75,6 +75,12 @@ export function useVerifyEmail(token: string) {
   });
 }
 
+export function useSolicitarPlan() {
+  return useMutation<{ message: string }, Error, { plan: 'MENSUAL' | 'SEMESTRAL' | 'ANUAL' }>({
+    mutationFn: (data) => api.post<{ message: string }>('/api/suscripcion/solicitar', data).then((r) => r.data),
+  });
+}
+
 export function useResendVerification() {
   return useMutation<{ message: string }, Error, void>({
     mutationFn: () => api.post<{ message: string }>('/api/auth/resend-verification').then((r) => r.data),

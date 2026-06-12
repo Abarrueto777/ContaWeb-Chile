@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middlewares/errorHandler';
 import authRoutes from './routes/auth';
 import adminRoutes from './routes/admin';
+import suscripcionRoutes from './routes/suscripcion';
 import empresasRoutes from './routes/empresas';
 import ufRoutes from './routes/uf';
 import factoresIpcRoutes from './routes/factoresIpc';
@@ -65,9 +66,19 @@ const passwordResetLimiter = rateLimit({
   message: { error: 'Demasiados intentos. Intentá de nuevo en 15 minutos.' },
 });
 
+// Rate limiting solicitudes de plan — 5 / 15 min por IP (manda email al admin)
+const solicitudPlanLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Intentá de nuevo en 15 minutos.' },
+});
+
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/forgot-password', passwordResetLimiter);
 app.use('/api/auth/reset-password', passwordResetLimiter);
+app.use('/api/suscripcion', solicitudPlanLimiter);
 app.use('/api', apiLimiter);
 
 // Health check — usado por Railway para verificar que el servicio levantó
@@ -75,6 +86,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/suscripcion', suscripcionRoutes);
 app.use('/api/empresas', empresasRoutes);
 app.use('/api/uf', ufRoutes);
 app.use('/api/factores-ipc', factoresIpcRoutes);

@@ -31,6 +31,21 @@ async function sendEmail(to: string, subject: string, html: string, devLogLabel:
   }
 }
 
+/**
+ * Avisa al admin (EMAIL_FROM) que un usuario solicitó activar un plan.
+ * El usuario ya transfirió (o va a transferir): activar desde /admin/usuarios.
+ */
+export async function sendSolicitudPlanEmail(nombre: string, email: string, plan: string): Promise<void> {
+  const html = `
+    <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; color: #1e293b;">
+      <h2 style="color: #059669;">Solicitud de plan ${plan}</h2>
+      <p><strong>${nombre}</strong> (${email}) solicitó activar el plan <strong>${plan}</strong> de ContaCLWEB.</p>
+      <p>Verificá la transferencia y activá su suscripción desde el panel de administración (/admin/usuarios).</p>
+    </div>
+  `;
+  await sendEmail(FROM_EMAIL, `Solicitud de plan ${plan} — ${email}`, html, 'solicitud-plan', `${nombre} <${email}> pidió plan ${plan}`);
+}
+
 export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<void> {
   const html = `
     <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; color: #1e293b;">

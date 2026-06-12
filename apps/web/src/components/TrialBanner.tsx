@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { useMe } from '@/hooks/useAuth';
 
@@ -28,9 +29,11 @@ export default function TrialBanner() {
       <p className="flex-1">
         {diasRestantes === 1
           ? 'Último día de tu período de prueba.'
-          : `Te quedan ${diasRestantes} días de prueba.`}{' '}
-        Para seguir después, activá tu plan desde la página de suscripción.
+          : `Te quedan ${diasRestantes} días de prueba.`}
       </p>
+      <Link to="/suscripcion" className="font-medium underline underline-offset-2 hover:no-underline shrink-0">
+        Ver planes
+      </Link>
     </div>
   );
 }
