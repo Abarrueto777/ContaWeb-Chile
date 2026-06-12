@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './loadEnv'; // PRIMER import: carga el .env raíz antes que cualquier módulo lea process.env.
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -55,7 +55,19 @@ const apiLimiter = rateLimit({
   message: { error: 'Demasiadas solicitudes. Intentá más tarde.' },
 });
 
+// Rate limiting password reset — 5 intentos / 15 min por IP.
+// Evita abuso del envío de emails (quema de cuota Brevo) y fuerza bruta de tokens.
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Intentá de nuevo en 15 minutos.' },
+});
+
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/forgot-password', passwordResetLimiter);
+app.use('/api/auth/reset-password', passwordResetLimiter);
 app.use('/api', apiLimiter);
 
 // Health check — usado por Railway para verificar que el servicio levantó

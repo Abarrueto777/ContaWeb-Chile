@@ -1,14 +1,34 @@
-const FROM = 'ContaCLWEB <noreply@contaclweb.cl>';
+// Transporte de email: Brevo (API transaccional v3) vía fetch nativo (Node 18+).
+// En dev (sin BREVO_API_KEY) no envía: loguea el link en consola para poder probar el flujo.
+const FROM_EMAIL = process.env['EMAIL_FROM'] ?? 'noreply@contaclweb.cl';
+const FROM_NAME = process.env['EMAIL_FROM_NAME'] ?? 'ContaCLWEB';
 
 async function sendEmail(to: string, subject: string, html: string, devLogLabel: string, devUrl: string): Promise<void> {
-  const apiKey = process.env['RESEND_API_KEY'];
+  const apiKey = process.env['BREVO_API_KEY'];
   if (!apiKey) {
-    console.log(`\n[${devLogLabel}] RESEND_API_KEY vacío — no se envía email.\n[${devLogLabel}] Link para ${to}:\n${devUrl}\n`);
+    console.log(`\n[${devLogLabel}] BREVO_API_KEY vacío — no se envía email.\n[${devLogLabel}] Link para ${to}:\n${devUrl}\n`);
     return;
   }
-  const { Resend } = await import('resend');
-  const resend = new Resend(apiKey);
-  await resend.emails.send({ from: FROM, to, subject, html });
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': apiKey,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: FROM_NAME, email: FROM_EMAIL },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  if (!res.ok) {
+    const detalle = await res.text().catch(() => '');
+    throw new Error(`Brevo respondió ${res.status}: ${detalle}`);
+  }
 }
 
 export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<void> {
@@ -29,7 +49,7 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
 
 /**
  * Envía el correo de recuperación de contraseña.
- * En dev (sin RESEND_API_KEY) no envía: loguea el link en consola para poder probar el flujo.
+ * En dev (sin BREVO_API_KEY) no envía: loguea el link en consola para poder probar el flujo.
  */
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   const html = `
