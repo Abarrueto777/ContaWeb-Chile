@@ -10,6 +10,7 @@ export interface Usuario {
   email: string;
   nombre: string;
   rol: RolUsuario;
+  emailVerificado: boolean;
   createdAt: string;
   updatedAt: string;
 }

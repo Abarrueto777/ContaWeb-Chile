@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Logo, LogoMark } from './Logo';
+import VerifyEmailBanner from './VerifyEmailBanner';
 import { useMe } from '@/hooks/useAuth';
 import { useTheme } from './ThemeProvider';
 import { useEmpresaContext } from './EmpresaProvider';
@@ -304,6 +305,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 xl:p-8">
+          <VerifyEmailBanner />
           {children}
         </main>
       </div>

@@ -6,12 +6,24 @@ import { prisma } from '../lib/prisma';
 import { validate } from '../middlewares/validate';
 import { requireAuth } from '../middlewares/auth';
 import { createError } from '../middlewares/errorHandler';
-import { loginSchema, registroSchema, forgotPasswordSchema, resetPasswordSchema } from '@contaweb/validations';
-import { sendPasswordResetEmail } from '../services/email.service';
+import { loginSchema, registroSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema } from '@contaweb/validations';
+import { sendPasswordResetEmail, sendVerificationEmail } from '../services/email.service';
 
 const router = Router();
 
 const APP_URL = process.env['APP_URL'] ?? 'http://localhost:5173';
+
+// Genera token de verificación (guarda solo el hash), válido 24h, y manda el email.
+async function enviarVerificacion(usuarioId: string, email: string): Promise<void> {
+  const rawToken = randomBytes(32).toString('hex');
+  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+  const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+  await prisma.usuario.update({
+    where: { id: usuarioId },
+    data: { verifyTokenHash: tokenHash, verifyTokenExpiry: expiry },
+  });
+  await sendVerificationEmail(email, `${APP_URL}/verify-email?token=${rawToken}`);
+}
 
 // Registro público (self-signup). El rol se FUERZA a CONTADOR en el server:
 // nunca se confía en el rol que manda el cliente. Los ADMIN se promueven a mano.
@@ -25,8 +37,11 @@ router.post('/registro', validate(registroSchema), async (req, res, next) => {
     const hash = await bcrypt.hash(password, 12);
     const usuario = await prisma.usuario.create({
       data: { email, nombre, password: hash, rol: 'CONTADOR' },
-      select: { id: true, email: true, nombre: true, rol: true, createdAt: true, updatedAt: true },
+      select: { id: true, email: true, nombre: true, rol: true, emailVerificado: true, createdAt: true, updatedAt: true },
     });
+
+    // Enviar verificación sin bloquear el registro si el email falla (puede reenviar luego).
+    try { await enviarVerificacion(usuario.id, usuario.email); } catch { /* el usuario puede reenviar */ }
 
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, rol: usuario.rol },
@@ -60,7 +75,11 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
       { expiresIn: (process.env['JWT_EXPIRES_IN'] ?? (process.env['NODE_ENV'] === 'production' ? '8h' : '7d')) as unknown as Exclude<jwt.SignOptions['expiresIn'], undefined> }
     );
 
-    const { password: _, ...usuarioPublico } = usuario;
+    // Objeto explícito: nunca exponer password ni los hashes de tokens.
+    const usuarioPublico = {
+      id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol,
+      emailVerificado: usuario.emailVerificado, createdAt: usuario.createdAt, updatedAt: usuario.updatedAt,
+    };
     res.json({ data: { token, usuario: usuarioPublico } });
   } catch (err) {
     next(err);
@@ -71,7 +90,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const usuario = await prisma.usuario.findUnique({
       where: { id: req.user!.id },
-      select: { id: true, email: true, nombre: true, rol: true, createdAt: true, updatedAt: true },
+      select: { id: true, email: true, nombre: true, rol: true, emailVerificado: true, createdAt: true, updatedAt: true },
     });
     if (!usuario) return next(createError('Usuario no encontrado', 404));
     res.json({ data: usuario });
@@ -127,6 +146,45 @@ router.post('/reset-password', validate(resetPasswordSchema), async (req, res, n
     });
 
     res.json({ message: 'Contraseña actualizada. Ya podés iniciar sesión.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Verificar email con el token del link (público: el token ES la credencial).
+router.post('/verify-email', validate(verifyEmailSchema), async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { verifyTokenHash: tokenHash, verifyTokenExpiry: { gt: new Date() } },
+    });
+    if (!usuario) {
+      return next(createError('El enlace de verificación es inválido o expiró.', 400));
+    }
+
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: { emailVerificado: true, verifyTokenHash: null, verifyTokenExpiry: null },
+    });
+
+    res.json({ message: 'Email verificado. ¡Gracias!' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Reenviar el email de verificación al usuario logueado.
+router.post('/resend-verification', requireAuth, async (req, res, next) => {
+  try {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.user!.id } });
+    if (!usuario) return next(createError('Usuario no encontrado', 404));
+    if (usuario.emailVerificado) {
+      return void res.json({ message: 'Tu email ya está verificado.' });
+    }
+    await enviarVerificacion(usuario.id, usuario.email);
+    res.json({ message: 'Te reenviamos el email de verificación.' });
   } catch (err) {
     next(err);
   }

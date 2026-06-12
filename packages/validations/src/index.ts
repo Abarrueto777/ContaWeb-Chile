@@ -55,6 +55,10 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
 });
 
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'Token requerido'),
+});
+
 export const empresaSchema = z.object({
   rut: rutSchema,
   razonSocial: z.string().min(3, 'Razón social requerida'),
@@ -354,6 +358,7 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type RegistroInput = z.infer<typeof registroSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export type EmpresaInput = z.infer<typeof empresaSchema>;
 export type ClienteInput = z.infer<typeof clienteSchema>;
 export type DocumentoInput = z.infer<typeof documentoSchema>;
