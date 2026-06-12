@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireAdmin } from '../middlewares/auth';
+import { sendPlanActivadoEmail } from '../services/email.service';
 
 const router = Router();
 
@@ -66,13 +67,21 @@ router.patch('/usuarios/:id/suscripcion', async (req, res, next) => {
       return void res.status(400).json({ error: 'Meses inválidos (1 | 6 | 12)' });
     }
 
-    const actual = await prisma.usuario.findUnique({ where: { id }, select: { suscripcionHasta: true } });
+    const actual = await prisma.usuario.findUnique({
+      where: { id },
+      select: { nombre: true, email: true, trialFin: true, suscripcionHasta: true },
+    });
     if (!actual) {
       return void res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
+    // El período pago arranca donde termina lo que ya tiene vigente: suscripción
+    // previa O días de trial restantes. Pagar antes de que venza la prueba no
+    // le quita días al cliente (el plan parte del día 46, no del día del pago).
     const ahora = new Date();
-    const base = actual.suscripcionHasta && actual.suscripcionHasta > ahora ? actual.suscripcionHasta : ahora;
+    let base = ahora;
+    if (actual.suscripcionHasta && actual.suscripcionHasta > base) base = actual.suscripcionHasta;
+    if (actual.trialFin && actual.trialFin > base) base = actual.trialFin;
     const hasta = new Date(base);
     hasta.setMonth(hasta.getMonth() + meses);
 
@@ -81,6 +90,12 @@ router.patch('/usuarios/:id/suscripcion', async (req, res, next) => {
       data: { suscripcionHasta: hasta },
       select: { id: true, email: true, nombre: true, rol: true, estado: true, trialFin: true, suscripcionHasta: true, createdAt: true },
     });
+
+    // Confirmación automática al cliente. Best-effort: si el email falla,
+    // la activación ya está hecha (el acceso es lo prioritario).
+    const nombrePlan = meses === 1 ? 'Mensual' : meses === 6 ? 'Semestral' : 'Anual';
+    try { await sendPlanActivadoEmail(actual.email, actual.nombre, nombrePlan, hasta); } catch { /* el admin puede avisar a mano */ }
+
     res.json({ data: usuario, message: `Suscripción activa hasta ${hasta.toLocaleDateString('es-CL')}` });
   } catch (err) {
     next(err);

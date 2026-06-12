@@ -160,7 +160,10 @@ export default function AdminUsuarios() {
               Activar o extender el plan de <span className="font-medium">{activando?.nombre}</span> ({activando?.email}).
               {activando?.suscripcionHasta && new Date(activando.suscripcionHasta).getTime() > Date.now()
                 ? ` Hoy está paga hasta el ${fmtFecha(activando.suscripcionHasta)}: el período nuevo se suma a esa fecha.`
-                : ' El período arranca hoy.'}
+                : activando?.trialFin && new Date(activando.trialFin).getTime() > Date.now()
+                  ? ` Está en prueba hasta el ${fmtFecha(activando.trialFin)}: el plan arranca cuando termine (no pierde días de trial).`
+                  : ' El período arranca hoy.'}
+              {' '}Se le enviará un correo de confirmación automáticamente.
             </DialogDescription>
           </DialogHeader>
           {activar.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(activar.error)}</p>}

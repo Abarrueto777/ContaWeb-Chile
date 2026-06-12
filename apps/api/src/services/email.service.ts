@@ -46,6 +46,23 @@ export async function sendSolicitudPlanEmail(nombre: string, email: string, plan
   await sendEmail(FROM_EMAIL, `Solicitud de plan ${plan} — ${email}`, html, 'solicitud-plan', `${nombre} <${email}> pidió plan ${plan}`);
 }
 
+/**
+ * Confirma al cliente que su plan quedó activo (lo dispara el admin al activar).
+ */
+export async function sendPlanActivadoEmail(to: string, nombre: string, plan: string, hasta: Date): Promise<void> {
+  const fecha = hasta.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const html = `
+    <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; color: #1e293b;">
+      <h2 style="color: #059669;">¡Tu plan ${plan} está activo!</h2>
+      <p>Hola ${nombre}, confirmamos tu pago y activamos tu plan <strong>${plan}</strong> de ContaCLWEB.</p>
+      <p>Tu suscripción está vigente hasta el <strong>${fecha}</strong>.</p>
+      <p>Ya podés seguir trabajando normalmente. ¡Gracias por confiar en ContaCLWEB!</p>
+      <p style="font-size: 13px; color: #64748b;">Si tenés alguna duda, respondé este correo.</p>
+    </div>
+  `;
+  await sendEmail(to, `Tu plan ${plan} está activo — ContaCLWEB`, html, 'plan-activado', `plan ${plan} hasta ${fecha} para ${to}`);
+}
+
 export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<void> {
   const html = `
     <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; color: #1e293b;">
