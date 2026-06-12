@@ -69,7 +69,7 @@ export async function scrapePreviredIndicadores(): Promise<PreviredIndicadores> 
 
   // Si la página está en blanco o tiene muy poco texto, es JS-rendered
   if (fullText.trim().length < 500) {
-    result._advertencias.push('Previred.com devuelve HTML vacío (requiere JavaScript). Ingresá las tasas manualmente.');
+    result._advertencias.push('Previred.com devuelve HTML vacío (requiere JavaScript). Ingresa las tasas manualmente.');
     return result;
   }
 
@@ -117,7 +117,7 @@ export async function scrapePreviredIndicadores(): Promise<PreviredIndicadores> 
   }
 
   if (afpEncontradas === 0) {
-    result._advertencias.push('No se encontraron tasas AFP en la página. Verificá previred.com manualmente.');
+    result._advertencias.push('No se encontraron tasas AFP en la página. Verifica previred.com manualmente.');
   }
 
   // ── 2. SIS empleador ─────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ export async function scrapePreviredIndicadores(): Promise<PreviredIndicadores> 
   }
 
   if (result._encontrado.length === 0) {
-    result._advertencias.push('El scraper no pudo extraer ningún dato de previred.com. Ingresá las tasas manualmente.');
+    result._advertencias.push('El scraper no pudo extraer ningún dato de previred.com. Ingresa las tasas manualmente.');
   }
 
   return result;

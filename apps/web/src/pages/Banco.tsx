@@ -68,7 +68,7 @@ export default function Banco() {
   }
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
-  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tenés empresas registradas</p></div>;
+  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tienes empresas registradas</p></div>;
 
   // Vista: lista de cuentas
   if (!cuentaActiva) {
@@ -126,7 +126,7 @@ export default function Banco() {
           <Card><CardContent className="flex flex-col items-center justify-center py-14 text-center">
             <Landmark className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="font-medium text-sm">Sin cuentas bancarias</p>
-            <p className="text-xs text-muted-foreground mt-1">Agregá tu primera cuenta con el botón de arriba</p>
+            <p className="text-xs text-muted-foreground mt-1">Agrega tu primera cuenta con el botón de arriba</p>
           </CardContent></Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -158,8 +158,8 @@ export default function Compras() {
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
   if (!empresa) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <p className="font-medium">No tenés empresas registradas</p>
-      <p className="text-sm text-muted-foreground mt-1">Creá una empresa primero</p>
+      <p className="font-medium">No tienes empresas registradas</p>
+      <p className="text-sm text-muted-foreground mt-1">Crea una empresa primero</p>
     </div>
   );
 
@@ -182,7 +182,7 @@ export default function Compras() {
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
                 <DialogTitle>Importar desde SII</DialogTitle>
-                <DialogDescription>Seleccioná el CSV del libro de compras descargado desde el portal del SII.</DialogDescription>
+                <DialogDescription>Selecciona el CSV del libro de compras descargado desde el portal del SII.</DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
                 <input ref={fileRef} type="file" accept=".csv,.txt" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm file:border-0 file:bg-transparent file:text-sm file:font-medium cursor-pointer" />

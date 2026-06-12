@@ -51,7 +51,7 @@ export default function DJ1887() {
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
   if (!empresa) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <p className="font-medium">No tenés empresas registradas</p>
+      <p className="font-medium">No tienes empresas registradas</p>
     </div>
   );
 
@@ -96,7 +96,7 @@ export default function DJ1887() {
         <div className="flex flex-col items-center justify-center py-20 text-center gap-2">
           <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
           <p className="font-medium">Sin liquidaciones para {anio}</p>
-          <p className="text-sm text-muted-foreground">Generá liquidaciones en RRHH para poder declarar.</p>
+          <p className="text-sm text-muted-foreground">Genera liquidaciones en RRHH para poder declarar.</p>
         </div>
       ) : (
         <>

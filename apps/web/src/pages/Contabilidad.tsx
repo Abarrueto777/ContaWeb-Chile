@@ -76,7 +76,7 @@ export default function Contabilidad() {
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
   if (!empresa) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <p className="font-medium">No tenés empresas registradas</p>
+      <p className="font-medium">No tienes empresas registradas</p>
     </div>
   );
 
@@ -476,7 +476,7 @@ export default function Contabilidad() {
           <Card><CardContent className="flex flex-col items-center justify-center py-14 text-center">
             <BookOpen className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="font-medium text-sm">Sin asientos registrados</p>
-            <p className="text-xs text-muted-foreground mt-1">Usá el botón "Nuevo asiento" para ingresar ajustes contables</p>
+            <p className="text-xs text-muted-foreground mt-1">Usa el botón "Nuevo asiento" para ingresar ajustes contables</p>
           </CardContent></Card>
         ) : (
           <div className="space-y-3">

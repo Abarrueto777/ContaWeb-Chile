@@ -49,7 +49,7 @@ export default function ResetPassword() {
         <Card><CardContent className="flex flex-col items-center text-center gap-3 py-10">
           <AlertTriangle className="h-12 w-12 text-orange-500" />
           <p className="font-medium">Enlace inválido</p>
-          <p className="text-sm text-muted-foreground">Este enlace de recuperación no es válido. Pedí uno nuevo.</p>
+          <p className="text-sm text-muted-foreground">Este enlace de recuperación no es válido. Pide uno nuevo.</p>
           <Button asChild variant="outline" className="mt-2"><Link to="/forgot-password">Pedir otro enlace</Link></Button>
         </CardContent></Card>
       </Shell>
@@ -62,7 +62,7 @@ export default function ResetPassword() {
         <Card><CardContent className="flex flex-col items-center text-center gap-3 py-10">
           <CheckCircle2 className="h-12 w-12 text-primary" />
           <p className="font-medium">¡Contraseña actualizada!</p>
-          <p className="text-sm text-muted-foreground">Ya podés iniciar sesión con tu nueva contraseña.</p>
+          <p className="text-sm text-muted-foreground">Ya puedes iniciar sesión con tu nueva contraseña.</p>
           <Button asChild className="mt-2"><Link to="/">Iniciar sesión</Link></Button>
         </CardContent></Card>
       </Shell>
@@ -74,7 +74,7 @@ export default function ResetPassword() {
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg">Nueva contraseña</CardTitle>
-          <CardDescription>Elegí una contraseña nueva para tu cuenta.</CardDescription>
+          <CardDescription>Elige una contraseña nueva para tu cuenta.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(({ password }) => mutate({ token, password }))} className="space-y-4">

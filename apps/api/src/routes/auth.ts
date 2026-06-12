@@ -67,7 +67,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
     if (!valida) return next(createError('Credenciales inválidas', 401));
 
     if (usuario.estado === 'SUSPENDIDO') {
-      return next(createError('Tu cuenta está suspendida. Contactá al administrador.', 403));
+      return next(createError('Tu cuenta está suspendida. Contacta al administrador.', 403));
     }
 
     const token = jwt.sign(
@@ -138,7 +138,7 @@ router.post('/reset-password', validate(resetPasswordSchema), async (req, res, n
       where: { resetTokenHash: tokenHash, resetTokenExpiry: { gt: new Date() } },
     });
     if (!usuario) {
-      return next(createError('El enlace es inválido o expiró. Pedí uno nuevo.', 400));
+      return next(createError('El enlace es inválido o expiró. Pide uno nuevo.', 400));
     }
 
     const hash = await bcrypt.hash(password, 12);
@@ -148,7 +148,7 @@ router.post('/reset-password', validate(resetPasswordSchema), async (req, res, n
       data: { password: hash, resetTokenHash: null, resetTokenExpiry: null, passwordChangedAt: new Date() },
     });
 
-    res.json({ message: 'Contraseña actualizada. Ya podés iniciar sesión.' });
+    res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión.' });
   } catch (err) {
     next(err);
   }

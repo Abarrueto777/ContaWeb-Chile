@@ -812,7 +812,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
   }, { sueldo:0, horasExtra:0, bono:0, gratif:0, noImponible:0, imponible:0, cotizAfp:0, cotizSis:0, cotizSalud:0, cotizCes:0, impuesto:0, descuentos:0, anticipo:0, liquido:0 });
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
-  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tenés empresas registradas</p></div>;
+  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tienes empresas registradas</p></div>;
 
   return (
     <div className="space-y-4 w-full">
@@ -1011,7 +1011,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                         <option value={30}>30 horas (parcial)</option>
                         <option value={20}>20 horas (parcial)</option>
                       </select>
-                      <p className="text-[10px] text-muted-foreground leading-tight">Ley 21.561: la jornada baja gradualmente 44h → 42h (2024) → 40h (2028). Definí la que aplica la empresa; afecta el valor hora extra.</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Ley 21.561: la jornada baja gradualmente 44h → 42h (2024) → 40h (2028). Define la que aplica la empresa; afecta el valor hora extra.</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-6">
@@ -1818,7 +1818,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                   </div>
                 )}
                 {!fechasPermValidas && !watchPermFechaInicio && (
-                  <p className="text-xs text-muted-foreground">Completá las fechas para continuar.</p>
+                  <p className="text-xs text-muted-foreground">Completa las fechas para continuar.</p>
                 )}
                 <div className="flex items-center gap-2">
                   <Controller

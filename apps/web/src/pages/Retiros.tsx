@@ -101,7 +101,7 @@ export default function Retiros() {
   }
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
-  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tenés empresas registradas</p></div>;
+  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tienes empresas registradas</p></div>;
 
   const sumaPorcentaje = socios.reduce((s, x) => s + Number(x.porcentaje), 0);
 
@@ -302,7 +302,7 @@ export default function Retiros() {
             <span>
               DJ 1948 · Retiros, remesas y distribuciones (régimen 14 A) · AT {anio + 1} (año {anio}) ·
               Tasa 1ª Cat: <strong>{((dj48?.tasa1cat ?? 0.25) * 100).toFixed(0)}%</strong>.
-              El crédito IDPC se calcula al registrar el retiro; usá Recalcular si cambió la tasa.
+              El crédito IDPC se calcula al registrar el retiro; usa Recalcular si cambió la tasa.
             </span>
             <Button size="sm" variant="outline" onClick={() => recalcular.mutate(anio)} disabled={recalcular.isPending}>
               {recalcular.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Recalcular

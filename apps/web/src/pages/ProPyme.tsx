@@ -33,7 +33,7 @@ export default function ProPyme() {
   const ppm = ppmData?.data;
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
-  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tenés empresas registradas</p></div>;
+  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tienes empresas registradas</p></div>;
 
   async function onSincronizar() {
     const res = await sincronizar.mutateAsync(anio);
@@ -148,7 +148,7 @@ export default function ProPyme() {
               </div>
             </CardContent>
           </Card>
-          <p className="text-xs text-muted-foreground">Sincronizar recalcula el PPM de cada mes con ventas (hasta el mes actual) tomando el neto de boletas y facturas emitidas. Hacé clic en el estado para marcar pagado/pendiente.</p>
+          <p className="text-xs text-muted-foreground">Sincronizar recalcula el PPM de cada mes con ventas (hasta el mes actual) tomando el neto de boletas y facturas emitidas. Haz clic en el estado para marcar pagado/pendiente.</p>
         </>
       )}
     </div>

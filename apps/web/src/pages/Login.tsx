@@ -34,7 +34,7 @@ export default function Login() {
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Iniciar sesión</CardTitle>
-            <CardDescription>Ingresá tu email y contraseña para continuar</CardDescription>
+            <CardDescription>Ingresa tu email y contraseña para continuar</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
@@ -79,7 +79,7 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-sm text-muted-foreground">
-          ¿No tenés cuenta?{' '}
+          ¿No tienes cuenta?{' '}
           <Link to="/registro" className="text-primary font-medium hover:underline">
             Registrate aquí
           </Link>

@@ -12,7 +12,7 @@ export default function VerifyEmailBanner() {
     <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-700 dark:text-amber-400">
       <MailWarning className="h-4 w-4 shrink-0" />
       <p className="text-sm flex-1">
-        Verificá tu email <span className="font-medium">{usuario.email}</span> para asegurar tu cuenta. Revisá tu bandeja de entrada.
+        Verifica tu email <span className="font-medium">{usuario.email}</span> para asegurar tu cuenta. Revisa tu bandeja de entrada.
       </p>
       {resend.isSuccess ? (
         <span className="text-sm font-medium inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" />{resend.data?.message}</span>

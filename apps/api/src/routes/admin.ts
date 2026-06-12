@@ -41,7 +41,7 @@ router.patch('/usuarios/:id/estado', async (req, res, next) => {
       return void res.status(400).json({ error: 'Estado inválido (ACTIVO | SUSPENDIDO)' });
     }
     if (id === req.user!.id) {
-      return void res.status(400).json({ error: 'No podés cambiar tu propio estado' });
+      return void res.status(400).json({ error: 'No puedes cambiar tu propio estado' });
     }
 
     const usuario = await prisma.usuario.update({
@@ -128,7 +128,7 @@ router.delete('/usuarios/:id', async (req, res, next) => {
     const { id } = req.params as { id: string };
 
     if (id === req.user!.id) {
-      return void res.status(400).json({ error: 'No podés borrar tu propia cuenta' });
+      return void res.status(400).json({ error: 'No puedes borrar tu propia cuenta' });
     }
     const usuario = await prisma.usuario.findUnique({ where: { id }, select: { rol: true } });
     if (!usuario) {

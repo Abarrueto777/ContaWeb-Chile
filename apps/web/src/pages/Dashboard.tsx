@@ -99,9 +99,9 @@ export default function Dashboard() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Building2 className="h-10 w-10 text-muted-foreground/50 mb-3" />
-              <p className="font-medium text-sm">Aún no tenés empresas</p>
+              <p className="font-medium text-sm">Aún no tienes empresas</p>
               <p className="text-xs text-muted-foreground mt-1 mb-4">
-                Creá tu primera empresa para empezar a trabajar
+                Crea tu primera empresa para empezar a trabajar
               </p>
               <Button size="sm" asChild>
                 <Link to="/empresas">Crear empresa</Link>

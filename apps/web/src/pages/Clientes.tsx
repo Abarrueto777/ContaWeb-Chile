@@ -108,7 +108,7 @@ export default function Clientes() {
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
   if (!empresa) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <p className="font-medium">No tenés empresas registradas</p>
+      <p className="font-medium">No tienes empresas registradas</p>
     </div>
   );
 
@@ -127,7 +127,7 @@ export default function Clientes() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Nuevo cliente</DialogTitle>
-              <DialogDescription>Ingresá los datos del cliente.</DialogDescription>
+              <DialogDescription>Ingresa los datos del cliente.</DialogDescription>
             </DialogHeader>
             <ClienteForm
               formId="form-crear-cliente"
@@ -160,9 +160,9 @@ export default function Clientes() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-14 text-center">
             <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
-            <p className="font-medium text-sm">{busqueda ? 'Sin resultados' : 'Aún no tenés clientes'}</p>
+            <p className="font-medium text-sm">{busqueda ? 'Sin resultados' : 'Aún no tienes clientes'}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {busqueda ? 'Intentá con otro nombre o RUT' : 'Creá tu primer cliente con el botón de arriba'}
+              {busqueda ? 'Intenta con otro nombre o RUT' : 'Crea tu primer cliente con el botón de arriba'}
             </p>
           </CardContent>
         </Card>

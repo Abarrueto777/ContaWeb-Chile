@@ -36,7 +36,7 @@ export default function F29() {
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
   if (!empresa) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <p className="font-medium">No tenés empresas registradas</p>
+      <p className="font-medium">No tienes empresas registradas</p>
     </div>
   );
 

@@ -28,14 +28,14 @@ export default function ForgotPassword() {
           {isSuccess ? (
             <CardContent className="flex flex-col items-center text-center gap-3 py-10">
               <MailCheck className="h-12 w-12 text-primary" />
-              <p className="font-medium">Revisá tu correo</p>
+              <p className="font-medium">Revisa tu correo</p>
               <p className="text-sm text-muted-foreground">{data?.message}</p>
             </CardContent>
           ) : (
             <>
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Recuperar contraseña</CardTitle>
-                <CardDescription>Ingresá tu email y te enviamos un enlace para restablecerla.</CardDescription>
+                <CardDescription>Ingresa tu email y te enviamos un enlace para restablecerla.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">

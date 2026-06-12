@@ -146,7 +146,7 @@ export default function Ventas() {
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
   if (!empresa) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <p className="font-medium">No tenés empresas registradas</p>
+      <p className="font-medium">No tienes empresas registradas</p>
     </div>
   );
 
@@ -169,7 +169,7 @@ export default function Ventas() {
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
                 <DialogTitle>Importar desde SII</DialogTitle>
-                <DialogDescription>Seleccioná el CSV del libro de ventas descargado desde el portal del SII.</DialogDescription>
+                <DialogDescription>Selecciona el CSV del libro de ventas descargado desde el portal del SII.</DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
                 <input ref={fileRef} type="file" accept=".csv,.txt" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm file:border-0 file:bg-transparent file:text-sm file:font-medium cursor-pointer" />
@@ -355,7 +355,7 @@ export default function Ventas() {
           <CardContent className="flex flex-col items-center justify-center py-14 text-center">
             <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="font-medium text-sm">Sin documentos en {MESES[mes - 1]} {anio}</p>
-            <p className="text-xs text-muted-foreground mt-1">Emitís un nuevo documento o importás desde el SII</p>
+            <p className="text-xs text-muted-foreground mt-1">Emites un nuevo documento o importás desde el SII</p>
           </CardContent>
         </Card>
       ) : (

@@ -79,7 +79,7 @@ export default function Empresas() {
             <DialogHeader>
               <DialogTitle>Nueva empresa</DialogTitle>
               <DialogDescription>
-                Completá los datos de la empresa. RUT con puntos y guión (ej: 76.123.456-7).
+                Completa los datos de la empresa. RUT con puntos y guión (ej: 76.123.456-7).
               </DialogDescription>
             </DialogHeader>
 
@@ -178,12 +178,12 @@ export default function Empresas() {
           <CardContent className="flex flex-col items-center justify-center py-14 text-center">
             <Building2 className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="font-medium text-sm">
-              {busqueda ? 'Sin resultados' : 'Aún no tenés empresas'}
+              {busqueda ? 'Sin resultados' : 'Aún no tienes empresas'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {busqueda
-                ? 'Intentá con otro nombre o RUT'
-                : 'Creá tu primera empresa con el botón de arriba'}
+                ? 'Intenta con otro nombre o RUT'
+                : 'Crea tu primera empresa con el botón de arriba'}
             </p>
           </CardContent>
         </Card>

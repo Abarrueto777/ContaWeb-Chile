@@ -68,8 +68,8 @@ export default function Landing() {
           </div>
 
           <div className="space-y-1.5">
-            <h2 className="text-2xl font-bold tracking-tight">Iniciá sesión</h2>
-            <p className="text-sm text-muted-foreground">Ingresá a tu cuenta para administrar tus empresas.</p>
+            <h2 className="text-2xl font-bold tracking-tight">Inicia sesión</h2>
+            <p className="text-sm text-muted-foreground">Ingresa a tu cuenta para administrar tus empresas.</p>
           </div>
 
           <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
@@ -112,7 +112,7 @@ export default function Landing() {
           </form>
 
           <p className="text-center text-sm text-muted-foreground">
-            ¿No tenés cuenta?{' '}
+            ¿No tienes cuenta?{' '}
             <Link to="/registro" className="text-primary font-medium hover:underline">
               Registrate aquí
             </Link>

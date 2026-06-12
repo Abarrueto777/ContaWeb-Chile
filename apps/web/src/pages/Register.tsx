@@ -27,14 +27,14 @@ export default function Register() {
           <LogoMark className="h-14 w-14 rounded-2xl shadow-md shadow-primary/30" />
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight">ContaCL<span className="text-primary">WEB</span></h1>
-            <p className="text-sm text-muted-foreground">Creá tu cuenta de contador</p>
+            <p className="text-sm text-muted-foreground">Crea tu cuenta de contador</p>
           </div>
         </div>
 
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Crear cuenta</CardTitle>
-            <CardDescription>Completá tus datos para registrarte</CardDescription>
+            <CardDescription>Completa tus datos para registrarte</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
@@ -87,9 +87,9 @@ export default function Register() {
         </Card>
 
         <p className="text-center text-sm text-muted-foreground">
-          ¿Ya tenés cuenta?{' '}
+          ¿Ya tienes cuenta?{' '}
           <Link to="/" className="text-primary font-medium hover:underline">
-            Iniciá sesión
+            Inicia sesión
           </Link>
         </p>
       </div>

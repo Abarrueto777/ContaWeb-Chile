@@ -54,10 +54,10 @@ export default function Suscripcion() {
             <div className="text-center space-y-2">
               {trialVigente ? (
                 <>
-                  <h2 className="text-xl font-semibold">Elegí tu plan</h2>
+                  <h2 className="text-xl font-semibold">Elige tu plan</h2>
                   <p className="text-sm text-muted-foreground">
                     Te quedan <span className="font-medium text-foreground">{diasTrial} {diasTrial === 1 ? 'día' : 'días'}</span> de
-                    prueba. Activá tu plan ahora y seguí sin interrupciones.
+                    prueba. Activa tu plan ahora y sigue sin interrupciones.
                   </p>
                 </>
               ) : (
@@ -65,7 +65,7 @@ export default function Suscripcion() {
                   <div className="flex justify-center"><Clock className="h-10 w-10 text-orange-500" /></div>
                   <h2 className="text-xl font-semibold">Tu período de prueba terminó</h2>
                   <p className="text-sm text-muted-foreground">
-                    Tus datos están guardados tal como los dejaste. Elegí un plan y seguí donde estabas.
+                    Tus datos están guardados tal como los dejaste. Elige un plan y sigue donde estabas.
                   </p>
                 </>
               )}
@@ -118,7 +118,7 @@ export default function Suscripcion() {
                 ) : (
                   <>
                     <p className="text-xs text-muted-foreground">
-                      Cuando hagas la transferencia, avisanos con el botón: verificamos el pago y activamos tu plan.
+                      Cuando hagas la transferencia, avísanos con el botón: verificamos el pago y activamos tu plan.
                     </p>
                     <Button
                       className="w-full"

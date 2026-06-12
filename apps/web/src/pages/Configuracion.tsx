@@ -195,7 +195,7 @@ export default function Configuracion() {
       } else if (errData?.error) {
         setPreviredMsg(`⚠ ${errData.error}`);
       } else {
-        setPreviredMsg('⚠ No se pudo conectar con previred.com. Ingresá las tasas manualmente y guardá.');
+        setPreviredMsg('⚠ No se pudo conectar con previred.com. Ingresa las tasas manualmente y guarda.');
       }
     }
   }
@@ -227,7 +227,7 @@ export default function Configuracion() {
   if (isLoading) return <div className="text-muted-foreground text-sm">Cargando…</div>;
   if (!empresa) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <p className="font-medium">No tenés empresas registradas</p>
+      <p className="font-medium">No tienes empresas registradas</p>
     </div>
   );
 
@@ -650,7 +650,7 @@ function FactoresIpcTab() {
         <p className="text-xs text-muted-foreground">
           Factor de corrección monetaria por mes (acumulado del mes a diciembre). Se usan para actualizar
           montos en la <strong>DJ 1887</strong> (rentas y retenciones) y en los <strong>retiros</strong> de socios.
-          Dejá un mes vacío o en <strong>1,0</strong> si no hay reajuste.
+          Deja un mes vacío o en <strong>1,0</strong> si no hay reajuste.
         </p>
         <div className="flex items-center gap-2">
           <Label className="text-xs">Año:</Label>

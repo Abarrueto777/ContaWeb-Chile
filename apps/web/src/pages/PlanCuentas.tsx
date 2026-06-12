@@ -98,7 +98,7 @@ export default function PlanCuentas() {
   };
 
   if (loadingEmpresa) return <div className="text-muted-foreground text-sm">Cargando empresa…</div>;
-  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tenés empresas registradas</p></div>;
+  if (!empresa) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="font-medium">No tienes empresas registradas</p></div>;
 
   return (
     <div className="space-y-6">
@@ -120,7 +120,7 @@ export default function PlanCuentas() {
               <div className="space-y-1.5">
                 <Label>Cuenta padre *</Label>
                 <select {...formCrear.register('cuentaPadreId')} className={SELECT_CLASS} defaultValue="">
-                  <option value="" disabled>Seleccioná una cuenta…</option>
+                  <option value="" disabled>Selecciona una cuenta…</option>
                   {todas.map((c) => (
                     <option key={c.id} value={c.id}>{c.codigo} — {c.nombre}</option>
                   ))}
@@ -267,7 +267,7 @@ export default function PlanCuentas() {
           <DialogHeader>
             <DialogTitle>Borrar cuenta</DialogTitle>
             <DialogDescription>
-              ¿Seguro que querés borrar <span className="font-mono font-medium">{borrando?.codigo}</span> — {borrando?.nombre}? Esta acción no se puede deshacer.
+              ¿Seguro que quieres borrar <span className="font-mono font-medium">{borrando?.codigo}</span> — {borrando?.nombre}? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           {deleteCuenta.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(deleteCuenta.error)}</p>}
