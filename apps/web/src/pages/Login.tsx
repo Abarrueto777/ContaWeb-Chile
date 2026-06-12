@@ -59,6 +59,9 @@ export default function Login() {
                   autoComplete="current-password"
                 />
                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+                <div className="text-right">
+                  <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">¿Olvidaste tu contraseña?</Link>
+                </div>
               </div>
 
               {error && (

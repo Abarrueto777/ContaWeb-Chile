@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import type { ApiResponse, Usuario } from '@contaweb/shared-types';
-import type { LoginInput, RegistroInput } from '@contaweb/validations';
+import type { LoginInput, RegistroInput, ForgotPasswordInput, ResetPasswordInput } from '@contaweb/validations';
 import api from '@/lib/api';
 
 interface AuthResponse {
@@ -47,4 +47,16 @@ export function useLogout() {
     localStorage.removeItem('auth_token');
     window.location.href = '/';
   };
+}
+
+export function useForgotPassword() {
+  return useMutation<{ message: string }, Error, ForgotPasswordInput>({
+    mutationFn: (data) => api.post<{ message: string }>('/api/auth/forgot-password', data).then((r) => r.data),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation<{ message: string }, Error, ResetPasswordInput>({
+    mutationFn: (data) => api.post<{ message: string }>('/api/auth/reset-password', data).then((r) => r.data),
+  });
 }

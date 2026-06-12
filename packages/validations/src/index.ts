@@ -46,6 +46,15 @@ export const registroSchema = z.object({
   rol: z.enum(['ADMIN', 'CONTADOR', 'VISOR']).optional().default('CONTADOR'),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Email inválido'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token requerido'),
+  password: passwordSchema,
+});
+
 export const empresaSchema = z.object({
   rut: rutSchema,
   razonSocial: z.string().min(3, 'Razón social requerida'),
@@ -343,6 +352,8 @@ export const activoFijoSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegistroInput = z.infer<typeof registroSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type EmpresaInput = z.infer<typeof empresaSchema>;
 export type ClienteInput = z.infer<typeof clienteSchema>;
 export type DocumentoInput = z.infer<typeof documentoSchema>;

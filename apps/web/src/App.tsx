@@ -7,6 +7,8 @@ import { EmpresaProvider } from '@/components/EmpresaProvider';
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import Dashboard from '@/pages/Dashboard';
 import Empresas from '@/pages/Empresas';
 import Compras from '@/pages/Compras';
@@ -31,7 +33,7 @@ import AdminUsuarios from '@/pages/AdminUsuarios';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('auth_token');
-  if (!token) return <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/" replace />;
   return <Layout>{children}</Layout>;
 }
 
@@ -43,6 +45,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/"
             element={
