@@ -4,6 +4,9 @@ import axios from 'axios';
 // En desarrollo, apunta al servidor local
 const api = axios.create({
   baseURL: import.meta.env['VITE_API_URL'] ?? (import.meta.env.PROD ? '' : 'http://localhost:3001'),
+  // Sin timeout, una request a un server caído/lento se cuelga PARA SIEMPRE (spinner infinito).
+  // 30s cubre cualquier operación normal y falla con error si algo no responde.
+  timeout: 30000,
 });
 
 api.interceptors.request.use((config) => {

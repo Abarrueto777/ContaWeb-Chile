@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import type { ApiResponse, Usuario } from '@contaweb/shared-types';
-import type { LoginInput, RegistroInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput } from '@contaweb/validations';
+import type { LoginInput, RegistroInput, ForgotPasswordInput, ResetPasswordInput } from '@contaweb/validations';
 import api from '@/lib/api';
 
 interface AuthResponse {
@@ -61,9 +61,17 @@ export function useResetPassword() {
   });
 }
 
-export function useVerifyEmail() {
-  return useMutation<{ message: string }, Error, VerifyEmailInput>({
-    mutationFn: (data) => api.post<{ message: string }>('/api/auth/verify-email', data).then((r) => r.data),
+// useQuery (no useMutation) para que sea seguro ante el doble-montaje de StrictMode:
+// React Query DEDUPLICA la request por queryKey y CACHEA el resultado, así el token
+// de un solo uso se consume UNA vez y el éxito/error sobrevive al remonte.
+export function useVerifyEmail(token: string) {
+  return useQuery<{ message: string }>({
+    queryKey: ['verify-email', token],
+    queryFn: () => api.post<{ message: string }>('/api/auth/verify-email', { token }).then((r) => r.data),
+    enabled: !!token,
+    retry: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 }
 

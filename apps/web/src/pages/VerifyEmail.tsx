@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -19,15 +18,7 @@ function msgError(e: Error | null): string | null {
 export default function VerifyEmail() {
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
-  const { mutate, isPending, isSuccess, isError, error, data } = useVerifyEmail();
-  const fired = useRef(false);
-
-  useEffect(() => {
-    if (token && !fired.current) {
-      fired.current = true;
-      mutate({ token });
-    }
-  }, [token, mutate]);
+  const { isSuccess, isError, error, data } = useVerifyEmail(token);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -58,7 +49,6 @@ export default function VerifyEmail() {
               <p className="font-medium">Verificando tu email…</p>
             </>
           )}
-          {isPending && null}
         </CardContent></Card>
       </div>
     </div>
