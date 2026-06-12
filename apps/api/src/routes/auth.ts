@@ -36,8 +36,9 @@ router.post('/registro', validate(registroSchema), async (req, res, next) => {
 
     const hash = await bcrypt.hash(password, 12);
     const usuario = await prisma.usuario.create({
-      data: { email, nombre, password: hash, rol: 'CONTADOR' },
-      select: { id: true, email: true, nombre: true, rol: true, emailVerificado: true, createdAt: true, updatedAt: true },
+      // Trial de 45 días: cubre un ciclo tributario mensual completo (cierre + F29) con margen.
+      data: { email, nombre, password: hash, rol: 'CONTADOR', trialFin: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000) },
+      select: { id: true, email: true, nombre: true, rol: true, emailVerificado: true, trialFin: true, suscripcionHasta: true, createdAt: true, updatedAt: true },
     });
 
     // Enviar verificación sin bloquear el registro si el email falla (puede reenviar luego).
@@ -78,7 +79,8 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
     // Objeto explícito: nunca exponer password ni los hashes de tokens.
     const usuarioPublico = {
       id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol,
-      emailVerificado: usuario.emailVerificado, createdAt: usuario.createdAt, updatedAt: usuario.updatedAt,
+      emailVerificado: usuario.emailVerificado, trialFin: usuario.trialFin, suscripcionHasta: usuario.suscripcionHasta,
+      createdAt: usuario.createdAt, updatedAt: usuario.updatedAt,
     };
     res.json({ data: { token, usuario: usuarioPublico } });
   } catch (err) {
@@ -90,7 +92,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const usuario = await prisma.usuario.findUnique({
       where: { id: req.user!.id },
-      select: { id: true, email: true, nombre: true, rol: true, emailVerificado: true, createdAt: true, updatedAt: true },
+      select: { id: true, email: true, nombre: true, rol: true, emailVerificado: true, trialFin: true, suscripcionHasta: true, createdAt: true, updatedAt: true },
     });
     if (!usuario) return next(createError('Usuario no encontrado', 404));
     res.json({ data: usuario });

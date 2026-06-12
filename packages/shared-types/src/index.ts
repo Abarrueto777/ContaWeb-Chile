@@ -11,6 +11,8 @@ export interface Usuario {
   nombre: string;
   rol: RolUsuario;
   emailVerificado: boolean;
+  trialFin: string | null;
+  suscripcionHasta: string | null;
   createdAt: string;
   updatedAt: string;
 }

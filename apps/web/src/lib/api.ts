@@ -30,6 +30,10 @@ api.interceptors.response.use(
           window.location.href = '/';
         }
       }
+      // 402: trial vencido sin suscripción → pantalla de suscripción.
+      if (error.response?.status === 402 && window.location.pathname !== '/suscripcion') {
+        window.location.href = '/suscripcion';
+      }
       // Mostrar el mensaje real del backend ("Tu cuenta está suspendida…")
       // en vez del genérico "Request failed with status code XXX".
       const backendMsg = (error.response?.data as { error?: string } | undefined)?.error;

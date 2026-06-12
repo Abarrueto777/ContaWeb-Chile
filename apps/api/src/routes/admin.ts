@@ -17,6 +17,8 @@ router.get('/usuarios', async (_req, res, next) => {
         nombre: true,
         rol: true,
         estado: true,
+        trialFin: true,
+        suscripcionHasta: true,
         createdAt: true,
         _count: { select: { empresas: true } },
       },
@@ -47,6 +49,39 @@ router.patch('/usuarios/:id/estado', async (req, res, next) => {
       select: { id: true, email: true, nombre: true, rol: true, estado: true, createdAt: true },
     });
     res.json({ data: usuario });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Activar/extender suscripción manual: 1, 6 o 12 meses (mensual/semestral/anual).
+// EXTIENDE desde el vencimiento vigente si lo hay (renovar antes no regala días),
+// o desde hoy si ya venció. El cobro es por fuera (transferencia) en esta etapa.
+router.patch('/usuarios/:id/suscripcion', async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { meses } = req.body as { meses?: number };
+
+    if (meses !== 1 && meses !== 6 && meses !== 12) {
+      return void res.status(400).json({ error: 'Meses inválidos (1 | 6 | 12)' });
+    }
+
+    const actual = await prisma.usuario.findUnique({ where: { id }, select: { suscripcionHasta: true } });
+    if (!actual) {
+      return void res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const ahora = new Date();
+    const base = actual.suscripcionHasta && actual.suscripcionHasta > ahora ? actual.suscripcionHasta : ahora;
+    const hasta = new Date(base);
+    hasta.setMonth(hasta.getMonth() + meses);
+
+    const usuario = await prisma.usuario.update({
+      where: { id },
+      data: { suscripcionHasta: hasta },
+      select: { id: true, email: true, nombre: true, rol: true, estado: true, trialFin: true, suscripcionHasta: true, createdAt: true },
+    });
+    res.json({ data: usuario, message: `Suscripción activa hasta ${hasta.toLocaleDateString('es-CL')}` });
   } catch (err) {
     next(err);
   }

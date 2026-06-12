@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { requireAuth } from '../middlewares/auth';
+import { requireAuth, requireSuscripcion } from '../middlewares/auth';
 import { validate } from '../middlewares/validate';
 import { createError } from '../middlewares/errorHandler';
 import { empresaSchema } from '@contaweb/validations';
@@ -34,6 +34,9 @@ import configEmpresaRoutes from './config-empresa';
 
 const router = Router();
 router.use(requireAuth);
+// Todo el negocio cuelga de /api/empresas: con esto queda gateado completo.
+// Auth y admin quedan fuera a propósito (login, /me y activación siguen accesibles).
+router.use(requireSuscripcion);
 
 router.get('/', async (req, res, next) => {
   try {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Users, Trash2, Ban, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
-import { useAdminUsuarios, useUpdateEstadoUsuario, useDeleteUsuario, type AdminUsuario } from '@/hooks/useAdminUsuarios';
+import { Users, Trash2, Ban, CheckCircle2, Loader2, ShieldCheck, CreditCard } from 'lucide-react';
+import { useAdminUsuarios, useUpdateEstadoUsuario, useDeleteUsuario, useActivarSuscripcion, type AdminUsuario } from '@/hooks/useAdminUsuarios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,11 +18,33 @@ function msgError(e: Error | null): string | null {
 
 const fmtFecha = (iso: string) => new Date(iso).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+// Estado comercial del usuario: suscripción paga > trial vigente > vencido.
+function suscripcionLabel(u: AdminUsuario): { texto: string; clase: string } {
+  const ahora = Date.now();
+  if (u.suscripcionHasta && new Date(u.suscripcionHasta).getTime() > ahora) {
+    return { texto: `Paga hasta ${fmtFecha(u.suscripcionHasta)}`, clase: 'text-green-600' };
+  }
+  if (u.trialFin && new Date(u.trialFin).getTime() > ahora) {
+    const dias = Math.ceil((new Date(u.trialFin).getTime() - ahora) / 86400000);
+    return { texto: `Trial (${dias}d)`, clase: 'text-blue-600' };
+  }
+  return { texto: 'Vencida', clase: 'text-orange-600' };
+}
+
 export default function AdminUsuarios() {
   const { data, isLoading } = useAdminUsuarios();
   const updateEstado = useUpdateEstadoUsuario();
   const deleteUsuario = useDeleteUsuario();
+  const activar = useActivarSuscripcion();
   const [borrando, setBorrando] = useState<AdminUsuario | null>(null);
+  const [activando, setActivando] = useState<AdminUsuario | null>(null);
+
+  const onActivar = (meses: 1 | 6 | 12) => {
+    if (!activando) return;
+    activar.mutate({ id: activando.id, meses }, {
+      onSuccess: () => { setActivando(null); activar.reset(); },
+    });
+  };
 
   const usuarios = data?.data ?? [];
 
@@ -60,7 +82,8 @@ export default function AdminUsuarios() {
               <th className="text-left px-5 py-3 font-medium text-muted-foreground hidden md:table-cell">Empresas</th>
               <th className="text-left px-5 py-3 font-medium text-muted-foreground hidden lg:table-cell">Alta</th>
               <th className="text-left px-5 py-3 font-medium text-muted-foreground">Estado</th>
-              <th className="px-5 py-3 w-28"></th>
+              <th className="text-left px-5 py-3 font-medium text-muted-foreground">Suscripción</th>
+              <th className="px-5 py-3 w-36"></th>
             </tr></thead>
             <tbody>
               {usuarios.map((u) => (
@@ -81,11 +104,23 @@ export default function AdminUsuarios() {
                       ? <span className="text-xs text-green-600 font-medium">Activo</span>
                       : <span className="text-xs text-orange-600 font-medium">Suspendido</span>}
                   </td>
+                  <td className="px-5 py-3">
+                    {u.rol === 'ADMIN'
+                      ? <span className="text-xs text-muted-foreground">—</span>
+                      : <span className={`text-xs font-medium ${suscripcionLabel(u).clase}`}>{suscripcionLabel(u).texto}</span>}
+                  </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
                     {u.rol === 'ADMIN' ? (
                       <span className="text-xs text-muted-foreground italic pr-2">protegido</span>
                     ) : (
                       <>
+                        <Button
+                          variant="ghost" size="icon" className="h-8 w-8"
+                          title="Activar / extender suscripción"
+                          onClick={() => setActivando(u)}
+                        >
+                          <CreditCard className="h-4 w-4 text-primary" />
+                        </Button>
                         <Button
                           variant="ghost" size="icon" className="h-8 w-8"
                           title={u.estado === 'ACTIVO' ? 'Suspender' : 'Reactivar'}
@@ -115,6 +150,29 @@ export default function AdminUsuarios() {
       {updateEstado.error && (
         <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(updateEstado.error)}</p>
       )}
+
+      {/* Activar / extender suscripción */}
+      <Dialog open={!!activando} onOpenChange={(v) => { if (!v) { setActivando(null); activar.reset(); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Activar suscripción</DialogTitle>
+            <DialogDescription>
+              Activar o extender el plan de <span className="font-medium">{activando?.nombre}</span> ({activando?.email}).
+              {activando?.suscripcionHasta && new Date(activando.suscripcionHasta).getTime() > Date.now()
+                ? ` Hoy está paga hasta el ${fmtFecha(activando.suscripcionHasta)}: el período nuevo se suma a esa fecha.`
+                : ' El período arranca hoy.'}
+            </DialogDescription>
+          </DialogHeader>
+          {activar.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(activar.error)}</p>}
+          <DialogFooter className="sm:justify-center gap-2">
+            <Button variant="outline" onClick={() => onActivar(1)} disabled={activar.isPending}>+1 mes</Button>
+            <Button variant="outline" onClick={() => onActivar(6)} disabled={activar.isPending}>+6 meses</Button>
+            <Button onClick={() => onActivar(12)} disabled={activar.isPending}>
+              {activar.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}+12 meses
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmar borrado */}
       <Dialog open={!!borrando} onOpenChange={(v) => { if (!v) { setBorrando(null); deleteUsuario.reset(); } }}>

@@ -180,6 +180,8 @@ model Usuario {
   verifyTokenHash   String?
   verifyTokenExpiry DateTime?
   passwordChangedAt DateTime?     // invalida JWT emitidos antes de este momento
+  trialFin          DateTime?     // fin del período de prueba (45 días desde el registro)
+  suscripcionHasta  DateTime?     // suscripción paga vigente hasta esta fecha (activación manual)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   empresas  Empresa[]

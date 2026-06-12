@@ -9,10 +9,16 @@ export interface JwtPayload {
   rol: string;
 }
 
+export interface SuscripcionInfo {
+  trialFin: Date | null;
+  suscripcionHasta: Date | null;
+}
+
 declare global {
   namespace Express {
     interface Request {
       user?: JwtPayload;
+      suscripcion?: SuscripcionInfo;
     }
   }
 }
@@ -35,7 +41,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   try {
     const usuario = await prisma.usuario.findUnique({
       where: { id: payload.id },
-      select: { passwordChangedAt: true },
+      select: { passwordChangedAt: true, trialFin: true, suscripcionHasta: true },
     });
     // Cuenta eliminada → el token deja de valer al instante.
     if (!usuario) return next(createError('Token inválido o expirado', 401));
@@ -51,10 +57,28 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     }
 
     req.user = payload;
+    // Aprovecha esta misma consulta para que requireSuscripcion no haga otra.
+    req.suscripcion = { trialFin: usuario.trialFin, suscripcionHasta: usuario.suscripcionHasta };
     next();
   } catch (err) {
     next(err); // Error de DB → 500 real, no enmascararlo como token inválido.
   }
+}
+
+// Bloquea el acceso al negocio cuando venció el trial y no hay suscripción vigente.
+// Debe usarse SIEMPRE después de requireAuth (necesita req.user y req.suscripcion).
+// 402 Payment Required: el frontend lo intercepta y redirige a /suscripcion.
+export function requireSuscripcion(req: Request, _res: Response, next: NextFunction): void {
+  if (req.user?.rol === 'ADMIN') return next();
+
+  const ahora = Date.now();
+  const trialVigente = !!req.suscripcion?.trialFin && req.suscripcion.trialFin.getTime() > ahora;
+  const suscripcionVigente = !!req.suscripcion?.suscripcionHasta && req.suscripcion.suscripcionHasta.getTime() > ahora;
+
+  if (!trialVigente && !suscripcionVigente) {
+    return next(createError('Tu período de prueba terminó. Activá tu suscripción para seguir usando ContaCLWEB.', 402));
+  }
+  next();
 }
 
 // Debe usarse SIEMPRE después de requireAuth (necesita req.user)
