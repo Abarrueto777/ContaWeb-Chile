@@ -39,6 +39,15 @@ export function useActivarSuscripcion() {
   });
 }
 
+export function useQuitarSuscripcion() {
+  const qc = useQueryClient();
+  return useMutation<ApiResponse<AdminUsuario> & { message?: string }, Error, string>({
+    mutationFn: (id) =>
+      api.delete<ApiResponse<AdminUsuario> & { message?: string }>(`/api/admin/usuarios/${id}/suscripcion`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'usuarios'] }),
+  });
+}
+
 export function useDeleteUsuario() {
   const qc = useQueryClient();
   return useMutation<{ message: string }, Error, string>({

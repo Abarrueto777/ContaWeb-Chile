@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { Users, Trash2, Ban, CheckCircle2, Loader2, ShieldCheck, CreditCard } from 'lucide-react';
-import { useAdminUsuarios, useUpdateEstadoUsuario, useDeleteUsuario, useActivarSuscripcion, type AdminUsuario } from '@/hooks/useAdminUsuarios';
+import { useAdminUsuarios, useUpdateEstadoUsuario, useDeleteUsuario, useActivarSuscripcion, useQuitarSuscripcion, type AdminUsuario } from '@/hooks/useAdminUsuarios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,14 +36,38 @@ export default function AdminUsuarios() {
   const updateEstado = useUpdateEstadoUsuario();
   const deleteUsuario = useDeleteUsuario();
   const activar = useActivarSuscripcion();
+  const quitar = useQuitarSuscripcion();
   const [borrando, setBorrando] = useState<AdminUsuario | null>(null);
   const [activando, setActivando] = useState<AdminUsuario | null>(null);
+  const [mesesElegido, setMesesElegido] = useState<1 | 6 | 12 | null>(null);
+  const [quitando, setQuitando] = useState(false);
 
-  const onActivar = (meses: 1 | 6 | 12) => {
+  const cerrarActivacion = () => {
+    setActivando(null); setMesesElegido(null); setQuitando(false);
+    activar.reset(); quitar.reset();
+  };
+
+  // Misma regla que el backend, solo para MOSTRAR la fecha proyectada en la confirmación:
+  // base = lo vigente más lejano (hoy / suscripción / trial) + meses del plan.
+  const fechaProyectada = (u: AdminUsuario, meses: number): string => {
+    let base = Date.now();
+    if (u.suscripcionHasta && new Date(u.suscripcionHasta).getTime() > base) base = new Date(u.suscripcionHasta).getTime();
+    if (u.trialFin && new Date(u.trialFin).getTime() > base) base = new Date(u.trialFin).getTime();
+    const d = new Date(base);
+    d.setMonth(d.getMonth() + meses);
+    return fmtFecha(d.toISOString());
+  };
+
+  const nombrePlan = (meses: 1 | 6 | 12) => (meses === 1 ? 'Mensual' : meses === 6 ? 'Semestral' : 'Anual');
+
+  const onConfirmarActivar = () => {
+    if (!activando || !mesesElegido) return;
+    activar.mutate({ id: activando.id, meses: mesesElegido }, { onSuccess: cerrarActivacion });
+  };
+
+  const onQuitar = () => {
     if (!activando) return;
-    activar.mutate({ id: activando.id, meses }, {
-      onSuccess: () => { setActivando(null); activar.reset(); },
-    });
+    quitar.mutate(activando.id, { onSuccess: cerrarActivacion });
   };
 
   const usuarios = data?.data ?? [];
@@ -151,29 +175,74 @@ export default function AdminUsuarios() {
         <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(updateEstado.error)}</p>
       )}
 
-      {/* Activar / extender suscripción */}
-      <Dialog open={!!activando} onOpenChange={(v) => { if (!v) { setActivando(null); activar.reset(); } }}>
+      {/* Activar / extender / quitar suscripción (dos pasos: elegir → confirmar) */}
+      <Dialog open={!!activando} onOpenChange={(v) => { if (!v) cerrarActivacion(); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Activar suscripción</DialogTitle>
-            <DialogDescription>
-              Activar o extender el plan de <span className="font-medium">{activando?.nombre}</span> ({activando?.email}).
-              {activando?.suscripcionHasta && new Date(activando.suscripcionHasta).getTime() > Date.now()
-                ? ` Hoy está paga hasta el ${fmtFecha(activando.suscripcionHasta)}: el período nuevo se suma a esa fecha.`
-                : activando?.trialFin && new Date(activando.trialFin).getTime() > Date.now()
-                  ? ` Está en prueba hasta el ${fmtFecha(activando.trialFin)}: el plan arranca cuando termine (no pierde días de trial).`
-                  : ' El período arranca hoy.'}
-              {' '}Se le enviará un correo de confirmación automáticamente.
-            </DialogDescription>
-          </DialogHeader>
-          {activar.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(activar.error)}</p>}
-          <DialogFooter className="sm:justify-center gap-2">
-            <Button variant="outline" onClick={() => onActivar(1)} disabled={activar.isPending}>+1 mes</Button>
-            <Button variant="outline" onClick={() => onActivar(6)} disabled={activar.isPending}>+6 meses</Button>
-            <Button onClick={() => onActivar(12)} disabled={activar.isPending}>
-              {activar.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}+12 meses
-            </Button>
-          </DialogFooter>
+          {quitando && activando ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Quitar suscripción</DialogTitle>
+                <DialogDescription>
+                  Vas a quitar la suscripción paga de <span className="font-medium">{activando.nombre}</span> ({activando.email}),
+                  hoy vigente hasta el {activando.suscripcionHasta ? fmtFecha(activando.suscripcionHasta) : '—'}.
+                  Vuelve al estado de su prueba (vigente o vencida). <span className="font-medium">No se envía ningún correo al cliente.</span>
+                </DialogDescription>
+              </DialogHeader>
+              {quitar.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(quitar.error)}</p>}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setQuitando(false)} disabled={quitar.isPending}>Volver</Button>
+                <Button variant="destructive" onClick={onQuitar} disabled={quitar.isPending}>
+                  {quitar.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Quitar suscripción
+                </Button>
+              </DialogFooter>
+            </>
+          ) : mesesElegido && activando ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirmar activación</DialogTitle>
+                <DialogDescription>
+                  ¿Activar el plan <span className="font-medium">{nombrePlan(mesesElegido)}</span> (+{mesesElegido} {mesesElegido === 1 ? 'mes' : 'meses'}) para{' '}
+                  <span className="font-medium">{activando.nombre}</span> ({activando.email})?
+                  La suscripción quedará vigente hasta el <span className="font-medium">{fechaProyectada(activando, mesesElegido)}</span>.
+                  Al confirmar se le envía el correo de plan activado.
+                </DialogDescription>
+              </DialogHeader>
+              {activar.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(activar.error)}</p>}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setMesesElegido(null)} disabled={activar.isPending}>Volver</Button>
+                <Button onClick={onConfirmarActivar} disabled={activar.isPending}>
+                  {activar.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirmar y enviar correo
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Activar suscripción</DialogTitle>
+                <DialogDescription>
+                  Activar o extender el plan de <span className="font-medium">{activando?.nombre}</span> ({activando?.email}).
+                  {activando?.suscripcionHasta && new Date(activando.suscripcionHasta).getTime() > Date.now()
+                    ? ` Hoy está paga hasta el ${fmtFecha(activando.suscripcionHasta)}: el período nuevo se suma a esa fecha.`
+                    : activando?.trialFin && new Date(activando.trialFin).getTime() > Date.now()
+                      ? ` Está en prueba hasta el ${fmtFecha(activando.trialFin)}: el plan arranca cuando termine (no pierde días de trial).`
+                      : ' El período arranca hoy.'}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="sm:justify-center gap-2">
+                <Button variant="outline" onClick={() => setMesesElegido(1)}>+1 mes</Button>
+                <Button variant="outline" onClick={() => setMesesElegido(6)}>+6 meses</Button>
+                <Button onClick={() => setMesesElegido(12)}>+12 meses</Button>
+              </DialogFooter>
+              {activando?.suscripcionHasta && new Date(activando.suscripcionHasta).getTime() > Date.now() && (
+                <button
+                  onClick={() => setQuitando(true)}
+                  className="text-xs text-destructive underline underline-offset-2 hover:no-underline self-center"
+                >
+                  Quitar la suscripción actual (corregir un error)
+                </button>
+              )}
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

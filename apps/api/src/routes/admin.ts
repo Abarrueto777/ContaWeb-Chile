@@ -102,6 +102,26 @@ router.patch('/usuarios/:id/suscripcion', async (req, res, next) => {
   }
 });
 
+// Quitar la suscripción paga (corrección de errores del admin): el usuario vuelve
+// al estado que dicte su trial. NO se avisa al cliente por email — es interno.
+router.delete('/usuarios/:id/suscripcion', async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    const existe = await prisma.usuario.findUnique({ where: { id }, select: { id: true } });
+    if (!existe) {
+      return void res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    const usuario = await prisma.usuario.update({
+      where: { id },
+      data: { suscripcionHasta: null },
+      select: { id: true, email: true, nombre: true, rol: true, estado: true, trialFin: true, suscripcionHasta: true, createdAt: true },
+    });
+    res.json({ data: usuario, message: 'Suscripción quitada' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Borrar usuario y TODOS sus datos (cascada a nivel DB)
 router.delete('/usuarios/:id', async (req, res, next) => {
   try {
