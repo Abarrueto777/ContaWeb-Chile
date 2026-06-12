@@ -142,7 +142,8 @@ router.post('/reset-password', validate(resetPasswordSchema), async (req, res, n
     const hash = await bcrypt.hash(password, 12);
     await prisma.usuario.update({
       where: { id: usuario.id },
-      data: { password: hash, resetTokenHash: null, resetTokenExpiry: null },
+      // passwordChangedAt invalida cualquier JWT emitido antes de este reset.
+      data: { password: hash, resetTokenHash: null, resetTokenExpiry: null, passwordChangedAt: new Date() },
     });
 
     res.json({ message: 'Contraseña actualizada. Ya podés iniciar sesión.' });
