@@ -41,10 +41,15 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   try {
     const usuario = await prisma.usuario.findUnique({
       where: { id: payload.id },
-      select: { passwordChangedAt: true, trialFin: true, suscripcionHasta: true },
+      select: { estado: true, passwordChangedAt: true, trialFin: true, suscripcionHasta: true },
     });
     // Cuenta eliminada → el token deja de valer al instante.
     if (!usuario) return next(createError('Token inválido o expirado', 401));
+
+    // Cuenta suspendida → el token deja de valer al instante (no solo en el login).
+    if (usuario.estado === 'SUSPENDIDO') {
+      return next(createError('Tu cuenta está suspendida. Contacta al administrador.', 403));
+    }
 
     // Token emitido ANTES del último cambio de contraseña → sesión inválida.
     // 1s de tolerancia: el `iat` del JWT está en segundos (redondeado), passwordChangedAt en ms.
@@ -53,7 +58,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       payload.iat != null &&
       payload.iat * 1000 < usuario.passwordChangedAt.getTime() - 1000
     ) {
-      return next(createError('Sesión cerrada por cambio de contraseña. Iniciá sesión de nuevo.', 401));
+      return next(createError('Sesión cerrada por cambio de contraseña. Inicia sesión de nuevo.', 401));
     }
 
     req.user = payload;
@@ -76,7 +81,7 @@ export function requireSuscripcion(req: Request, _res: Response, next: NextFunct
   const suscripcionVigente = !!req.suscripcion?.suscripcionHasta && req.suscripcion.suscripcionHasta.getTime() > ahora;
 
   if (!trialVigente && !suscripcionVigente) {
-    return next(createError('Tu período de prueba terminó. Activá tu suscripción para seguir usando ContaCLWEB.', 402));
+    return next(createError('Tu período de prueba terminó. Activa tu suscripción para seguir usando ContaCLWEB.', 402));
   }
   next();
 }

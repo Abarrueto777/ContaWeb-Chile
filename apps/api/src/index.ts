@@ -44,7 +44,7 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Demasiados intentos. Intentá de nuevo en 15 minutos.' },
+  message: { error: 'Demasiados intentos. Intenta de nuevo en 15 minutos.' },
 });
 
 // Rate limiting general — 200 req / min por IP
@@ -53,7 +53,7 @@ const apiLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Demasiadas solicitudes. Intentá más tarde.' },
+  message: { error: 'Demasiadas solicitudes. Intenta más tarde.' },
 });
 
 // Rate limiting password reset — 5 intentos / 15 min por IP.
@@ -63,7 +63,7 @@ const passwordResetLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Demasiados intentos. Intentá de nuevo en 15 minutos.' },
+  message: { error: 'Demasiados intentos. Intenta de nuevo en 15 minutos.' },
 });
 
 // Rate limiting solicitudes de plan — 5 / 15 min por IP (manda email al admin)
@@ -72,12 +72,23 @@ const solicitudPlanLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Demasiadas solicitudes. Intentá de nuevo en 15 minutos.' },
+  message: { error: 'Demasiadas solicitudes. Intenta de nuevo en 15 minutos.' },
+});
+
+// Rate limiting registro — 5 cuentas / 15 min por IP (cada registro manda email)
+const registroLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados registros. Intenta de nuevo en 15 minutos.' },
 });
 
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/registro', registroLimiter);
 app.use('/api/auth/forgot-password', passwordResetLimiter);
 app.use('/api/auth/reset-password', passwordResetLimiter);
+app.use('/api/auth/resend-verification', passwordResetLimiter);
 app.use('/api/suscripcion', solicitudPlanLimiter);
 app.use('/api', apiLimiter);
 
