@@ -48,19 +48,28 @@ export async function sendSolicitudPlanEmail(nombre: string, email: string, plan
 
 /**
  * Confirma al cliente que su plan quedó activo (lo dispara el admin al activar).
+ * Con `correccion: true` el correo reconoce el error anterior y aclara el plan correcto
+ * (para cuando el admin activó mal, quitó la suscripción y volvió a activar).
  */
-export async function sendPlanActivadoEmail(to: string, nombre: string, plan: string, hasta: Date): Promise<void> {
+export async function sendPlanActivadoEmail(to: string, nombre: string, plan: string, hasta: Date, correccion = false): Promise<void> {
   const fecha = hasta.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const cuerpo = correccion
+    ? `
+      <p>Hola ${nombre}, te escribimos para corregir un error: el correo anterior sobre tu plan no era el correcto. Disculpá la confusión.</p>
+      <p>Tu plan contratado es el <strong>${plan}</strong>, y ya quedó activo correctamente.</p>`
+    : `
+      <p>Hola ${nombre}, confirmamos tu pago y activamos tu plan <strong>${plan}</strong> de ContaCLWEB.</p>`;
   const html = `
     <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; color: #1e293b;">
-      <h2 style="color: #059669;">¡Tu plan ${plan} está activo!</h2>
-      <p>Hola ${nombre}, confirmamos tu pago y activamos tu plan <strong>${plan}</strong> de ContaCLWEB.</p>
+      <h2 style="color: #059669;">${correccion ? `Corrección: tu plan es el ${plan}` : `¡Tu plan ${plan} está activo!`}</h2>
+      ${cuerpo}
       <p>Tu suscripción está vigente hasta el <strong>${fecha}</strong>.</p>
       <p>Ya podés seguir trabajando normalmente. ¡Gracias por confiar en ContaCLWEB!</p>
       <p style="font-size: 13px; color: #64748b;">Si tenés alguna duda, respondé este correo.</p>
     </div>
   `;
-  await sendEmail(to, `Tu plan ${plan} está activo — ContaCLWEB`, html, 'plan-activado', `plan ${plan} hasta ${fecha} para ${to}`);
+  const asunto = correccion ? `Corrección: tu plan ${plan} está activo — ContaCLWEB` : `Tu plan ${plan} está activo — ContaCLWEB`;
+  await sendEmail(to, asunto, html, 'plan-activado', `plan ${plan}${correccion ? ' (corrección)' : ''} hasta ${fecha} para ${to}`);
 }
 
 export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<void> {

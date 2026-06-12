@@ -32,9 +32,9 @@ export function useUpdateEstadoUsuario() {
 
 export function useActivarSuscripcion() {
   const qc = useQueryClient();
-  return useMutation<ApiResponse<AdminUsuario> & { message?: string }, Error, { id: string; meses: 1 | 6 | 12 }>({
-    mutationFn: ({ id, meses }) =>
-      api.patch<ApiResponse<AdminUsuario> & { message?: string }>(`/api/admin/usuarios/${id}/suscripcion`, { meses }).then((r) => r.data),
+  return useMutation<ApiResponse<AdminUsuario> & { message?: string }, Error, { id: string; meses: 1 | 6 | 12; correccion?: boolean }>({
+    mutationFn: ({ id, meses, correccion }) =>
+      api.patch<ApiResponse<AdminUsuario> & { message?: string }>(`/api/admin/usuarios/${id}/suscripcion`, { meses, correccion }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'usuarios'] }),
   });
 }

@@ -41,9 +41,10 @@ export default function AdminUsuarios() {
   const [activando, setActivando] = useState<AdminUsuario | null>(null);
   const [mesesElegido, setMesesElegido] = useState<1 | 6 | 12 | null>(null);
   const [quitando, setQuitando] = useState(false);
+  const [esCorreccion, setEsCorreccion] = useState(false);
 
   const cerrarActivacion = () => {
-    setActivando(null); setMesesElegido(null); setQuitando(false);
+    setActivando(null); setMesesElegido(null); setQuitando(false); setEsCorreccion(false);
     activar.reset(); quitar.reset();
   };
 
@@ -62,7 +63,7 @@ export default function AdminUsuarios() {
 
   const onConfirmarActivar = () => {
     if (!activando || !mesesElegido) return;
-    activar.mutate({ id: activando.id, meses: mesesElegido }, { onSuccess: cerrarActivacion });
+    activar.mutate({ id: activando.id, meses: mesesElegido, correccion: esCorreccion }, { onSuccess: cerrarActivacion });
   };
 
   const onQuitar = () => {
@@ -207,6 +208,18 @@ export default function AdminUsuarios() {
                   Al confirmar se le envía el correo de plan activado.
                 </DialogDescription>
               </DialogHeader>
+              <label className="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={esCorreccion}
+                  onChange={(e) => setEsCorreccion(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                />
+                <span>
+                  <span className="font-medium">Es una corrección de un error anterior.</span>{' '}
+                  <span className="text-muted-foreground">El correo le pedirá disculpas al cliente y aclarará cuál es su plan correcto.</span>
+                </span>
+              </label>
               {activar.error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msgError(activar.error)}</p>}
               <DialogFooter>
                 <Button variant="outline" onClick={() => setMesesElegido(null)} disabled={activar.isPending}>Volver</Button>

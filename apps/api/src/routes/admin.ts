@@ -61,7 +61,7 @@ router.patch('/usuarios/:id/estado', async (req, res, next) => {
 router.patch('/usuarios/:id/suscripcion', async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
-    const { meses } = req.body as { meses?: number };
+    const { meses, correccion } = req.body as { meses?: number; correccion?: boolean };
 
     if (meses !== 1 && meses !== 6 && meses !== 12) {
       return void res.status(400).json({ error: 'Meses inválidos (1 | 6 | 12)' });
@@ -94,7 +94,7 @@ router.patch('/usuarios/:id/suscripcion', async (req, res, next) => {
     // Confirmación automática al cliente. Best-effort: si el email falla,
     // la activación ya está hecha (el acceso es lo prioritario).
     const nombrePlan = meses === 1 ? 'Mensual' : meses === 6 ? 'Semestral' : 'Anual';
-    try { await sendPlanActivadoEmail(actual.email, actual.nombre, nombrePlan, hasta); } catch { /* el admin puede avisar a mano */ }
+    try { await sendPlanActivadoEmail(actual.email, actual.nombre, nombrePlan, hasta, correccion === true); } catch { /* el admin puede avisar a mano */ }
 
     res.json({ data: usuario, message: `Suscripción activa hasta ${hasta.toLocaleDateString('es-CL')}` });
   } catch (err) {
