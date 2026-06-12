@@ -17,11 +17,20 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('auth_token');
+        // Sesión caída → a la landing pública (que ya tiene el login embebido),
+        // salvo que ya estemos en una página pública (evita pisar el logout y loops).
+        const path = window.location.pathname;
+        if (path !== '/' && path !== '/login' && path !== '/registro') {
+          window.location.href = '/';
+        }
       }
+      // Mostrar el mensaje real del backend ("Tu cuenta está suspendida…")
+      // en vez del genérico "Request failed with status code XXX".
+      const backendMsg = (error.response?.data as { error?: string } | undefined)?.error;
+      if (backendMsg) error.message = backendMsg;
     }
     return Promise.reject(error);
   }

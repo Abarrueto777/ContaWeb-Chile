@@ -1,5 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import type { ApiResponse, Usuario } from '@contaweb/shared-types';
 import type { LoginInput, RegistroInput } from '@contaweb/validations';
 import api from '@/lib/api';
@@ -20,38 +19,32 @@ export function useMe() {
   });
 }
 
+// Login/registro hacen recarga COMPLETA (no SPA): así toda la app se reconstruye
+// fresca con el usuario nuevo y no queda ningún dato cacheado del usuario anterior
+// (el EmpresaProvider y demás providers viven montados y no se refrescaban solos).
 export function useLogin() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
   return useMutation<AuthResponse, Error, LoginInput>({
     mutationFn: (data) => api.post<AuthResponse>('/api/auth/login', data).then((r) => r.data),
     onSuccess: ({ data }) => {
       localStorage.setItem('auth_token', data.token);
-      qc.clear(); // descarta datos cacheados del usuario anterior
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     },
   });
 }
 
 export function useRegistro() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
   return useMutation<AuthResponse, Error, RegistroInput>({
     mutationFn: (data) => api.post<AuthResponse>('/api/auth/registro', data).then((r) => r.data),
     onSuccess: ({ data }) => {
       localStorage.setItem('auth_token', data.token);
-      qc.clear();
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     },
   });
 }
 
 export function useLogout() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
   return () => {
     localStorage.removeItem('auth_token');
-    qc.clear();
-    navigate('/');
+    window.location.href = '/';
   };
 }
