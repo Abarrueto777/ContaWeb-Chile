@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import type { ApiResponse, Usuario } from '@contaweb/shared-types';
 import type { LoginInput, RegistroInput } from '@contaweb/validations';
@@ -22,10 +22,12 @@ export function useMe() {
 
 export function useLogin() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   return useMutation<AuthResponse, Error, LoginInput>({
     mutationFn: (data) => api.post<AuthResponse>('/api/auth/login', data).then((r) => r.data),
     onSuccess: ({ data }) => {
       localStorage.setItem('auth_token', data.token);
+      qc.clear(); // descarta datos cacheados del usuario anterior
       navigate('/dashboard');
     },
   });
@@ -33,10 +35,12 @@ export function useLogin() {
 
 export function useRegistro() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   return useMutation<AuthResponse, Error, RegistroInput>({
     mutationFn: (data) => api.post<AuthResponse>('/api/auth/registro', data).then((r) => r.data),
     onSuccess: ({ data }) => {
       localStorage.setItem('auth_token', data.token);
+      qc.clear();
       navigate('/dashboard');
     },
   });
@@ -44,8 +48,10 @@ export function useRegistro() {
 
 export function useLogout() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   return () => {
     localStorage.removeItem('auth_token');
+    qc.clear();
     navigate('/');
   };
 }

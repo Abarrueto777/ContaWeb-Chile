@@ -37,6 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useQueryClient } from '@tanstack/react-query';
 import { Logo, LogoMark } from './Logo';
 import { useMe } from '@/hooks/useAuth';
 import { useTheme } from './ThemeProvider';
@@ -97,6 +98,7 @@ const navGroups: { label: string | null; items: { to: string; label: string; ico
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { data } = useMe();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { theme, toggle } = useTheme();
   const { empresa, empresas, setEmpresaId } = useEmpresaContext();
   const usuario = data?.data;
@@ -108,6 +110,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   function handleLogout() {
     localStorage.removeItem('auth_token');
+    qc.clear(); // descarta datos del usuario anterior al cambiar de cuenta
     navigate('/');
   }
 
