@@ -13,6 +13,11 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@contaweb/shared-types": ["./packages/shared-types/src/index.ts"],
+      "@contaweb/validations": ["./packages/validations/src/index.ts"]
+    }
   }
 }
