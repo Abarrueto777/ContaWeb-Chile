@@ -89,6 +89,7 @@ app.use('/api/auth/registro', registroLimiter);
 app.use('/api/auth/forgot-password', passwordResetLimiter);
 app.use('/api/auth/reset-password', passwordResetLimiter);
 app.use('/api/auth/resend-verification', passwordResetLimiter);
+app.use('/api/auth/verify-email', passwordResetLimiter);
 app.use('/api/suscripcion', solicitudPlanLimiter);
 app.use('/api', apiLimiter);
 

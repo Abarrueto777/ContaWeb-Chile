@@ -32,11 +32,13 @@ router.post('/', async (req, res) => {
 
 router.post('/:activoId/depreciar', async (req, res) => {
   try {
-    const activo = await prisma.activoFijo.findUniqueOrThrow({ where: { id: req.params['activoId'] } });
+    const { empresaId, activoId } = req.params as { empresaId: string; activoId: string };
+    const activo = await prisma.activoFijo.findFirst({ where: { id: activoId, empresaId } });
+    if (!activo) return void res.status(404).json({ error: 'Activo no encontrado' });
     const nuevaAcum = Number(activo.acumDepreciacion) + Number(activo.depreciacionMes);
     const valorNeto = Number(activo.costoCompra) - nuevaAcum;
     const updated = await prisma.activoFijo.update({
-      where: { id: req.params['activoId'] },
+      where: { id: activoId },
       data: { acumDepreciacion: nuevaAcum, activo: valorNeto > Number(activo.valorResidual) },
     });
     res.json({ data: updated });
@@ -47,7 +49,10 @@ router.post('/:activoId/depreciar', async (req, res) => {
 
 router.delete('/:activoId', async (req, res) => {
   try {
-    await prisma.activoFijo.update({ where: { id: req.params['activoId'] }, data: { activo: false } });
+    const { empresaId, activoId } = req.params as { empresaId: string; activoId: string };
+    const activo = await prisma.activoFijo.findFirst({ where: { id: activoId, empresaId }, select: { id: true } });
+    if (!activo) return void res.status(404).json({ error: 'Activo no encontrado' });
+    await prisma.activoFijo.update({ where: { id: activoId }, data: { activo: false } });
     res.json({ message: 'Activo dado de baja' });
   } catch {
     res.status(500).json({ error: 'Error al dar de baja activo' });

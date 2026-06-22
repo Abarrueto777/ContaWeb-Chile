@@ -51,11 +51,14 @@ router.post('/', async (req, res) => {
 
 router.put('/:trabajadorId', async (req, res) => {
   try {
+    const { empresaId, trabajadorId } = req.params as { empresaId: string; trabajadorId: string };
     const parsed = trabajadorSchema.safeParse(req.body);
     if (!parsed.success) return void res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten().fieldErrors });
+    const existente = await prisma.trabajador.findFirst({ where: { id: trabajadorId, empresaId }, select: { id: true } });
+    if (!existente) return void res.status(404).json({ error: 'Trabajador no encontrado' });
     const { montoMovilizacion, montoColacion, cargo, email, montoIsapre, domicilio, fechaNacimiento, estadoCivil, nacionalidad, region, comuna, fechaTerminoContrato, ...rest } = parsed.data;
     const trabajador = await prisma.trabajador.update({
-      where: { id: req.params['trabajadorId'] },
+      where: { id: trabajadorId },
       data: {
         ...rest,
         cargo: cargo ?? null,
@@ -80,8 +83,11 @@ router.put('/:trabajadorId', async (req, res) => {
 
 router.patch('/:trabajadorId/desactivar', async (req, res) => {
   try {
+    const { empresaId, trabajadorId } = req.params as { empresaId: string; trabajadorId: string };
+    const existente = await prisma.trabajador.findFirst({ where: { id: trabajadorId, empresaId }, select: { id: true } });
+    if (!existente) return void res.status(404).json({ error: 'Trabajador no encontrado' });
     const trabajador = await prisma.trabajador.update({
-      where: { id: req.params['trabajadorId'] },
+      where: { id: trabajadorId },
       data: { activo: false },
     });
     res.json({ data: trabajador });
@@ -92,8 +98,11 @@ router.patch('/:trabajadorId/desactivar', async (req, res) => {
 
 router.patch('/:trabajadorId/reactivar', async (req, res) => {
   try {
+    const { empresaId, trabajadorId } = req.params as { empresaId: string; trabajadorId: string };
+    const existente = await prisma.trabajador.findFirst({ where: { id: trabajadorId, empresaId }, select: { id: true } });
+    if (!existente) return void res.status(404).json({ error: 'Trabajador no encontrado' });
     const trabajador = await prisma.trabajador.update({
-      where: { id: req.params['trabajadorId'] },
+      where: { id: trabajadorId },
       data: { activo: true },
     });
     res.json({ data: trabajador });
