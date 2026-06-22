@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { createError } from './errorHandler';
+import { getEstadoSuscripcion } from '../services/suscripcion.service';
 
 export interface JwtPayload {
   id: string;
@@ -76,9 +77,10 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 export function requireSuscripcion(req: Request, _res: Response, next: NextFunction): void {
   if (req.user?.rol === 'ADMIN') return next();
 
-  const ahora = Date.now();
-  const trialVigente = !!req.suscripcion?.trialFin && req.suscripcion.trialFin.getTime() > ahora;
-  const suscripcionVigente = !!req.suscripcion?.suscripcionHasta && req.suscripcion.suscripcionHasta.getTime() > ahora;
+  const { trialVigente, suscripcionVigente } = getEstadoSuscripcion({
+    trialFin: req.suscripcion?.trialFin ?? null,
+    suscripcionHasta: req.suscripcion?.suscripcionHasta ?? null,
+  });
 
   if (!trialVigente && !suscripcionVigente) {
     return next(createError('Tu período de prueba terminó. Activa tu suscripción para seguir usando ContaCLWEB.', 402));

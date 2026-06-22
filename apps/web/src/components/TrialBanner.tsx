@@ -9,14 +9,10 @@ export default function TrialBanner() {
   const usuario = data?.data;
 
   if (!usuario || usuario.rol === 'ADMIN') return null;
+  if (usuario.suscripcionVigente) return null;
+  if (!usuario.trialVigente || usuario.diasRestantesTrial == null) return null;
 
-  const ahora = Date.now();
-  if (usuario.suscripcionHasta && new Date(usuario.suscripcionHasta).getTime() > ahora) return null;
-  if (!usuario.trialFin) return null;
-
-  const diasRestantes = Math.ceil((new Date(usuario.trialFin).getTime() - ahora) / (24 * 60 * 60 * 1000));
-  if (diasRestantes <= 0) return null; // vencido: el 402 del API ya redirige a /suscripcion
-
+  const diasRestantes = usuario.diasRestantesTrial;
   const urgente = diasRestantes <= 7;
 
   return (

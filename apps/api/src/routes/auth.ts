@@ -8,6 +8,7 @@ import { requireAuth } from '../middlewares/auth';
 import { createError } from '../middlewares/errorHandler';
 import { loginSchema, registroSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema } from '@contaweb/validations';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../services/email.service';
+import { conEstadoSuscripcion } from '../services/suscripcion.service';
 
 const router = Router();
 
@@ -50,7 +51,7 @@ router.post('/registro', validate(registroSchema), async (req, res, next) => {
       { expiresIn: (process.env['JWT_EXPIRES_IN'] ?? (process.env['NODE_ENV'] === 'production' ? '8h' : '7d')) as unknown as Exclude<jwt.SignOptions['expiresIn'], undefined> }
     );
 
-    res.status(201).json({ data: { token, usuario } });
+    res.status(201).json({ data: { token, usuario: conEstadoSuscripcion(usuario) } });
   } catch (err) {
     next(err);
   }
@@ -82,7 +83,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
       emailVerificado: usuario.emailVerificado, trialFin: usuario.trialFin, suscripcionHasta: usuario.suscripcionHasta,
       createdAt: usuario.createdAt, updatedAt: usuario.updatedAt,
     };
-    res.json({ data: { token, usuario: usuarioPublico } });
+    res.json({ data: { token, usuario: conEstadoSuscripcion(usuarioPublico) } });
   } catch (err) {
     next(err);
   }
@@ -95,7 +96,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
       select: { id: true, email: true, nombre: true, rol: true, emailVerificado: true, trialFin: true, suscripcionHasta: true, createdAt: true, updatedAt: true },
     });
     if (!usuario) return next(createError('Usuario no encontrado', 404));
-    res.json({ data: usuario });
+    res.json({ data: conEstadoSuscripcion(usuario) });
   } catch (err) {
     next(err);
   }

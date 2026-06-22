@@ -13,6 +13,10 @@ export interface Usuario {
   emailVerificado: boolean;
   trialFin: string | null;
   suscripcionHasta: string | null;
+  // Calculados por el API (suscripcion.service.ts) — el frontend no debe recalcularlos.
+  trialVigente: boolean;
+  suscripcionVigente: boolean;
+  diasRestantesTrial: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -363,6 +367,7 @@ export interface Liquidacion {
   liquido: string;
   costoEmpleador: string;
   pagada: boolean;
+  centralizada: boolean;
   trabajador?: Trabajador;
   createdAt: string;
   updatedAt: string;

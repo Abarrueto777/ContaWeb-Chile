@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireAdmin } from '../middlewares/auth';
+import { validate } from '../middlewares/validate';
 import { sendPlanActivadoEmail } from '../services/email.service';
+import { calcularExtensionSuscripcion, conEstadoSuscripcion } from '../services/suscripcion.service';
+import { adminEstadoUsuarioSchema, adminSuscripcionSchema } from '@contaweb/validations';
+import type { AdminEstadoUsuarioInput, AdminSuscripcionInput } from '@contaweb/validations';
 
 const router = Router();
 
@@ -25,21 +29,18 @@ router.get('/usuarios', async (_req, res, next) => {
       },
       orderBy: { createdAt: 'desc' },
     });
-    res.json({ data: usuarios });
+    res.json({ data: usuarios.map((u) => conEstadoSuscripcion(u)) });
   } catch (err) {
     next(err);
   }
 });
 
 // Suspender / reactivar un usuario (palanca de control para planes)
-router.patch('/usuarios/:id/estado', async (req, res, next) => {
+router.patch('/usuarios/:id/estado', validate(adminEstadoUsuarioSchema), async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
-    const { estado } = req.body as { estado?: string };
+    const { estado } = req.body as AdminEstadoUsuarioInput;
 
-    if (estado !== 'ACTIVO' && estado !== 'SUSPENDIDO') {
-      return void res.status(400).json({ error: 'Estado inválido (ACTIVO | SUSPENDIDO)' });
-    }
     if (id === req.user!.id) {
       return void res.status(400).json({ error: 'No puedes cambiar tu propio estado' });
     }
@@ -58,14 +59,10 @@ router.patch('/usuarios/:id/estado', async (req, res, next) => {
 // Activar/extender suscripción manual: 1, 6 o 12 meses (mensual/semestral/anual).
 // EXTIENDE desde el vencimiento vigente si lo hay (renovar antes no regala días),
 // o desde hoy si ya venció. El cobro es por fuera (transferencia) en esta etapa.
-router.patch('/usuarios/:id/suscripcion', async (req, res, next) => {
+router.patch('/usuarios/:id/suscripcion', validate(adminSuscripcionSchema), async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
-    const { meses, correccion } = req.body as { meses?: number; correccion?: boolean };
-
-    if (meses !== 1 && meses !== 6 && meses !== 12) {
-      return void res.status(400).json({ error: 'Meses inválidos (1 | 6 | 12)' });
-    }
+    const { meses, correccion } = req.body as AdminSuscripcionInput;
 
     const actual = await prisma.usuario.findUnique({
       where: { id },
@@ -75,15 +72,7 @@ router.patch('/usuarios/:id/suscripcion', async (req, res, next) => {
       return void res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // El período pago arranca donde termina lo que ya tiene vigente: suscripción
-    // previa O días de trial restantes. Pagar antes de que venza la prueba no
-    // le quita días al cliente (el plan parte del día 46, no del día del pago).
-    const ahora = new Date();
-    let base = ahora;
-    if (actual.suscripcionHasta && actual.suscripcionHasta > base) base = actual.suscripcionHasta;
-    if (actual.trialFin && actual.trialFin > base) base = actual.trialFin;
-    const hasta = new Date(base);
-    hasta.setMonth(hasta.getMonth() + meses);
+    const hasta = calcularExtensionSuscripcion(actual, meses);
 
     const usuario = await prisma.usuario.update({
       where: { id },

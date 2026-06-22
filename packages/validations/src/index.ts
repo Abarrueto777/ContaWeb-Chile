@@ -359,6 +359,17 @@ export const solicitudPlanSchema = z.object({
   plan: z.enum(['MENSUAL', 'SEMESTRAL', 'ANUAL']),
 });
 
+// Panel admin: suspender/reactivar usuario
+export const adminEstadoUsuarioSchema = z.object({
+  estado: z.enum(['ACTIVO', 'SUSPENDIDO']),
+});
+
+// Panel admin: activar/extender suscripción manual (1, 6 o 12 meses)
+export const adminSuscripcionSchema = z.object({
+  meses: z.union([z.literal(1), z.literal(6), z.literal(12)]),
+  correccion: z.boolean().optional(),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegistroInput = z.infer<typeof registroSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
@@ -380,3 +391,5 @@ export type ActivoFijoInput = z.infer<typeof activoFijoSchema>;
 export type FiniquitoInput = z.infer<typeof finiquitoInputSchema>;
 export type VacacionInput = z.infer<typeof vacacionSchema>;
 export type SolicitudPlanInput = z.infer<typeof solicitudPlanSchema>;
+export type AdminEstadoUsuarioInput = z.infer<typeof adminEstadoUsuarioSchema>;
+export type AdminSuscripcionInput = z.infer<typeof adminSuscripcionSchema>;

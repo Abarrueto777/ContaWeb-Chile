@@ -24,10 +24,9 @@ export default function Suscripcion() {
   const solicitar = useSolicitarPlan();
   const [planElegido, setPlanElegido] = useState<PlanId | null>(null);
 
-  const ahora = Date.now();
-  const suscripcionVigente = !!usuario?.suscripcionHasta && new Date(usuario.suscripcionHasta).getTime() > ahora;
-  const trialVigente = !!usuario?.trialFin && new Date(usuario.trialFin).getTime() > ahora;
-  const diasTrial = usuario?.trialFin ? Math.ceil((new Date(usuario.trialFin).getTime() - ahora) / 86400000) : 0;
+  const suscripcionVigente = usuario?.suscripcionVigente ?? false;
+  const trialVigente = usuario?.trialVigente ?? false;
+  const diasTrial = usuario?.diasRestantesTrial ?? 0;
 
   const plan = PLANES.find((p) => p.id === planElegido) ?? null;
 
