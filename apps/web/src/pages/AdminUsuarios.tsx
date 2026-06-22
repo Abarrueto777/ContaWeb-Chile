@@ -19,14 +19,14 @@ function msgError(e: Error | null): string | null {
 const fmtFecha = (iso: string) => new Date(iso).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 // Estado comercial del usuario: suscripción paga > trial vigente > vencido.
+// trialVigente/suscripcionVigente/diasRestantesTrial vienen calculados del backend
+// (suscripcion.service.ts) — no se recalculan a mano para no desincronizar la regla.
 function suscripcionLabel(u: AdminUsuario): { texto: string; clase: string } {
-  const ahora = Date.now();
-  if (u.suscripcionHasta && new Date(u.suscripcionHasta).getTime() > ahora) {
+  if (u.suscripcionVigente && u.suscripcionHasta) {
     return { texto: `Paga hasta ${fmtFecha(u.suscripcionHasta)}`, clase: 'text-green-600' };
   }
-  if (u.trialFin && new Date(u.trialFin).getTime() > ahora) {
-    const dias = Math.ceil((new Date(u.trialFin).getTime() - ahora) / 86400000);
-    return { texto: `Trial (${dias}d)`, clase: 'text-blue-600' };
+  if (u.trialVigente) {
+    return { texto: `Trial (${u.diasRestantesTrial}d)`, clase: 'text-blue-600' };
   }
   return { texto: 'Vencida', clase: 'text-orange-600' };
 }
@@ -73,6 +73,16 @@ export default function AdminUsuarios() {
 
   const usuarios = data?.data ?? [];
 
+  // Resumen de conversión — solo clientes (el ADMIN no tiene trial/suscripción).
+  // "Resueltos" = el trial ya terminó (pagó o no); conversión se mide sobre esos,
+  // los que siguen en trial todavía no tienen un desenlace.
+  const clientes = usuarios.filter((u) => u.rol !== 'ADMIN');
+  const pagando = clientes.filter((u) => u.suscripcionVigente).length;
+  const enTrial = clientes.filter((u) => u.trialVigente && !u.suscripcionVigente).length;
+  const vencidosSinPagar = clientes.filter((u) => !u.trialVigente && !u.suscripcionVigente).length;
+  const resueltos = pagando + vencidosSinPagar;
+  const tasaConversion = resueltos > 0 ? Math.round((pagando / resueltos) * 100) : null;
+
   const toggleEstado = (u: AdminUsuario) => {
     updateEstado.mutate({ id: u.id, estado: u.estado === 'ACTIVO' ? 'SUSPENDIDO' : 'ACTIVO' });
   };
@@ -90,6 +100,27 @@ export default function AdminUsuarios() {
         <h1 className="text-2xl font-bold tracking-tight">Usuarios</h1>
         <p className="text-sm text-muted-foreground mt-1">{usuarios.length} usuarios registrados</p>
       </div>
+
+      {!isLoading && clientes.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card><CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">En trial</p>
+            <p className="text-2xl font-bold text-blue-600">{enTrial}</p>
+          </CardContent></Card>
+          <Card><CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">Pagando</p>
+            <p className="text-2xl font-bold text-green-600">{pagando}</p>
+          </CardContent></Card>
+          <Card><CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">Vencidos sin pagar</p>
+            <p className="text-2xl font-bold text-orange-600">{vencidosSinPagar}</p>
+          </CardContent></Card>
+          <Card><CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">Conversión {resueltos > 0 && <span className="opacity-70">({resueltos} resueltos)</span>}</p>
+            <p className="text-2xl font-bold">{tasaConversion !== null ? `${tasaConversion}%` : '—'}</p>
+          </CardContent></Card>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />)}</div>

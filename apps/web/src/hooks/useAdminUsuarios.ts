@@ -1,16 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ApiResponse } from '@contaweb/shared-types';
+import type { ApiResponse, Usuario } from '@contaweb/shared-types';
 import api from '@/lib/api';
 
-export interface AdminUsuario {
-  id: string;
-  email: string;
-  nombre: string;
-  rol: 'ADMIN' | 'CONTADOR' | 'VISOR';
+// Subconjunto de Usuario que de verdad devuelve GET /api/admin/usuarios, más los
+// campos propios del panel admin (estado, _count). Pick en vez de redefinir a mano
+// para que agregar un campo a Usuario no quede desincronizado en silencio acá.
+export interface AdminUsuario extends Pick<Usuario, 'id' | 'email' | 'nombre' | 'rol' | 'trialFin' | 'suscripcionHasta' | 'trialVigente' | 'suscripcionVigente' | 'diasRestantesTrial' | 'createdAt'> {
   estado: 'ACTIVO' | 'SUSPENDIDO';
-  trialFin: string | null;
-  suscripcionHasta: string | null;
-  createdAt: string;
   _count: { empresas: number };
 }
 
