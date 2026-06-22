@@ -281,6 +281,7 @@ model LineaDocumento {
   subtotal       Decimal             @db.Decimal(19, 4)
   documento      DocumentoTributario @relation(fields: [documentoId], references: [id], onDelete: Cascade)
 
+  @@index([documentoId])
   @@map("lineas_documento")
 }
 
@@ -302,6 +303,7 @@ model CuentaContable {
   lineasAsiento      LineaAsiento[]
 
   @@unique([empresaId, codigo])
+  @@index([cuentaPadreId])
   @@map("cuentas_contables")
 }
 
@@ -374,6 +376,8 @@ model LineaAsiento {
   asiento   AsientoContable @relation(fields: [asientoId], references: [id], onDelete: Cascade)
   cuenta    CuentaContable  @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
 
+  @@index([asientoId])
+  @@index([cuentaId])
   @@map("lineas_asiento")
 }
 
@@ -515,6 +519,7 @@ model Liquidacion {
   liquido        Decimal    @db.Decimal(19, 4)
   costoEmpleador Decimal    @db.Decimal(19, 4)
   pagada         Boolean    @default(false)
+  centralizada   Boolean    @default(false)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   diasSinGoce    Int        @default(0)
