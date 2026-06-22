@@ -50,6 +50,53 @@ export async function asientoVenta(
   });
 }
 
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+// Asiento consolidado de toda la nómina del período. Σ(costoEmpleador - liquido) cuadra
+// solo contra Retenciones por Pagar — ahí quedan mezclados AFP/salud/cesantía/impuesto
+// único/aportes patronales JUNTO con anticipos y otros descuentos (simplificación: hoy
+// no existe una cuenta "Anticipos a Trabajadores" que los trate por separado).
+export async function asientoRemuneraciones(
+  db: PrismaClient,
+  empresaId: string,
+  params: { anio: number; mes: number },
+): Promise<{ id: string; numero: number }> {
+  const { anio, mes } = params;
+
+  const liquidaciones = await db.liquidacion.findMany({ where: { empresaId, anio, mes } });
+  if (liquidaciones.length === 0) {
+    throw new Error(`No hay liquidaciones calculadas para ${MESES[mes - 1]} ${anio}`);
+  }
+
+  const totalCostoEmpleador = liquidaciones.reduce((s, l) => s + Number(l.costoEmpleador), 0);
+  const totalLiquido = liquidaciones.reduce((s, l) => s + Number(l.liquido), 0);
+  const totalRetenciones = totalCostoEmpleador - totalLiquido;
+
+  const cGasto = await getCuenta(db, empresaId, '5.1.02');
+  const cRemPagar = await getCuenta(db, empresaId, '2.1.05');
+  const cRetPagar = await getCuenta(db, empresaId, '2.1.07');
+
+  const lineas: { cuentaId: string; debe: Decimal; haber: Decimal; glosa: string | null }[] = [
+    { cuentaId: cGasto.id, debe: new Decimal(totalCostoEmpleador).toDecimalPlaces(4), haber: new Decimal(0), glosa: null },
+    { cuentaId: cRemPagar.id, debe: new Decimal(0), haber: new Decimal(totalLiquido).toDecimalPlaces(4), glosa: null },
+    { cuentaId: cRetPagar.id, debe: new Decimal(0), haber: new Decimal(totalRetenciones).toDecimalPlaces(4), glosa: null },
+  ];
+
+  const numero = await proximoNumero(db, empresaId);
+  return db.$transaction(async (tx) => {
+    const asiento = await tx.asientoContable.create({
+      data: {
+        empresaId, numero,
+        fecha: new Date(anio, mes, 0), // último día del período
+        glosa: `Remuneraciones ${MESES[mes - 1]} ${anio}`,
+        lineas: { create: lineas },
+      },
+    });
+    await tx.liquidacion.updateMany({ where: { empresaId, anio, mes }, data: { centralizada: true } });
+    return { id: asiento.id, numero: asiento.numero };
+  });
+}
+
 export async function asientoCompra(
   db: PrismaClient,
   empresaId: string,

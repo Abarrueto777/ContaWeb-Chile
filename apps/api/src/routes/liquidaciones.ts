@@ -9,6 +9,7 @@ import { getConfig } from '../services/config.service';
 import { getUFLiquidacion } from '../services/uf.service';
 import { createError } from '../middlewares/errorHandler';
 import { generarLiquidacionPdf, type EmpresaDoc, type TrabajadorDoc } from '../services/htmlDocs.service';
+import { asientoRemuneraciones } from '../services/asientoAutomatico.service';
 
 // Códigos de Región DT — Tabla N°2 Manual LRE
 const REGION_COD: Record<string, string> = {
@@ -43,6 +44,21 @@ const SALUD_COD_PREV: Record<string, string> = {
 };
 
 const router = Router({ mergeParams: true });
+
+// Bloquea editar/eliminar una liquidación si el trabajador ya tiene un período
+// posterior procesado — evita reprocesos que invaliden cálculos previsionales ya
+// declarados. Para corregir un período cerrado hay que hacer una reliquidación
+// (línea de diferencia en el período actual), no editar el período viejo.
+async function hayPeriodoPosteriorProcesado(trabajadorId: string, anio: number, mes: number): Promise<boolean> {
+  const posterior = await prisma.liquidacion.findFirst({
+    where: {
+      trabajadorId,
+      OR: [{ anio: { gt: anio } }, { anio, mes: { gt: mes } }],
+    },
+    select: { id: true },
+  });
+  return !!posterior;
+}
 
 router.get('/previred', async (req, res, next) => {
   try {
@@ -668,6 +684,12 @@ router.put('/:liquidacionId', async (req, res, next) => {
     if (!liq) return next(createError('Liquidación no encontrada', 404));
     const trabajador = await prisma.trabajador.findFirst({ where: { id: liq.trabajadorId, empresaId } });
     if (!trabajador) return next(createError('Trabajador no encontrado', 404));
+    if (liq.centralizada) {
+      return next(createError('No se puede reprocesar: esta liquidación ya fue centralizada contablemente. Corrige con una reliquidación en el período actual.', 409));
+    }
+    if (await hayPeriodoPosteriorProcesado(liq.trabajadorId, liq.anio, liq.mes)) {
+      return next(createError('No se puede reprocesar: ya existe un período posterior liquidado para este trabajador. Corrige con una reliquidación en el período actual.', 409));
+    }
     const [valorUF, configRaw] = await Promise.all([
       prisma.valorUFUTM.findFirst({
         where: { anio: parsed.data.anio, mes: parsed.data.mes },
@@ -717,21 +739,60 @@ router.put('/:liquidacionId', async (req, res, next) => {
   }
 });
 
-router.patch('/:liquidacionId/pagar', async (req, res) => {
+router.patch('/:liquidacionId/pagar', async (req, res, next) => {
   try {
-    const liq = await prisma.liquidacion.update({ where: { id: req.params['liquidacionId'] }, data: { pagada: true } });
+    const { empresaId, liquidacionId } = req.params as { empresaId: string; liquidacionId: string };
+    const existe = await prisma.liquidacion.findFirst({ where: { id: liquidacionId, empresaId }, select: { id: true } });
+    if (!existe) return next(createError('Liquidación no encontrada', 404));
+    const liq = await prisma.liquidacion.update({ where: { id: liquidacionId }, data: { pagada: true } });
     res.json({ data: liq });
-  } catch {
-    res.status(500).json({ error: 'Error al marcar pagada' });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.delete('/:liquidacionId', async (req, res) => {
+router.delete('/:liquidacionId', async (req, res, next) => {
   try {
-    await prisma.liquidacion.delete({ where: { id: req.params['liquidacionId'] } });
+    const { empresaId, liquidacionId } = req.params as { empresaId: string; liquidacionId: string };
+    const liq = await prisma.liquidacion.findFirst({ where: { id: liquidacionId, empresaId } });
+    if (!liq) return next(createError('Liquidación no encontrada', 404));
+    if (liq.centralizada) {
+      return next(createError('No se puede eliminar: esta liquidación ya fue centralizada contablemente. Corrige con una reliquidación en el período actual.', 409));
+    }
+    if (await hayPeriodoPosteriorProcesado(liq.trabajadorId, liq.anio, liq.mes)) {
+      return next(createError('No se puede eliminar: ya existe un período posterior liquidado para este trabajador. Corrige con una reliquidación en el período actual.', 409));
+    }
+    await prisma.liquidacion.delete({ where: { id: liquidacionId } });
     res.json({ message: 'Liquidación eliminada' });
-  } catch {
-    res.status(500).json({ error: 'Error al eliminar liquidación' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Centraliza contablemente toda la nómina de un período: un asiento consolidado
+// (Σ costoEmpleador / Σ liquido / Σ retenciones) y marca esas liquidaciones como
+// centralizadas. Atómico por período — no se puede centralizar dos veces.
+router.patch('/centralizar', async (req, res, next) => {
+  try {
+    const { empresaId } = req.params as { empresaId: string };
+    const anio = Number(req.query['anio']);
+    const mes = Number(req.query['mes']);
+    if (!anio || !mes || mes < 1 || mes > 12) {
+      return next(createError('Parámetros anio y mes requeridos', 400));
+    }
+
+    const yaCentralizada = await prisma.liquidacion.findFirst({
+      where: { empresaId, anio, mes, centralizada: true },
+      select: { id: true },
+    });
+    if (yaCentralizada) {
+      return next(createError('Este período ya fue centralizado contablemente. Para corregir, genera el ajuste en el período actual.', 409));
+    }
+
+    const asiento = await asientoRemuneraciones(prisma, empresaId, { anio, mes });
+    res.json({ data: asiento, message: `Centralización contable generada — asiento N°${asiento.numero}` });
+  } catch (err) {
+    next(err instanceof Error ? createError(err.message, 400) : err);
   }
 });
 

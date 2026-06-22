@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList, AlertTriangle, Mail, Stethoscope } from 'lucide-react';
+import { Plus, Users, FileText, Trash2, Loader2, CheckCircle, Pencil, Download, Printer, Briefcase, RotateCcw, Zap, Umbrella, ClipboardList, AlertTriangle, Mail, Stethoscope, Landmark } from 'lucide-react';
 import api from '@/lib/api';
 import { REGIONES_DT, COMUNAS_DT } from '@/lib/dt-geo';
 import { trabajadorSchema, finiquitoInputSchema, vacacionSchema, permisoSchema, licenciaMedicaSchema, CAUSALES_FINIQUITO, type TrabajadorInput, type LiquidacionInput, type FiniquitoInput, type VacacionInput, type PermisoInput, type LicenciaMedicaInput } from '@contaweb/validations';
 import type { Trabajador, Liquidacion, VacacionSaldo, Permiso, LicenciaMedica } from '@contaweb/shared-types';
 import { useTrabajadores, useCreateTrabajador, useUpdateTrabajador, useDesactivarTrabajador, useReactivarTrabajador } from '@/hooks/useTrabajadores';
-import { useLiquidaciones, useCreateLiquidacion, useUpdateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion } from '@/hooks/useLiquidaciones';
+import { useLiquidaciones, useCreateLiquidacion, useUpdateLiquidacion, useDeleteLiquidacion, usePagarLiquidacion, useCentralizarRemuneraciones } from '@/hooks/useLiquidaciones';
 import { useVacaciones, useVacacionSaldos, useCreateVacacion, useDeleteVacacion } from '@/hooks/useVacaciones';
 import { usePermisos, useCreatePermiso, useDeletePermiso } from '@/hooks/usePermisos';
 import { useLicencias, useCreateLicencia, useUpdateLicencia, useDeleteLicencia } from '@/hooks/useLicencias';
@@ -160,6 +160,7 @@ export default function RRHH() {
   const updateLiq = useUpdateLiquidacion(empresa?.id ?? '');
   const deleteLiq = useDeleteLiquidacion(empresa?.id ?? '');
   const pagarLiq = usePagarLiquidacion(empresa?.id ?? '');
+  const centralizarRem = useCentralizarRemuneraciones(empresa?.id ?? '');
   const { data: vacData } = useVacaciones(empresa?.id ?? '');
   const { data: saldosData, isLoading: loadingSaldos } = useVacacionSaldos(empresa?.id ?? '');
   const createVac = useCreateVacacion(empresa?.id ?? '');
@@ -766,7 +767,10 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
       }
       setDirty(s => { const n = new Set(s); n.delete(trabId); return n; });
       setSinGoceDesync(s => { const n = new Set(s); n.delete(trabId); return n; });
-    } catch { /* mutation error surfaced via hook */ } finally {
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al calcular la liquidación';
+      alert(msg);
+    } finally {
       setProcesando(s => { const n = new Set(s); n.delete(trabId); return n; });
     }
   }
@@ -781,6 +785,17 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
     for (const t of todosLosTrabajadores.filter(t => t.activo)) {
       await calcularUno(t.id, liqPorTrab.get(t.id));
     }
+  }
+
+  function centralizar() {
+    if (!confirm(`¿Centralizar contablemente la nómina de ${MESES[mes - 1]} ${anio}? Esto genera el asiento en el Libro Diario y bloquea las liquidaciones del período.`)) return;
+    centralizarRem.mutate({ anio, mes }, {
+      onSuccess: (res) => alert(res.message),
+      onError: (e: unknown) => {
+        const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al centralizar';
+        alert(msg);
+      },
+    });
   }
 
   const totalLiquido = liquidaciones.reduce((s, l) => s + Number(l.liquido), 0);
@@ -1155,6 +1170,11 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
               <Button size="sm" onClick={calcularTodos} disabled={todosLosTrabajadores.filter(t => t.activo).length === 0}>
                 <Zap className="mr-1.5 h-3.5 w-3.5" />Calcular todos
               </Button>
+              <Button size="sm" variant="outline" onClick={centralizar} disabled={liquidaciones.length === 0 || centralizarRem.isPending}
+                title="Genera el asiento contable consolidado de la nómina del período">
+                {centralizarRem.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Landmark className="mr-1.5 h-3.5 w-3.5" />}
+                Centralizar
+              </Button>
             </div>
           </div>
 
@@ -1287,13 +1307,15 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                           </td>
                           <td className="px-2 py-2 hidden lg:table-cell">
                             {liq
-                              ? <Badge variant={liq.pagada ? 'default' : 'secondary'} className="text-xs">{liq.pagada ? 'Pagada' : 'Calculada'}</Badge>
+                              ? <Badge variant={liq.centralizada ? 'outline' : liq.pagada ? 'default' : 'secondary'} className="text-xs">
+                                  {liq.centralizada ? 'Centralizada' : liq.pagada ? 'Pagada' : 'Calculada'}
+                                </Badge>
                               : <span className="text-xs text-muted-foreground">—</span>}
                           </td>
                           <td className="sticky right-0 bg-card px-1 py-1.5 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant={isDirty ? 'default' : 'outline'} className="h-7 px-2"
-                                onClick={() => calcularUno(t.id, liq)} disabled={isProc} title="Calcular">
+                                onClick={() => calcularUno(t.id, liq)} disabled={isProc || liq?.centralizada} title={liq?.centralizada ? 'Centralizada — no se puede reprocesar' : 'Calcular'}>
                                 {isProc ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                               </Button>
                               {liq && <>
@@ -1313,7 +1335,16 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
                                   {enviandoEmail.has(liq.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
                                 </Button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                  onClick={() => deleteLiq.mutate(liq.id)} title="Eliminar">
+                                  disabled={liq.centralizada}
+                                  onClick={() => {
+                                    if (!confirm('¿Eliminar esta liquidación?')) return;
+                                    deleteLiq.mutate(liq.id, {
+                                      onError: (e: unknown) => {
+                                        const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al eliminar la liquidación';
+                                        alert(msg);
+                                      },
+                                    });
+                                  }} title={liq.centralizada ? 'Centralizada — no se puede eliminar' : 'Eliminar'}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </>}

@@ -43,3 +43,15 @@ export function usePagarLiquidacion(empresaId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['liquidaciones', empresaId] }),
   });
 }
+
+export function useCentralizarRemuneraciones(empresaId: string) {
+  const qc = useQueryClient();
+  return useMutation<{ data: { id: string; numero: number }; message: string }, Error, { anio: number; mes: number }>({
+    mutationFn: ({ anio, mes }) =>
+      api.patch(`/api/empresas/${empresaId}/liquidaciones/centralizar?anio=${anio}&mes=${mes}`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['liquidaciones', empresaId] });
+      qc.invalidateQueries({ queryKey: ['asientos', empresaId] });
+    },
+  });
+}
